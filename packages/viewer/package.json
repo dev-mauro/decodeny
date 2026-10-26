@@ -1,0 +1,43 @@
+{
+  "name": "@decodeny/viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visor 3D de Decodeny (React Three Fiber): proyecta el documento de dominio a una escena.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@decodeny/catalog": "workspace:^",
+    "@decodeny/domain": "workspace:^",
+    "earcut": "^3.0.0"
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d-compat": "0.19.2",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/rapier": "^2.2.0",
+    "@types/earcut": "^3.2.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "~0.186.0",
+    "react": "^19.2",
+    "react-dom": "^19.2",
+    "three": "~0.186.1"
+  },
+  "peerDependencies": {
+    "@react-three/drei": "^10.7.0",
+    "@react-three/fiber": "^9.8.0",
+    "@react-three/rapier": "^2.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": ">=0.186.0 <0.187.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Decodeny",
+  "short_name": "Decodeny",
+  "description": "Visualiza departamentos y casas en 3D a partir de sus medidas.",
+  "lang": "es",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e3a8a",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

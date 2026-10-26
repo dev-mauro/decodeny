@@ -1,0 +1,210 @@
+import {
+  findLevel,
+  type Item,
+  type Level,
+  type Params,
+  type Project,
+  type Vec2,
+} from '@decodeny/domain';
+import type {
+  BuiltInNavigationMode,
+  ItemGroup,
+  MeasurePoint,
+  PlanTool,
+  ViewerSelection,
+} from '@decodeny/viewer';
+import { create } from 'zustand';
+import { useProjectStore } from './project-store';
+
+/**
+ * Item nuevo que el usuario está ubicando con el puntero. El item existe como vista previa del
+ * documento (transacción abierta) hasta que se confirma o se cancela; ver `placement.ts`.
+ */
+export interface ItemPlacementSession {
+  readonly itemId: string;
+  readonly def: string;
+  readonly params: Params;
+  /** Giro elegido por el usuario (R); los de muro lo ajustan al muro. */
+  readonly rotation: number;
+  /** Altura sobre el piso de los items cuyo montaje no la determina (p. ej. un cuadro). */
+  readonly z: number;
+  /** Altura (mm) del plano donde la vista 3D proyecta el puntero. */
+  readonly pointerHeight: number;
+  /** Último punto del puntero (planta, mm) y si se ajustaba; `null` antes de moverlo. */
+  readonly pointer: { readonly point: Vec2; readonly snap: boolean } | null;
+}
+
+/** Estado de interfaz (no forma parte del documento ni del historial). */
+interface UiState {
+  readonly levelId: string | null;
+  readonly selection: ViewerSelection | null;
+  readonly createRoomOpen: boolean;
+  readonly navigationMode: BuiltInNavigationMode;
+  /** El recorrido tiene capturado el mouse (Pointer Lock). */
+  readonly pointerLocked: boolean;
+  /** Lo que está bajo el puntero en la vista 3D (para resaltar su fila en los paneles). */
+  readonly viewportHover: ViewerSelection | null;
+  /** Lo que se resalta en la vista 3D desde los paneles (o el ajuste al arrastrar). */
+  readonly highlighted: readonly ViewerSelection[];
+  /** Pestaña del panel izquierdo. */
+  readonly leftTab: 'rooms' | 'catalog';
+  /** Muebles copiados (Ctrl+C), con sus datos completos para pegarlos en cualquier proyecto. */
+  readonly clipboard: readonly Item[];
+  /** Instancia de material copiada con el cuentagotas. */
+  readonly finishClipboard: string | null;
+  /** Iluminación de la vista: día (sol) o noche (solo luminarias). */
+  readonly lighting: 'day' | 'night';
+  /** Capas ocultas de la vista. */
+  readonly hiddenGroups: ReadonlySet<ItemGroup>;
+  /** Corte de muros a esta altura (mm) para ver los interiores; `null` sin corte. */
+  readonly sectionHeight: number | null;
+  /** Herramienta de medición activa y sus puntos (a lo sumo dos). */
+  readonly measuring: boolean;
+  readonly measurePoints: readonly MeasurePoint[];
+  /** Vista principal: 3D o planta 2D. */
+  readonly view: '3d' | 'plan';
+  /** Herramienta de la planta 2D. */
+  readonly planTool: PlanTool;
+  /**
+   * Editores de terminación en uso (puntero encima o foco dentro). Mientras haya alguno, la
+   * vista muestra las superficies con su color real, sin el brillo de selección.
+   */
+  readonly finishEditors: number;
+  readonly placement: ItemPlacementSession | null;
+  readonly select: (selection: ViewerSelection | null) => void;
+  readonly setCreateRoomOpen: (open: boolean) => void;
+  readonly setNavigationMode: (mode: BuiltInNavigationMode) => void;
+  readonly setPointerLocked: (locked: boolean) => void;
+  readonly setViewportHover: (target: ViewerSelection | null) => void;
+  readonly setHighlighted: (targets: readonly ViewerSelection[]) => void;
+  readonly setLeftTab: (tab: 'rooms' | 'catalog') => void;
+  readonly setClipboard: (items: readonly Item[]) => void;
+  readonly setFinishClipboard: (materialId: string | null) => void;
+  readonly setLighting: (lighting: 'day' | 'night') => void;
+  readonly toggleGroup: (group: ItemGroup) => void;
+  readonly setSectionHeight: (height: number | null) => void;
+  readonly setMeasuring: (measuring: boolean) => void;
+  readonly addMeasurePoint: (point: MeasurePoint) => void;
+  readonly setView: (view: '3d' | 'plan') => void;
+  readonly setPlanTool: (tool: PlanTool) => void;
+  /** Marca un editor de terminación como en uso; devuelve la función que lo libera. */
+  readonly holdFinishEditor: () => () => void;
+  readonly setPlacement: (placement: ItemPlacementSession | null) => void;
+}
+
+/** Altura de corte por defecto: sobre muebles bajos, bajo dinteles y ventanas altas. */
+export const DEFAULT_SECTION_HEIGHT = 1200;
+
+const NONE: readonly ViewerSelection[] = [];
+
+export const useUiStore = create<UiState>()((set) => ({
+  levelId: null,
+  selection: null,
+  createRoomOpen: false,
+  navigationMode: 'edit',
+  pointerLocked: false,
+  viewportHover: null,
+  highlighted: NONE,
+  leftTab: 'rooms',
+  clipboard: [],
+  finishClipboard: null,
+  lighting: 'day',
+  hiddenGroups: new Set(),
+  sectionHeight: null,
+  measuring: false,
+  measurePoints: [],
+  view: '3d',
+  planTool: 'select',
+  finishEditors: 0,
+  placement: null,
+  select: (selection) => set({ selection }),
+  setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
+  // Recorrer o volar implica la vista 3D.
+  setNavigationMode: (navigationMode) =>
+    set({
+      navigationMode,
+      pointerLocked: false,
+      measuring: false,
+      measurePoints: [],
+      ...(navigationMode === 'edit' ? {} : { view: '3d' as const, planTool: 'select' as const }),
+    }),
+  setView: (view) =>
+    set(
+      view === 'plan'
+        ? { view, navigationMode: 'edit', measuring: false, measurePoints: [] }
+        : { view, planTool: 'select' },
+    ),
+  // Dibujar muros es una herramienta de la planta.
+  setPlanTool: (planTool) =>
+    set(
+      planTool === 'wall'
+        ? { planTool, view: 'plan', navigationMode: 'edit', measuring: false, measurePoints: [] }
+        : { planTool },
+    ),
+  holdFinishEditor: () => {
+    set((s) => ({ finishEditors: s.finishEditors + 1 }));
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      set((s) => ({ finishEditors: s.finishEditors - 1 }));
+    };
+  },
+  setPlacement: (placement) => set({ placement }),
+  setPointerLocked: (pointerLocked) => set({ pointerLocked }),
+  setViewportHover: (viewportHover) => set({ viewportHover }),
+  setHighlighted: (targets) => set({ highlighted: targets.length === 0 ? NONE : targets }),
+  setLeftTab: (leftTab) => set({ leftTab }),
+  setClipboard: (clipboard) => set({ clipboard }),
+  setFinishClipboard: (finishClipboard) => set({ finishClipboard }),
+  setLighting: (lighting) => set({ lighting }),
+  toggleGroup: (group) =>
+    set((s) => {
+      const next = new Set(s.hiddenGroups);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return { hiddenGroups: next };
+    }),
+  setSectionHeight: (sectionHeight) => set({ sectionHeight }),
+  setMeasuring: (measuring) => set({ measuring, measurePoints: [] }),
+  // El tercer punto empieza una medición nueva.
+  addMeasurePoint: (point) =>
+    set((s) => ({
+      measurePoints: s.measurePoints.length >= 2 ? [point] : [...s.measurePoints, point],
+    })),
+}));
+
+export function activeLevel(project: Project, levelId: string | null): Level {
+  return (levelId ? findLevel(project, levelId) : undefined) ?? project.levels[0]!;
+}
+
+export function useActiveLevel(): Level {
+  const project = useProjectStore((s) => s.project);
+  const levelId = useUiStore((s) => s.levelId);
+  return activeLevel(project, levelId);
+}
+
+/** ¿La selección apunta a algo que existe en el nivel? (puede desaparecer tras deshacer). */
+export function isSelectionValid(level: Level, selection: ViewerSelection | null): boolean {
+  if (!selection) return true;
+  switch (selection.kind) {
+    case 'room':
+      return level.rooms.some((r) => r.id === selection.id);
+    case 'wall':
+      return level.walls.some((w) => w.id === selection.id);
+    case 'opening':
+      return level.openings.some((o) => o.id === selection.id);
+    case 'item':
+      return level.items.some((i) => i.id === selection.id);
+  }
+}
+
+// Limpia la selección cuando su entidad deja de existir (eliminar, deshacer, abrir otro archivo).
+// La ubicación en curso vive en la transacción: si otra acción la cierra, la ubicación termina.
+useProjectStore.subscribe((state) => {
+  const { selection, levelId, placement } = useUiStore.getState();
+  if (!isSelectionValid(activeLevel(state.project, levelId), selection)) {
+    useUiStore.setState({ selection: null });
+  }
+  if (placement && !state.transaction) useUiStore.setState({ placement: null });
+});

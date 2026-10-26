@@ -1,0 +1,20 @@
+{
+  "name": "@decodeny/catalog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contenido de Decodeny: definiciones paramétricas de puertas, ventanas, muebles y materiales.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@decodeny/domain": "workspace:^"
+  }
+}

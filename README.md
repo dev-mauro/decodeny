@@ -41,7 +41,11 @@ Visualizador web de departamentos y casas en 3D a partir de sus medidas. Pensado
 
 ## Publicación
 
-La rama `prod` contiene solo el build de `pnpm build:pages` y GitHub Pages la sirve en https://dev-mauro.github.io/decodeny/ (Settings → Pages → _Deploy from a branch_ → `prod` / raíz). La ruta base se fija con `--base` al compilar; el service worker y el manifest usan rutas relativas, así que el mismo código sirve en cualquier subruta.
+El sitio se publica en https://dev-mauro.github.io/decodeny/ desde la rama `prod`, que contiene solo el build (`pnpm build:pages`, base `/decodeny/`). GitHub Pages la sirve con _Settings → Pages → Deploy from a branch → `prod` / raíz_.
+
+La publicación es automática (`.github/workflows/pages.yml`): cuando la CI termina bien sobre un push a `main`, el workflow compila ese mismo commit y lo sube como un commit nuevo en `prod`. Solo publica la última versión de `main` y no hace nada si el sitio no cambió. También se puede lanzar a mano desde _Actions → Publicar en GitHub Pages → Run workflow_. Para volver a una versión anterior basta con revertir el commit correspondiente en `prod`.
+
+La ruta base se fija con `--base` al compilar; el service worker y el manifest usan rutas relativas, así que el mismo código sirve en cualquier subruta.
 
 ## Estructura
 

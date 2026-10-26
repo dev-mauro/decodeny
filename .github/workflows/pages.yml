@@ -1,0 +1,85 @@
+name: Publicar en GitHub Pages
+
+# Publica el sitio en la rama `prod` (que GitHub Pages sirve) cada vez que la CI termina bien
+# sobre `main`. También se puede lanzar a mano desde la pestaña Actions.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Una publicación a la vez; si llegan varias, se espera a la anterior (no se cancela a medias).
+concurrency:
+  group: pages-prod
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build y publicación en prod
+    # Solo si la CI pasó por un push a main (no por un PR), o a mano desde main.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      # El commit exacto que probó la CI (o el actual, si es manual).
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Código de main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Solo publicar la última versión de main
+        id: latest
+        run: |
+          if [ "$(git rev-parse origin/main)" = "$SOURCE_SHA" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main ya avanzó: se publicará la versión más nueva cuando su CI termine."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.latest.outputs.publish == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.latest.outputs.publish == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.latest.outputs.publish == 'true'
+      - name: Build para Pages (base /decodeny/)
+        if: steps.latest.outputs.publish == 'true'
+        run: pnpm build:pages
+
+      - name: Rama prod
+        if: steps.latest.outputs.publish == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: prod
+          path: prod-site
+
+      - name: Publicar en prod
+        if: steps.latest.outputs.publish == 'true'
+        run: |
+          # Reemplaza todo el contenido de la rama por el build nuevo (conserva su historial).
+          rsync -a --delete --exclude .git apps/web/dist/ prod-site/
+          touch prod-site/.nojekyll
+          cd prod-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "El sitio no cambió: nada que publicar."
+            exit 0
+          fi
+          git commit -m "build: sitio para GitHub Pages desde main@${SOURCE_SHA::7}"
+          git push origin prod

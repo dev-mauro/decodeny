@@ -37,6 +37,11 @@ Visualizador web de departamentos y casas en 3D a partir de sus medidas. Pensado
 | `pnpm depcruise`     | Verifica los límites entre capas                          |
 | `pnpm check`         | Formato + lint + tipos + capas + tests (lo mismo que CI)  |
 | `pnpm size`          | Presupuesto de tamaño del build (gzip, tras `pnpm build`) |
+| `pnpm build:pages`   | Build para GitHub Pages (bajo `/decodeny/`)               |
+
+## Publicación
+
+La rama `prod` contiene solo el build de `pnpm build:pages` y GitHub Pages la sirve en https://dev-mauro.github.io/decodeny/ (Settings → Pages → _Deploy from a branch_ → `prod` / raíz). La ruta base se fija con `--base` al compilar; el service worker y el manifest usan rutas relativas, así que el mismo código sirve en cualquier subruta.
 
 ## Estructura
 

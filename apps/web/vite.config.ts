@@ -13,6 +13,7 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 /**
  * Genera `sw.js` (aplicación sin conexión) con la lista de archivos del build para precargarlos.
  * La versión de la caché es un hash de esa lista: cada build distinto reemplaza la anterior.
+ * Las rutas son relativas al service worker, así funciona en cualquier `base` (p. ej. GitHub Pages).
  */
 function serviceWorker(): Plugin {
   const template = new URL('./sw/service-worker.js', import.meta.url);
@@ -26,7 +27,7 @@ function serviceWorker(): Plugin {
         ...Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'index.html'),
         ...readdirSync(publicDir),
       ].sort();
-      const urls = ['/index.html', ...files.map((f) => `/${f}`)];
+      const urls = ['index.html', ...files];
       const version = createHash('sha256').update(urls.join('|')).digest('hex').slice(0, 12);
       this.emitFile({
         type: 'asset',
@@ -40,6 +41,8 @@ function serviceWorker(): Plugin {
 }
 
 export default defineConfig({
+  // Ruta donde se publica la app: `/` en local; GitHub Pages usa `--base /<repo>/` (`build:pages`).
+  base: '/',
   plugins: [react(), tailwindcss(), serviceWorker()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: {

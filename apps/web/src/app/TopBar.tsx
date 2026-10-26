@@ -23,7 +23,7 @@ export function TopBar() {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
       <div className="flex items-center gap-2 pr-2">
-        <img src="/favicon.svg" alt="" className="size-7" />
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="size-7" />
         <span className="hidden text-base font-bold tracking-tight text-brand-900 sm:inline">
           {APP_NAME}
         </span>

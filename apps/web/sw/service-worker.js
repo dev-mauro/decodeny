@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
     // Documento: red primero (versión al día) y, sin conexión, la copia guardada.
     event.respondWith(
       fetch(request).catch(() =>
-        caches.match('/index.html').then((cached) => cached ?? Response.error()),
+        caches.match('index.html').then((cached) => cached ?? Response.error()),
       ),
     );
     return;

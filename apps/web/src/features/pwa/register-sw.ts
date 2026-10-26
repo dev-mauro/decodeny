@@ -14,7 +14,7 @@ export function registerServiceWorker(): void {
 
 function register(): void {
   navigator.serviceWorker
-    .register('/sw.js')
+    .register(`${import.meta.env.BASE_URL}sw.js`)
     .then((registration) => {
       registration.addEventListener('updatefound', () => {
         const worker = registration.installing;

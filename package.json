@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @decodeny/web dev",
     "build": "pnpm -r build",
+    "build:pages": "pnpm --filter @decodeny/web build:pages",
     "preview": "pnpm --filter @decodeny/web preview",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint . --max-warnings=0",

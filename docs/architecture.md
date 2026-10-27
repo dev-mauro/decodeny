@@ -93,7 +93,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 ## Iluminación y decoración (I6)
 
 - **Montajes** (`ItemDefinition.mount`): `floor`; `wall` (siempre apoyado en el muro más cercano, `position.z` = altura desde el piso; al agregarse busca un lugar que no tape puertas ni ventanas); `ceiling` (cuelga del cielo de su recinto: `itemBase`); `surface` (se apoya sobre el mueble que tiene debajo: `surfaceElevationAt`).
-- **Luminarias:** `emitters(params)` devuelve fuentes con lúmenes y kelvin; el visor crea luces puntuales (lm/4π escalado a la exposición de la escena, color por temperatura) y hace brillar bombillas y pantallas. Máximo `MAX_LAMP_LIGHTS` luces a la vez y sin sombras, por rendimiento.
+- **Luminarias:** `emitters(params)` devuelve fuentes con lúmenes y kelvin; el visor crea luces puntuales (lm/4π escalado a la exposición de la escena, color por temperatura) y hace brillar bombillas y pantallas. Presupuesto (`lightBudget`): se encienden las `MAX_LAMP_LIGHTS` más cercanas a la cámara y, de noche, las `MAX_SHADOW_LAMPS` más próximas proyectan sombra (con el sol, ≤ 4 luces con sombra); la selección se recalcula al moverse la cámara y mantiene la cantidad estable para no recompilar materiales.
 - **Día/noche:** el visor recibe `lighting`; de noche no hay sol y casi no hay luz ambiente.
 - **Imágenes del usuario (cuadros):** un parámetro `image` guarda el id de un asset (`project.assets`). Los bytes viven en IndexedDB (store `assets`) y se exponen como object URLs (`assetUrl`). Con imágenes, se exporta un `.decodeny.zip` con `project.decodeny.json` + `assets/…`; abrir acepta `.json` y `.zip`.
 - Objetos planos (≤ 3 cm, alfombras) no generan avisos de superposición.

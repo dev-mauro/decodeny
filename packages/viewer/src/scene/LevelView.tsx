@@ -70,6 +70,8 @@ interface LevelViewProps {
   readonly measurePoints?: readonly MeasurePoint[] | undefined;
   /** Muros, pisos y cielos con su material real, sin brillo de selección ni resaltado. */
   readonly trueSurfaceColors?: boolean | undefined;
+  /** Las luminarias más cercanas proyectan sombra (de noche, cuando se notan). */
+  readonly lampShadows?: boolean | undefined;
 }
 
 const NO_FINISHES: ReadonlyMap<string, ResolvedMaterial> = new Map();
@@ -97,6 +99,7 @@ export function LevelView({
   onMeasurePoint,
   measurePoints,
   trueSurfaceColors = false,
+  lampShadows = false,
 }: LevelViewProps) {
   const measuring = interactive && onMeasurePoint !== undefined;
   const groupRef = useRef<Group>(null);
@@ -346,7 +349,7 @@ export function LevelView({
           />
         );
       })}
-      <LevelLights level={level} />
+      <LevelLights level={level} shadows={lampShadows} />
       {measurePoints && measurePoints.length > 0 && interactive && (
         <MeasureOverlay points={measurePoints} locale={locale} />
       )}

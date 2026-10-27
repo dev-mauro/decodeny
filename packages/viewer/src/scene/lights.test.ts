@@ -7,7 +7,7 @@ import {
   type Project,
 } from '@decodeny/domain';
 import { describe, expect, it } from 'vitest';
-import { kelvinToColor, lampLights } from './lamp-lights';
+import { kelvinToColor, lampLights, lightBudget } from './lamp-lights';
 
 function roomWithLamp(def: string, params: Record<string, number | boolean>, count = 1): Project {
   const ids = sequentialIds();
@@ -57,7 +57,21 @@ describe('luces de luminarias', () => {
 
   it('limita la cantidad de luces simultáneas', () => {
     const project = roomWithLamp('light.recessed@1', {}, 20);
-    expect(lampLights(project.levels[0]!, 12)).toHaveLength(12);
+    expect(lightBudget(lampLights(project.levels[0]!), [0, 1.6, 0], 12)).toHaveLength(12);
+  });
+
+  it('enciende las más cercanas a la cámara y solo las más próximas proyectan sombra', () => {
+    const at = (key: string, x: number) => ({
+      key,
+      position: [x, 2.4, 0] as [number, number, number],
+      intensity: 1,
+      color: kelvinToColor(3000),
+    });
+    const lights = [at('far', 9), at('near', 1), at('mid', 4), at('farther', 20)];
+    const budget = lightBudget(lights, [0, 1.6, 0], 3, 2);
+    expect(budget.map((l) => l.key)).toEqual(['near', 'mid', 'far']);
+    expect(budget.map((l) => l.castShadow)).toEqual([true, true, false]);
+    expect(lightBudget(lights, [20, 1.6, 0], 3, 0).every((l) => !l.castShadow)).toBe(true);
   });
 
   it('la temperatura de color va de cálida a fría', () => {

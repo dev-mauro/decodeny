@@ -193,6 +193,7 @@ export function DecodenyViewer({
             onMeasurePoint={onMeasurePoint}
             measurePoints={measurePoints}
             trueSurfaceColors={trueSurfaceColors}
+            lampShadows={lighting === 'night'}
           />
         )}
         {placing && <PlacementPointer placement={placement} />}

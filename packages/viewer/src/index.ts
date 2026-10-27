@@ -40,7 +40,13 @@ export {
   type PatternPainter,
 } from './materials/patterns';
 export type { LightingMode } from './scene/SceneEnvironment';
-export { kelvinToColor, lampLights, MAX_LAMP_LIGHTS } from './scene/lamp-lights';
+export {
+  kelvinToColor,
+  lampLights,
+  lightBudget,
+  MAX_LAMP_LIGHTS,
+  MAX_SHADOW_LAMPS,
+} from './scene/lamp-lights';
 export { itemGroupOf, type ItemGroup } from './scene/item-groups';
 export { measureDistance, type MeasurePoint } from './scene/measure';
 export { PlanView, type NodeDragEvent, type PlanTool, type PlanViewProps } from './plan/PlanView';

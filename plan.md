@@ -522,7 +522,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - Tipos de montaje completos: `wall` (se pega a la cara del muro, altura desde el piso), `ceiling`, `surface` (lámpara sobre escritorio: se apoya sobre el mueble).
 - Presupuesto de luces: máx. N luces con sombra (prioridad por cercanía a la cámara), el resto sin sombra; modo "día/noche" (luz ambiente exterior a través de ventanas).
 
-**Notas de implementación:** las luminarias no proyectan sombras (presupuesto: hasta 12 luces simultáneas sin sombra); un presupuesto de sombras por cercanía queda para I8. Las cortinas se montan en muro desde el piso.
+**Notas de implementación:** presupuesto de luces por cercanía a la cámara ✅: hasta 12 luminarias encendidas y, de noche, sombra en las 3 más cercanas (los muros no proyectan sombra, para que el sol no oscurezca los recintos sin techo). Las cortinas se montan en muro desde el piso.
 
 **Aceptación:** apagar/encender luces se refleja en tiempo real; un cuadro con foto propia sobrevive a export/import `.zip`; rendimiento dentro de presupuesto con 15 luces.
 

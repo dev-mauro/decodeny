@@ -5,6 +5,11 @@ import { planToWorld, type Vec3Tuple } from '../coords';
 
 /** A lo sumo estas luces de luminarias a la vez (cada luz encarece el render de toda la escena). */
 export const MAX_LAMP_LIGHTS = 12;
+/**
+ * De ellas, cuántas proyectan sombra (las más cercanas a la cámara). Cada una renderiza la escena
+ * seis veces (mapa cúbico): con el sol, el total queda dentro de 4 luces con sombra.
+ */
+export const MAX_SHADOW_LAMPS = 3;
 
 /**
  * Escala de exposición: la escena usa unidades relativas (el "sol" vale ~1,8). Un flujo real
@@ -33,8 +38,8 @@ export interface LampLight {
   readonly color: Color;
 }
 
-/** Luces de las luminarias encendidas de un nivel, en coordenadas de mundo. */
-export function lampLights(level: Level, limit = MAX_LAMP_LIGHTS): LampLight[] {
+/** Luces de todas las luminarias encendidas de un nivel, en coordenadas de mundo. */
+export function lampLights(level: Level): LampLight[] {
   const lights: LampLight[] = [];
   for (const item of level.items) {
     const definition = resolveItemDefinition(item.def);
@@ -52,5 +57,28 @@ export function lampLights(level: Level, limit = MAX_LAMP_LIGHTS): LampLight[] {
       });
     });
   }
-  return lights.slice(0, limit);
+  return lights;
+}
+
+export interface BudgetedLight extends LampLight {
+  readonly castShadow: boolean;
+}
+
+/**
+ * Presupuesto de luces: las `maxLights` más cercanas a la cámara se encienden y, de ellas, las
+ * `maxShadows` más cercanas proyectan sombra. Mantener la cantidad estable evita que Three
+ * recompile los materiales al moverse.
+ */
+export function lightBudget(
+  lights: readonly LampLight[],
+  camera: Vec3Tuple,
+  maxLights = MAX_LAMP_LIGHTS,
+  maxShadows = MAX_SHADOW_LAMPS,
+): BudgetedLight[] {
+  const distance2 = (p: Vec3Tuple) =>
+    (p[0] - camera[0]) ** 2 + (p[1] - camera[1]) ** 2 + (p[2] - camera[2]) ** 2;
+  return [...lights]
+    .sort((a, b) => distance2(a.position) - distance2(b.position))
+    .slice(0, maxLights)
+    .map((light, i) => ({ ...light, castShadow: i < maxShadows }));
 }

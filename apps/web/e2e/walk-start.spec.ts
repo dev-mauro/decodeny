@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('load-sample').click();
+  await waitForScene(page);
 });
 
 test('se elige con un clic dónde empieza el recorrido', async ({ page }) => {

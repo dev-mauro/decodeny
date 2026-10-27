@@ -1,6 +1,7 @@
 import type { Part } from '@decodeny/domain';
+import { useEffect, useMemo } from 'react';
 import type { Material } from 'three';
-import { partGeometry } from './part-geometry';
+import { mergeParts } from './merge-parts';
 
 interface PartMeshesProps {
   readonly parts: readonly Part[];
@@ -10,40 +11,30 @@ interface PartMeshesProps {
   readonly castShadow?: (slot: string) => boolean;
 }
 
-/** Piezas de catálogo (mm) como mallas de Three (m). Una malla por pieza: pocas por objeto. */
+/**
+ * Piezas de catálogo (mm) como mallas de Three (m): una malla por material, con las piezas de
+ * ese material fusionadas (ver `mergeParts`), para mantener bajas las draw calls.
+ */
 export function PartMeshes({ parts, materialOf, zSign = 1, castShadow }: PartMeshesProps) {
+  const merged = useMemo(() => mergeParts(parts, zSign), [parts, zSign]);
+  // Las geometrías fusionadas son propias: se liberan de la GPU al cambiar o desmontar.
+  useEffect(
+    () => () => {
+      for (const m of merged) m.geometry.dispose();
+    },
+    [merged],
+  );
   return (
     <>
-      {parts.map((part, i) => {
-        const geometry = partGeometry(part, zSign);
-        const shadow = castShadow?.(part.slot) ?? true;
-        if (geometry.kind === 'box') {
-          return (
-            <mesh
-              key={i}
-              position={geometry.position}
-              rotation-y={geometry.rotationY}
-              material={materialOf(part.slot, part.color)}
-              castShadow={shadow}
-              receiveShadow
-            >
-              <boxGeometry args={geometry.args} />
-            </mesh>
-          );
-        }
-        return (
-          <mesh
-            key={i}
-            position={geometry.position}
-            scale-z={geometry.scaleZ}
-            material={materialOf(part.slot, part.color)}
-            castShadow={shadow}
-            receiveShadow
-          >
-            <cylinderGeometry args={geometry.args} />
-          </mesh>
-        );
-      })}
+      {merged.map((m) => (
+        <mesh
+          key={m.key}
+          geometry={m.geometry}
+          material={materialOf(m.slot, m.color)}
+          castShadow={castShadow?.(m.slot) ?? true}
+          receiveShadow
+        />
+      ))}
     </>
   );
 }

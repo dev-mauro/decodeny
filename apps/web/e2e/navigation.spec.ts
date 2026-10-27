@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -13,6 +14,7 @@ test('alterna entre edición, recorrido y vuelo libre', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.getByTestId('load-sample').click();
+  await waitForScene(page);
   const viewer = page.getByTestId('viewer');
 
   await page.getByTestId('mode-person').click();

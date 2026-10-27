@@ -1,6 +1,6 @@
 import { findLevel, type Project, type Vec2 } from '@decodeny/domain';
-import { Canvas, useThree } from '@react-three/fiber';
-import { Suspense, useEffect, useMemo, useRef, type Ref, type RefObject } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Suspense, useEffect, useMemo, useRef, useState, type Ref, type RefObject } from 'react';
 import { PerspectiveCamera } from 'three';
 import { DEFAULT_PERSON, type PersonProfile } from './navigation/person-profile';
 import { navigationModes } from './navigation/registry';
@@ -93,6 +93,17 @@ export interface DecodenyViewerProps {
   readonly className?: string;
 }
 
+/** Avisa una vez, tras el primer cuadro dibujado con la escena montada. */
+function FirstFrame({ onFrame }: { readonly onFrame: () => void }) {
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current) return;
+    done.current = true;
+    onFrame();
+  });
+  return null;
+}
+
 /** Ajusta el campo de visión de la cámara según el modo. */
 function CameraFov({ fov }: { readonly fov: number }) {
   const camera = useThree((s) => s.camera);
@@ -145,6 +156,8 @@ export function DecodenyViewer({
   const bounds = useMemo(() => (level ? levelWorldBounds(level) : null), [level]);
   const finishes = useMemo(() => resolveFinishes(project.materials), [project.materials]);
   const autoFitted = useRef(false);
+  // `data-ready` en la raíz: la escena ya se dibujó (útil para tests e integraciones).
+  const [ready, setReady] = useState(false);
   const mode = navigationModes.get(navigationMode) ?? navigationModes.require('edit');
   const Mode = mode.Component;
   const placing = mode.interactive && placement !== null;
@@ -155,6 +168,7 @@ export function DecodenyViewer({
       className={className}
       data-testid="viewer"
       data-navigation-mode={mode.id}
+      data-ready={ready || undefined}
       data-placing={placing || undefined}
       data-true-surface-colors={trueSurfaceColors || undefined}
       style={{ position: 'relative', width: '100%', height: '100%' }}
@@ -170,6 +184,7 @@ export function DecodenyViewer({
         style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
       >
         <SceneEnvironment bounds={bounds} lighting={lighting} />
+        <FirstFrame onFrame={() => setReady(true)} />
         <ViewerApiBridge apiRef={apiRef} />
         <ContextLossGuard onRestored={onGraphicsRestored} />
         <CameraFov fov={mode.fov} />

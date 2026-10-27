@@ -1,6 +1,6 @@
 export { DecodenyViewer, type DecodenyViewerProps } from './DecodenyViewer';
 export type { ViewerCameraApi } from './scene/EditCamera';
-export type { ViewerApi } from './scene/ViewerApiBridge';
+export type { RenderStats, ViewerApi } from './scene/ViewerApiBridge';
 export {
   sameSelection,
   type InteractionState,

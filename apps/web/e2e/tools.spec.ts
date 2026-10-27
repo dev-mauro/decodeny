@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 test('carga plantillas de inicio', async ({ page }) => {
   await page.goto('/');
@@ -17,6 +18,7 @@ test('carga plantillas de inicio', async ({ page }) => {
 test('mide la distancia entre dos puntos de la vista', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('load-sample').click();
+  await waitForScene(page);
   await page.keyboard.press('m');
   await expect(page.getByTestId('measure-panel')).toContainText('Haz clic en dos puntos');
   const box = (await page.getByTestId('viewer').boundingBox())!;

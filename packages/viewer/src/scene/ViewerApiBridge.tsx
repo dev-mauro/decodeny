@@ -8,6 +8,15 @@ export interface ViewerApi {
    * lienzo (p. ej. 2 para una captura nítida al imprimir).
    */
   captureImage(scale?: number): Promise<Blob | null>;
+  /** Costo de dibujar la vista actual (solo vistas WebGL): para medir presupuestos de rendimiento. */
+  renderStats?(): RenderStats;
+}
+
+export interface RenderStats {
+  readonly drawCalls: number;
+  readonly triangles: number;
+  readonly geometries: number;
+  readonly textures: number;
 }
 
 /** Expone `ViewerApi` desde dentro del `<Canvas>` (necesita el renderer, la escena y la cámara). */
@@ -32,6 +41,16 @@ export function ViewerApiBridge({ apiRef }: { readonly apiRef: Ref<ViewerApi> | 
           .then((r) => r.blob())
           .then(resolve, () => resolve(null));
       }),
+    renderStats: () => {
+      gl.render(scene, camera);
+      const { render, memory } = gl.info;
+      return {
+        drawCalls: render.calls,
+        triangles: render.triangles,
+        geometries: memory.geometries,
+        textures: memory.textures,
+      };
+    },
   }));
   return null;
 }

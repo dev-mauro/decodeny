@@ -479,7 +479,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - Duplicar, eliminar, copiar/pegar; selección múltiple.
 - Detección de superposición (advertencia visual, no bloqueo).
 - Colliders de muebles en modo persona (por pieza o bounding box simplificada).
-- Instancing automático cuando hay muchos muebles iguales.
+- Instancing automático cuando hay muchos muebles iguales. _Parcial:_ las piezas de cada mueble (y de cada vano) se fusionan por material, ~40 % menos draw calls (sample: 711 → 403); presupuesto vigilado en E2E (`perf-budget.spec.ts`). Para la meta de < 300 con 80 muebles falta agrupar los muebles estáticos (`BatchedMesh`).
 - **Affordances declaradas** (`sit`, `lie`) en sillas, sofás, camas, aunque aún no se usen.
 - **Playground de catálogo** (ruta de desarrollo): cada definición con sliders de todos sus parámetros — herramienta clave para que el equipo de contenido escale el catálogo.
 

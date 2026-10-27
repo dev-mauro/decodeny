@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -28,6 +29,7 @@ test('un mueble nuevo sigue al puntero en la planta y queda donde se hace clic',
 });
 
 test('en la vista 3D se ubica con un clic; Esc cancela sin agregar nada', async ({ page }) => {
+  await waitForScene(page);
   const viewer = page.getByTestId('viewer');
   await page.getByTestId('catalog-furniture.sofa@1').click();
   await expect(viewer).toHaveAttribute('data-placing', 'true');

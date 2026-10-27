@@ -5,7 +5,7 @@ import {
   type ViewerCameraApi,
 } from '@decodeny/viewer';
 import { Maximize, PenLine, Plus, Sparkles, SquareDashed } from 'lucide-react';
-import { lazy, Suspense, useCallback, useMemo, useRef, type RefObject } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
 import { useTranslation } from 'react-i18next';
 import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
@@ -103,6 +103,15 @@ export function Viewport({ cameraRef }: ViewportProps) {
   );
   const addMeasurePoint = useUiStore((s) => s.addMeasurePoint);
   const viewerRef = useRef<ViewerApi>(null);
+  // Diagnóstico de rendimiento (`?perf`): los tests de presupuesto leen el costo de dibujar.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('perf')) return;
+    const target = window as Window & { decodenyPerf?: () => unknown };
+    target.decodenyPerf = () => viewerRef.current?.renderStats?.() ?? null;
+    return () => {
+      delete target.decodenyPerf;
+    };
+  }, []);
   const onGraphicsRestored = useCallback(() => notify('info', t('errors.webglLost')), [t]);
   // Re-render cuando una imagen termina de cargar: el visor recibe una función nueva.
   const assetUrls = useAssetStore((s) => s.urls);

@@ -52,7 +52,8 @@ export class GuestSync {
         this.#pending = [];
         const state = this.store.getState();
         state.cancelPreview();
-        this.store.setState({ project: message.project, history: EMPTY_HISTORY });
+        // Primero la sesión y después el documento: quien guarda localmente ya sabe que el
+        // proyecto recibido es del anfitrión y no lo escribe sobre el propio.
         state.setSync({
           onChange: (change) => this.#onLocalChange(change),
           history: {
@@ -60,6 +61,7 @@ export class GuestSync {
             redo: () => this.send({ t: 'history', action: 'redo' }),
           },
         });
+        this.store.setState({ project: message.project, history: EMPTY_HISTORY });
         state.setSharedHistory(message.history);
         return;
       }

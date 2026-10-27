@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10–I14 planificadas.
+> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10 ✅ · I11–I12 planificadas · I13–I14 pendientes/opcionales (de I14, adelantados: presentación y puertas en el recorrido).
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -673,7 +673,9 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
   - Tests unitarios de la clasificación y de la regla: cámara afuera de cada lado, adentro, muros de canto y muros sueltos.
   - E2E: al orbitar 180°, el muro cortado pasa a estar entero y el opuesto pasa a cortarse (se expone el conjunto cortado como atributo `data-` del visor, como `data-peers`).
 
-### I10 — Casas en la nube (L) — ADR-0012
+### I10 — Maquetas y nube (L) — ADR-0012 ✅
+
+**Notas de implementación:** las casas se llaman **Maquetas**: colección local en IndexedDB (se guardan solas) y **solo «Compartir» sube a la nube**; desde ahí se sincronizan. La sesión es la del autor (la maqueta está en su colección local); la nube lo confirma al guardar y, ante cualquier duda (otra pestaña, identidad perdida, vencida), los cambios quedan en una copia: nunca se pisan ni se pierden. Enlace `?maqueta=<id>`. Reglas desplegadas por workflow. Configuración en `docs/nube-firebase.md`.
 
 1. **Puertos y adaptador en memoria:**
    - `Identity`, `HouseRepository` y `AssetRepository`.
@@ -781,7 +783,7 @@ El documento ya tiene `levels[]` con `elevation`, todos los comandos reciben `le
 - E2E: bajar en ascensor.
 - Los vanos de losa coinciden con la escalera (test de dominio).
 
-### I13 — Del plano existente a la ficha (M)
+### I13 — Del plano existente a la ficha (M) — PENDIENTE / OPCIONAL
 
 - **Plano de fondo a escala:**
   - Imagen o PDF (primera página).
@@ -792,7 +794,9 @@ El documento ya tiene `levels[]` con `elevation`, todos los comandos reciben `le
   - PNG o PDF del plano con cotas, nombres y m² por espacio y total, más capturas 3D elegidas.
   - Se arma en la app, sin servidor.
 
-### I14 — Presentación (M)
+### I14 — Presentación (M) — PENDIENTE / OPCIONAL
+
+Adelantado (mínimo, para mostrar): modo presentación (UI mínima, pantalla completa, solo lectura) y puertas operables en el recorrido (solo bloquean el paso cerradas). Lo demás queda pendiente.
 
 - **Vistas guardadas:** pose de cámara + modo, en el documento.
 - **Recorrido guiado:** interpolación entre las vistas guardadas.

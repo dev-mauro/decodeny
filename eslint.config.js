@@ -56,7 +56,12 @@ export default tseslint.config(
   {
     files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
-    languageOptions: { globals: globals.node },
+    // Conserva el parser sin tipos de `disableTypeChecked` (si no, se pierde al pisar
+    // `languageOptions` y cada script tendría que estar en `allowDefaultProject`).
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: globals.node,
+    },
   },
   {
     files: ['apps/web/sw/**/*.js'],

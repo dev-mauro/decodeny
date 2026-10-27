@@ -1,0 +1,20 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "houses",
+      "fieldPath": "project",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "houses",
+      "fieldPath": "assets",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "chunks",
+      "fieldPath": "data",
+      "indexes": []
+    }
+  ]
+}

@@ -43,6 +43,14 @@ module.exports = {
       to: { path: ['^apps/', '^@decodeny/web'] },
     },
     {
+      name: 'firebase-behind-ports',
+      comment:
+        'Solo el adaptador (features/cloud/firebase) usa Firebase; el resto de la app depende de los puertos (ADR-0012).',
+      severity: 'error',
+      from: { path: '^apps/web/src', pathNot: '^apps/web/src/features/cloud/firebase/' },
+      to: { path: ['node_modules/(firebase|@firebase)/'] },
+    },
+    {
       name: 'not-to-unresolvable',
       comment:
         'Toda importación debe resolverse (dependencia declarada en el package.json del paquete).',
@@ -66,7 +74,8 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: 'dist|coverage|e2e|[.]config[.]ts$' },
+    // Solo los builds y reportes del repo (los paquetes de node_modules también viven en `dist/`).
+    exclude: { path: '^(apps|packages)/[^/]+/(dist|coverage|e2e)/|[.]config[.]ts$' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.tools.json' },
     enhancedResolveOptions: {

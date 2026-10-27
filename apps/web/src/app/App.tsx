@@ -3,6 +3,8 @@ import { useRef } from 'react';
 import { useDesktopLayout } from '@/shared/lib/use-media-query';
 import { CollabDialog } from '@/features/collab/CollabDialog';
 import { IoDialogs } from '@/features/io/IoDialogs';
+import { MaquetasDialog } from '@/features/maquetas/MaquetasDialog';
+import { ShareDialog } from '@/features/maquetas/ShareDialog';
 import { CreateRoomDialog } from '@/features/rooms/CreateRoomDialog';
 import { LeftPanel } from './LeftPanel';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
@@ -47,6 +49,8 @@ export function App() {
           onCreated={() => requestAnimationFrame(() => cameraRef.current?.fitToContent())}
         />
         <IoDialogs />
+        <MaquetasDialog />
+        <ShareDialog />
         <CollabDialog />
         <Toaster />
       </div>

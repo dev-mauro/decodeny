@@ -4,6 +4,7 @@ import {
   EllipsisVertical,
   FilePlus2,
   FolderOpen,
+  LayoutGrid,
   Lock,
   Redo2,
   Undo2,
@@ -13,6 +14,8 @@ import { APP_NAME } from '@/config';
 import { CollabButton } from '@/features/collab/CollabDialog';
 import { exportCurrentProject, requestOpenFile } from '@/features/io/project-actions';
 import { useIoStore } from '@/features/io/io-store';
+import { openMaquetas } from '@/features/maquetas/maquetas-ui';
+import { ShareButton, VisitBadge } from '@/features/maquetas/ShareDialog';
 import { Button, IconButton } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/TextField';
 import { useCanRedo, useCanUndo, useProjectStore, useReadOnly } from '@/state/project-store';
@@ -59,8 +62,18 @@ export function TopBar() {
           <span className="hidden sm:inline">{t('options.readOnly')}</span>
         </span>
       )}
+      <VisitBadge />
       <div className="ml-auto flex items-center gap-1">
         <div className="hidden items-center gap-1 sm:flex">
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<LayoutGrid className="size-4" />}
+            onClick={openMaquetas}
+            data-testid="maquetas-open"
+          >
+            <span className="hidden md:inline">{t('maquetas.button')}</span>
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -92,6 +105,7 @@ export function TopBar() {
           <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden />
         </div>
         <MoreMenu onNew={() => confirm('new')} />
+        <ShareButton />
         <CollabButton />
         <OptionsMenu />
         <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden />
@@ -132,6 +146,12 @@ function MoreMenu({ onNew }: { readonly onNew: () => void }) {
       {(close) => (
         <>
           {[
+            {
+              icon: LayoutGrid,
+              label: t('maquetas.button'),
+              run: openMaquetas,
+              id: 'menu-maquetas',
+            },
             { icon: FilePlus2, label: t('topbar.new'), run: onNew, id: 'menu-new' },
             { icon: FolderOpen, label: t('topbar.open'), run: requestOpenFile, id: 'menu-open' },
             {

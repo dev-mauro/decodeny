@@ -1,0 +1,55 @@
+name: Limpieza de maquetas
+
+# Borra de Firestore las maquetas compartidas sin visitas en 30 días y los assets que ya nadie usa
+# (ADR-0012). Corre todos los días y también a mano (con simulación).
+#
+# Ojo: GitHub desactiva los workflows programados de un repositorio público tras 60 días sin
+# actividad; en ese caso hay que reactivarlo desde la pestaña Actions.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Simulación: informa sin borrar'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Borrar lo vencido
+    runs-on: ubuntu-latest
+    env:
+      # Cuenta de servicio con el rol «Usuario de Cloud Datastore».
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+    steps:
+      - name: Credenciales
+        id: credentials
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::notice::Falta el secreto FIREBASE_SERVICE_ACCOUNT: no hay nada que limpiar."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.credentials.outputs.ready == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.credentials.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.credentials.outputs.ready == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.credentials.outputs.ready == 'true'
+      - run: node scripts/cloud/cleanup.mjs
+        if: steps.credentials.outputs.ready == 'true'

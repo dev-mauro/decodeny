@@ -13,7 +13,7 @@ import { i18next } from '@/i18n';
 import { describeLoadError } from '@/shared/lib/errors';
 import { notify } from '@/state/notifications-store';
 import { newProject, useProjectStore } from '@/state/project-store';
-import { useUiStore } from '@/state/ui-store';
+import { maquetas } from '../maquetas/maquetas';
 import { buildSampleProject } from '../samples/sample-project';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from '../samples/templates';
 import { useIoStore } from './io-store';
@@ -23,14 +23,9 @@ import { useIoStore } from './io-store';
  * Viven fuera de React para poder usarse en cualquier contexto.
  */
 
+/** Abre un proyecto como maqueta nueva (se guarda en este navegador). */
 function loadIntoEditor(project: Project): void {
-  useProjectStore.getState().replace(project);
-  useUiStore.setState({
-    selection: null,
-    selectionGroup: [],
-    levelId: project.levels[0]?.id ?? null,
-  });
-  void ensureAssets(project.assets.map((a) => a.id));
+  void maquetas.createFrom(project);
 }
 
 /** Nombre del documento dentro del `.zip` (junto a `assets/…`). */
@@ -118,8 +113,9 @@ export async function openProjectFile(file: File): Promise<void> {
   if (result.migratedFrom !== null) notify('info', i18next.t('io.migrated'));
 }
 
+/** Proyecto nuevo: se vuelve maqueta con su primer cambio. */
 export function startNewProject(): void {
-  loadIntoEditor(newProject());
+  maquetas.newDraft(newProject());
 }
 
 export function loadSampleProject(): void {
@@ -146,12 +142,4 @@ export async function downloadCapture(capture: () => Promise<Blob | null>): Prom
     `-${new Date().toISOString().slice(0, 10)}.png`,
   );
   download(blob, name);
-}
-
-/** Restaura el guardado automático; si está dañado, conserva el proyecto vacío y avisa. */
-export function restoreProject(text: string | null): void {
-  if (text === null) return;
-  const result = parseProjectFile(text);
-  if (result.ok) loadIntoEditor(result.project);
-  else notify('error', i18next.t('io.restoreFailed'));
 }

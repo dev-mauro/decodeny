@@ -1,0 +1,91 @@
+rules_version = '2';
+
+// Maquetas compartidas (ADR-0012). Se leen por id (quien tiene el enlace), no se listan salvo las
+// propias y solo las escribe su dueño: el uid anónimo de quien la compartió (con cuentas, el uid
+// de la cuenta, que es el mismo). Borrar es tarea de la limpieza programada (Admin SDK).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Quién puede editar una maqueta. Hoy, el dueño; con miembros, solo cambia esta función.
+    function canEdit(house) {
+      return signedIn() && house.ownerUid == request.auth.uid;
+    }
+
+    function validHouse(d) {
+      let fields = ['v', 'ownerUid', 'forkOf', 'name', 'project', 'projectSchemaVersion',
+        'assets', 'rev', 'createdAt', 'updatedAt', 'lastVisitAt'];
+      return d.keys().hasOnly(fields) && d.keys().hasAll(fields)
+        && d.v == 1
+        && d.ownerUid is string
+        && (d.forkOf == null || (d.forkOf is string && d.forkOf.size() <= 40))
+        && d.name is string && d.name.size() <= 120
+        && d.project is bytes && d.project.size() <= 900000
+        && d.projectSchemaVersion is int
+        && d.assets is list && d.assets.size() <= 500
+        && d.rev is int
+        && d.updatedAt == request.time
+        && d.lastVisitAt == request.time;
+    }
+
+    match /houses/{houseId} {
+      // Registrar una visita (cualquiera, sin cuenta): solo `lastVisitAt`, como mucho una por hora.
+      function isVisit() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastVisitAt'])
+          && request.resource.data.lastVisitAt == request.time
+          && request.time > resource.data.lastVisitAt + duration.value(1, 'h');
+      }
+
+      allow get: if true;
+      // Solo las propias (para "Mis maquetas" con cuentas): la consulta debe filtrar por dueño.
+      allow list: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn()
+        && houseId.size() <= 40
+        && validHouse(request.resource.data)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.rev == 1
+        && request.resource.data.createdAt == request.time;
+      allow update: if (canEdit(resource.data)
+          && validHouse(request.resource.data)
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.forkOf == resource.data.forkOf
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.rev == resource.data.rev + 1)
+        || isVisit();
+      allow delete: if false;
+    }
+
+    // Imágenes y modelos: inmutables, en trozos. Primero se suben los trozos y al final la
+    // ficha (`assets/{id}`), que los da por completos: después ya no se pueden cambiar.
+    match /assets/{assetId} {
+      allow get: if true;
+      allow list, update, delete: if false;
+      allow create: if signedIn()
+        && assetId.size() <= 64
+        && request.resource.data.keys().hasOnly(['ownerUid', 'mime', 'size', 'sha256', 'chunkCount', 'createdAt'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.mime is string && request.resource.data.mime.size() <= 100
+        && request.resource.data.size is int && request.resource.data.size <= 16777216
+        && request.resource.data.sha256 is string && request.resource.data.sha256.size() == 64
+        && request.resource.data.chunkCount is int
+        && request.resource.data.chunkCount >= 1 && request.resource.data.chunkCount <= 20
+        && request.resource.data.createdAt == request.time;
+
+      match /chunks/{index} {
+        allow get, list: if true;
+        allow delete: if false;
+        // Un reintento puede reescribir sus propios trozos mientras la ficha no exista.
+        allow create, update: if signedIn()
+          && !exists(/databases/$(database)/documents/assets/$(assetId))
+          && (resource == null || resource.data.ownerUid == request.auth.uid)
+          && index.matches('^[0-9]{1,2}$')
+          && request.resource.data.keys().hasOnly(['ownerUid', 'data'])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() <= 900000;
+      }
+    }
+  }
+}

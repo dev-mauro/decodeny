@@ -1,8 +1,9 @@
-import { Check, Copy, LogOut, UserPlus, Users, X } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { LogOut, UserPlus, Users, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/cn';
 import { Button, IconButton } from '@/shared/ui/Button';
+import { CopyBox as SharedCopyBox, Field, inputClass } from '@/shared/ui/CopyBox';
 import { Dialog } from '@/shared/ui/Dialog';
 import { useCollabStore, type Invite } from './collab-store';
 import { HOST_ID } from './protocol';
@@ -34,77 +35,6 @@ function rememberName(name: string): void {
   } catch {
     // Solo para no volver a escribirlo.
   }
-}
-
-const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
-
-function Field({
-  label,
-  children,
-}: {
-  readonly label: string;
-  readonly children: (id: string) => ReactNode;
-}) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-xs font-medium text-slate-500">
-        {label}
-      </label>
-      {children(id)}
-    </div>
-  );
-}
-
-/** Texto largo (enlace o código) para copiar: seleccionable y con botón de copiar. */
-function CopyBox({
-  label,
-  value,
-  testId,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly testId: string;
-}) {
-  const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    // Sin portapapeles (contexto no seguro) queda el texto seleccionable.
-    if (!window.isSecureContext) return;
-    navigator.clipboard.writeText(value).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      },
-      () => undefined,
-    );
-  };
-  return (
-    <Field label={label}>
-      {(id) => (
-        <div className="flex gap-2">
-          <textarea
-            id={id}
-            readOnly
-            value={value}
-            rows={3}
-            onFocus={(e) => e.currentTarget.select()}
-            className={cn(inputClass, 'resize-none py-1.5 font-mono text-xs break-all')}
-            data-testid={testId}
-          />
-          <Button
-            size="sm"
-            icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-            onClick={copy}
-            data-testid={`${testId}-copy`}
-          >
-            {t(copied ? 'collab.copied' : 'collab.copy')}
-          </Button>
-        </div>
-      )}
-    </Field>
-  );
 }
 
 function ErrorText({ error }: { readonly error: CollabErrorKey | null }) {
@@ -459,4 +389,13 @@ export function CollabButton() {
       )}
     </Button>
   );
+}
+
+function CopyBox(props: {
+  readonly label: string;
+  readonly value: string;
+  readonly testId: string;
+}) {
+  const { t } = useTranslation();
+  return <SharedCopyBox {...props} copyLabel={t('collab.copy')} copiedLabel={t('collab.copied')} />;
 }

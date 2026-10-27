@@ -65,16 +65,18 @@ export default defineConfig({
           // El helper de precarga de Vite (lo usa todo `import()`) tampoco debe caer en r3f.
           if (path.includes('vite/preload-helper')) return 'vendor';
           if (!path.includes('/node_modules/')) return undefined;
-          // Lo que comparten la app y r3f (React, sus helpers) va aparte; si no, Rollup lo ubica
-          // en r3f y la carga inicial terminaría trayendo también r3f y Three.js.
+          // Lo que comparten la app, r3f y Firebase (React, helpers como tslib) va aparte; si no,
+          // Rollup lo ubica en un chunk bajo demanda y la carga inicial terminaría trayéndolo.
           if (
-            /\/node_modules\/(react|react-dom|scheduler|zustand|use-sync-external-store|@babel\/runtime)\//.test(
+            /\/node_modules\/(react|react-dom|scheduler|zustand|use-sync-external-store|@babel\/runtime|tslib)\//.test(
               path,
             )
           ) {
             return 'vendor';
           }
           if (path.includes('/node_modules/three/')) return 'three';
+          // Firebase (nube): solo al compartir o abrir un enlace.
+          if (/\/node_modules\/(firebase|@firebase)\//.test(path)) return 'cloud';
           if (
             /\/node_modules\/(@react-three\/(fiber|drei)|three-stdlib|camera-controls)\//.test(path)
           ) {

@@ -1,0 +1,62 @@
+name: Reglas de Firestore
+
+# Despliega las reglas de seguridad y los índices de Firestore (firebase/) cuando cambian en
+# main, después de probarlos contra el emulador. También se puede lanzar a mano.
+on:
+  push:
+    branches: [main]
+    paths: ['firebase/**', '.github/workflows/firebase-rules.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Probar y desplegar reglas e índices
+    runs-on: ubuntu-latest
+    env:
+      # Cuenta de servicio con roles «Administrador de reglas de Firebase» y «Administrador de
+      # índices de Cloud Datastore» (no la de limpieza: cada una con lo justo).
+      DEPLOY_SA: ${{ secrets.FIREBASE_DEPLOY_SA }}
+      PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:cloud
+
+      - name: Credenciales
+        id: credentials
+        run: |
+          if [ -z "$DEPLOY_SA" ] || [ -z "$PROJECT_ID" ]; then
+            echo "::notice::Falta el secreto FIREBASE_DEPLOY_SA o la variable FIREBASE_PROJECT_ID: no se despliega."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$DEPLOY_SA" > "$RUNNER_TEMP/deploy-sa.json"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Desplegar
+        if: steps.credentials.outputs.ready == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/deploy-sa.json
+        run: >-
+          pnpm exec firebase deploy --only firestore:rules,firestore:indexes
+          --config firebase/firebase.json --project "$PROJECT_ID" --non-interactive
+
+      - name: Borrar credenciales
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deploy-sa.json"

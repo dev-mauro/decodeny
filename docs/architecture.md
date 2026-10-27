@@ -154,6 +154,14 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Presencia:** el visor informa la pose de la cámara (`onCameraPose`, ~12 Hz) y dibuja a los demás (`peers`: lista + `pose(id)` + `subscribe`, para no pasar por React a cada pose). Cuerpo simple con nombre: de pie en el recorrido, flotando en edición y vuelo; en el plano no se dibuja. Las poses se reenvían cada segundo aunque no cambien.
 - **Imágenes:** `onLocalAsset` avisa las imágenes nuevas; viajan en base64 por el canal del documento y el anfitrión envía las del proyecto a quien entra.
 
+## Maquetas y nube (ADR-0012)
+
+- **Maquetas** (`features/maquetas`): los proyectos guardados en este navegador (store `maquetas` de IndexedDB). `MaquetaSession` (lógica pura, dependencias inyectadas) sabe de dónde viene el documento abierto: una **maqueta** (cada cambio se guarda; si está compartida, se sube agrupado), un **borrador** (proyecto nuevo: su primer cambio lo vuelve maqueta), una **visita** (compartida de otra persona: su primer cambio crea una maqueta propia con `forkOf`) o el documento de un **anfitrión** (invitado: no se guarda; al terminar, queda como maqueta). Antes de cambiar de documento se confirma el guardado pendiente.
+- **Nube** (`features/cloud`): puertos (`Identity`, `HouseRepository`, `AssetRepository`) sin Firebase. El adaptador `firebase/` (Auth anónima + Firestore _lite_, chunk `cloud` bajo demanda) es el único que importa `firebase/*` (regla `firebase-behind-ports`). Sin `VITE_FIREBASE_*` la nube queda desactivada. `MemoryCloud` reproduce las reglas para los tests.
+- **A prueba de fallos:** cada pestaña sube sobre la revisión que conoce (en memoria) y las reglas exigen dueño y `rev + 1`; `conflict` → la maqueta vuelve a la versión de la nube y lo de esta pestaña queda en una copia abierta; `forbidden` → queda como copia; `not-found` → solo local; sin red → se reintenta.
+- **Firestore:** `houses/{id}` (proyecto comprimido en `Bytes` sin índice, `assets`, `rev`, `lastVisitAt`) y `assets/{id}` + `chunks/{n}` (inmutables, verificados por `sha256`). Reglas, índices y emuladores en `firebase/`; `cleanup.yml` borra lo que no tuvo visitas en 30 días; `firebase-rules.yml` despliega las reglas.
+- **Colaboración:** el invitado instala la sesión antes de recibir el documento del anfitrión, así nunca lo guarda sobre una maqueta propia.
+
 ## Muros compartidos
 
 Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer.

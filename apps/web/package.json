@@ -25,6 +25,7 @@
     "@react-three/rapier": "^2.2.0",
     "clsx": "^2.1.1",
     "fflate": "^0.8.2",
+    "firebase": "13.0.0",
     "i18next": "^26",
     "idb": "^8.0.4",
     "immer": "^10.2.0",

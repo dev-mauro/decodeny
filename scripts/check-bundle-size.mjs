@@ -17,6 +17,7 @@ const BUDGETS = {
   three: 220, // Three.js (bajo demanda)
   r3f: 100, // React Three Fiber + drei (bajo demanda)
   PersonMode: 900, // recorrido: Rapier (WASM) se carga solo al entrar
+  cloud: 120, // Firebase: Auth anónima + Firestore lite (al compartir o abrir un enlace)
 };
 
 /** JS que el navegador descarga antes de mostrar la app (script + modulepreload). */

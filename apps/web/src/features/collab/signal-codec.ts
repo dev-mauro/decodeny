@@ -1,3 +1,5 @@
+import { deflate, inflate } from '@/shared/lib/compression';
+
 /**
  * Códec de la señalización manual: la oferta o la respuesta WebRTC (SDP con todos sus
  * candidatos) se comprime y se codifica en base64url para copiarla en un enlace o un mensaje.
@@ -31,19 +33,11 @@ function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
-async function pipe(
-  bytes: Uint8Array<ArrayBuffer>,
-  stream: CompressionStream | DecompressionStream,
-): Promise<Uint8Array<ArrayBuffer>> {
-  const out = new Blob([bytes]).stream().pipeThrough(stream);
-  return new Uint8Array(await new Response(out).arrayBuffer());
-}
-
 export async function encodeSignal(payload: SignalPayload): Promise<string> {
   const json = new TextEncoder().encode(
     JSON.stringify({ s: payload.sdp, p: payload.peerId, n: payload.name }),
   );
-  const packed = await pipe(json, new CompressionStream('deflate-raw'));
+  const packed = await deflate(json);
   return `${PREFIX}.${KIND_CODE[payload.kind]}.${toBase64Url(packed)}`;
 }
 
@@ -55,7 +49,7 @@ export async function decodeSignal(code: string): Promise<SignalPayload> {
   if (prefix !== PREFIX || !kind || !data) throw new Error('signal-invalid');
   let raw: { s?: unknown; p?: unknown; n?: unknown };
   try {
-    const json = await pipe(fromBase64Url(data), new DecompressionStream('deflate-raw'));
+    const json = await inflate(fromBase64Url(data));
     raw = JSON.parse(new TextDecoder().decode(json)) as typeof raw;
   } catch {
     throw new Error('signal-invalid');

@@ -58,6 +58,13 @@ jobs:
         if: steps.latest.outputs.publish == 'true'
       - name: Build para Pages (base /decodeny/)
         if: steps.latest.outputs.publish == 'true'
+        # Configuración web de Firebase (pública por diseño; variables del repositorio, no
+        # secretos). Sin ellas, el sitio se publica sin nube: solo maquetas locales.
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
         run: pnpm build:pages
 
       - name: Rama prod

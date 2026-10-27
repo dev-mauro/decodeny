@@ -33,6 +33,8 @@ Visualizador web de departamentos y casas en 3D a partir de sus medidas. Pensado
 | `pnpm test`          | Tests unitarios (Vitest) de todos los paquetes                                       |
 | `pnpm test:coverage` | Tests con cobertura (umbral 90 % en `domain`)                                        |
 | `pnpm e2e`           | Tests end-to-end (Playwright)                                                        |
+| `pnpm e2e:cloud`     | E2E con la nube en los emuladores de Firebase (Java 21+)                             |
+| `pnpm test:cloud`    | Reglas de Firestore y limpieza, contra el emulador                                   |
 | `pnpm lint`          | ESLint (typescript-eslint estricto con tipos)                                        |
 | `pnpm depcruise`     | Verifica los límites entre capas                                                     |
 | `pnpm check`         | Formato + lint + tipos + capas + tests (lo mismo que CI)                             |

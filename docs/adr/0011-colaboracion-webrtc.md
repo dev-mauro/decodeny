@@ -1,6 +1,6 @@
 # ADR-0011: Colaboración en tiempo real por WebRTC (sin servidor)
 
-- Estado: aceptada (implementación en la rama `feat/colaboracion`)
+- Estado: aceptada (implementada y publicada)
 - Fecha: 2026-10-27
 
 ## Contexto

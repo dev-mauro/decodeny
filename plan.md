@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-26):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—).
+> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 planificada (§11): I9–I14**.
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -550,22 +550,22 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 
 ## 7. Backlog futuro (ya habilitado por la arquitectura)
 
-| Funcionalidad                                                       | Qué la habilita hoy                                                 |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Sentarse, acostarse, apoyarse                                       | Affordances en definiciones (§5.4) + máquina de estados del jugador |
-| Abrir/cerrar puertas y ventanas en modo persona                     | `params.open` en vanos + colliders dinámicos                        |
-| Multi-piso y escaleras                                              | `levels[]` en el documento + `step offset` del controller           |
-| Muebles realistas (GLB)                                             | `build` puede devolver `model(…)` con 9-slice                       |
-| Ventanas en arco, puertas especiales                                | Perfil de corte poligonal (§5.2)                                    |
-| Más materiales (mármol, piedra, madera natural)                     | Catálogo de materiales + pipeline KTX2                              |
-| Compartir proyecto por link / guardado en la nube                   | Documento serializable + capa de persistencia intercambiable        |
-| Colaboración en tiempo real ✅ (WebRTC, ADR-0011)                   | Comandos + patches (migrables a CRDT, ej. Yjs)                      |
-| WebXR (visores VR)                                                  | `NavigationMode` registrable                                        |
-| Ingreso por lenguaje natural ("living de 4×5 con ventana al norte") | Los comandos de dominio son una API invocable por un LLM            |
-| Importar planos (imagen de fondo a escala, DXF)                     | Registro de formatos de import                                      |
-| Exportar glTF/OBJ, presupuesto de materiales (m² de piso/pintura)   | Documento con medidas reales + registro de formatos de export       |
-| Recorridos guiados / tours                                          | `NavigationMode` + rutas de cámara                                  |
-| Marketplace / packs de contenido                                    | Catálogo por registros + definiciones versionadas                   |
+| Funcionalidad                                                         | Qué la habilita hoy                                                 |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Sentarse, acostarse, apoyarse                                         | Affordances en definiciones (§5.4) + máquina de estados del jugador |
+| Abrir/cerrar puertas y ventanas en modo persona                       | `params.open` en vanos + colliders dinámicos                        |
+| Multi-piso, escaleras y ascensores (planificado: I12)                 | `levels[]` en el documento + `step offset` del controller           |
+| Muebles realistas (GLB) (planificado: I11, ADR-0013)                  | `build` puede devolver `model(…)` con 9-slice                       |
+| Ventanas en arco, puertas especiales                                  | Perfil de corte poligonal (§5.2)                                    |
+| Más materiales (mármol, piedra, madera natural)                       | Catálogo de materiales + pipeline KTX2                              |
+| Compartir por link / guardado en la nube (planificado: I10, ADR-0012) | Documento serializable + capa de persistencia intercambiable        |
+| Colaboración en tiempo real ✅ (WebRTC, ADR-0011)                     | Comandos + patches (migrables a CRDT, ej. Yjs)                      |
+| WebXR (visores VR)                                                    | `NavigationMode` registrable                                        |
+| Ingreso por lenguaje natural ("living de 4×5 con ventana al norte")   | Los comandos de dominio son una API invocable por un LLM            |
+| Importar planos (imagen de fondo a escala, DXF)                       | Registro de formatos de import                                      |
+| Exportar glTF/OBJ, presupuesto de materiales (m² de piso/pintura)     | Documento con medidas reales + registro de formatos de export       |
+| Recorridos guiados / tours                                            | `NavigationMode` + rutas de cámara                                  |
+| Marketplace / packs de contenido                                      | Catálogo por registros + definiciones versionadas                   |
 
 ---
 
@@ -619,7 +619,207 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 ## 10. Decisiones de producto (resueltas 2026-10-25)
 
 1. **Nombre:** Decodeny (paquetes `@decodeny/*`).
-2. **Hosting:** pendiente; por ahora solo local (CI sin pasos de despliegue).
+2. **Hosting:** GitHub Pages (2026-10-26): la rama `prod` recibe el build de cada push a `main` con la CI en verde. Ningún otro hosting; Firebase se usaría solo como base de datos (ADR-0012).
 3. **Móvil:** fuera de las iteraciones actuales, pero la UI se construye responsiva y sin depender de hover/teclado exclusivamente, para habilitar táctil en I8.
 4. **Unidades:** solo sistema métrico.
 5. **Público objetivo:** corredores de propiedades → priorizar ingreso rápido de medidas, presentación al cliente (capturas, recorridos) y compartir.
+
+---
+
+## 11. Fase 2 — calidad de producto y nube (planificada 2026-10-27)
+
+### 11.1 Lo que falta, por impacto para corredores
+
+Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se comparte. **Media:** mejora notable de calidad. **Base:** infraestructura y deuda.
+
+| Prioridad | Característica                                                                                                               | Por qué                                                                       | Dónde          |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------- |
+| Alta      | **Corte inteligente de muros** (sub-opción del corte)                                                                        | Ver el interior desde afuera sin perder los muros del fondo, como una maqueta | I9             |
+| Alta      | **Casas en la nube + enlace + forks**                                                                                        | Compartir es un enlace, no un archivo                                         | I10 (ADR-0012) |
+| Alta      | **Muebles personalizados**                                                                                                   | El mueble real del cliente (o de la tienda) en la casa                        | I11 (ADR-0013) |
+| Alta      | **Varias plantas, escaleras, ascensores y dobles alturas**                                                                   | Casas de 2+ pisos, dúplex, departamentos con escalera interior                | I12            |
+| Alta      | **Plano de fondo a escala** (imagen o PDF del plano de la inmobiliaria, calibrado con una medida conocida) para calcar muros | La forma más rápida de pasar un plano existente a 3D                          | I13            |
+| Alta      | **Ficha exportable**: plano con cotas y m² por espacio, capturas y datos del proyecto en PDF/PNG                             | Lo que el corredor publica o envía                                            | I13            |
+| Alta      | **Modo presentación**: vistas guardadas, recorrido guiado entre ellas, solo lectura y UI mínima                              | Mostrar al cliente sin herramientas a la vista                                | I14            |
+| Media     | Abrir y cerrar puertas y ventanas en el recorrido                                                                            | Realismo; `params.open` ya previsto                                           | I14            |
+| Media     | Exterior: techumbre (cubierta a 1, 2 o 4 aguas), terraza, balcón, terreno y jardín, cierres                                  | Las casas se ven incompletas desde afuera                                     | backlog        |
+| Media     | Elementos estructurales: pilares, vigas, cielos a distinta altura, muros curvos, zócalos y molduras                          | Departamentos reales los tienen                                               | backlog        |
+| Media     | Orientación norte y sol por fecha y hora (asoleamiento)                                                                      | Argumento de venta frecuente («luz de la tarde»)                              | backlog        |
+| Media     | Sentarse y acostarse                                                                                                         | Afordancias ya declaradas en el catálogo                                      | backlog        |
+| Media     | Selección múltiple táctil y escribir largos en táctil                                                                        | Pendientes de I8                                                              | backlog        |
+| Media     | Materiales fotográficos (KTX2), más pisos y revestimientos                                                                   | Realismo de terminaciones                                                     | backlog        |
+| Base      | `BatchedMesh` para < 300 draw calls con 80 muebles                                                                           | Meta de §8.4 pendiente                                                        | backlog        |
+| Base      | Telemetría opt-in y reporte de errores                                                                                       | Con Firebase en el proyecto, Analytics es opcional                            | después de I10 |
+| Base      | Changesets (CHANGELOG), playground del catálogo, regresión visual                                                            | Escalar contenido y versiones                                                 | backlog        |
+| Base      | Accesibilidad: toda la UI por teclado, foco visible, textos alternativos                                                     | Pendiente de I8                                                               | backlog        |
+
+### I9 — Corte inteligente de muros (S)
+
+**Objetivo:** con el corte activo, recortar solo los muros que tapan el interior desde la cámara. El muro del fondo, que da hacia afuera y se ve desde adentro, queda entero. El primer muro desde la cámara, aunque también dé hacia afuera, se recorta.
+
+- **Opción:** «Corte de muros» pasa a tener modo `todos` (hoy) o `los que tapan` (nuevo, recordado en Opciones).
+- **Clasificación (dominio, pura):** para cada muro, qué caras dan a un espacio (`roomOnWallFace`). Si una cara da a un espacio y la otra no, es **exterior** con su normal hacia afuera; si las dos dan a espacios, es **interior**; si ninguna, es **suelto**.
+- **Regla por cuadro (visor, pura):** con la cámara en planta `c` y el punto medio del muro `p`:
+  - Un muro exterior se corta si `dot(nAfuera, c − p) > 0`: la cámara está de su lado de afuera, así que tapa.
+  - Si el producto es negativo, el muro se ve desde adentro y queda entero.
+  - Los interiores se cortan siempre: tapan el interior.
+  - Los sueltos siguen la regla exterior con la normal hacia la cámara.
+  - Una histéresis angular (±5°) evita parpadeos con los muros casi de canto.
+  - Con la cámara dentro de la casa, la misma regla deja enteros todos los perimetrales.
+- **Render:** hoy el corte usa un arreglo global de planos (`SECTION_PLANES`) en los materiales de la envolvente. Cada material de muro y de vano pasa a tener dos variantes, con y sin recorte, que comparten texturas y caché. Cada muro elige la suya, y la tapa de sección se dibuja solo en los cortados.
+- **Elementos de muro:** los cuadros y apliques montados en un muro entero ya no se ocultan aunque queden por encima de la altura de corte.
+- **Recálculo:** solo cuando la cámara de edición cambia (marco bajo demanda) y solo si cambia el conjunto de muros cortados.
+- **Aceptación:**
+  - Tests unitarios de la clasificación y de la regla: cámara afuera de cada lado, adentro, muros de canto y muros sueltos.
+  - E2E: al orbitar 180°, el muro cortado pasa a estar entero y el opuesto pasa a cortarse (se expone el conjunto cortado como atributo `data-` del visor, como `data-peers`).
+
+### I10 — Casas en la nube (L) — ADR-0012
+
+1. **Puertos y adaptador en memoria:**
+   - `Identity`, `HouseRepository` y `AssetRepository`.
+   - `cloud-session` decide entre abrir, sincronizar, registrar la visita o hacer fork.
+   - Unit tests con el adaptador en memoria.
+2. **Adaptador Firebase bajo demanda:**
+   - Auth anónima y `firestore/lite`.
+   - El proyecto se guarda comprimido en `Bytes`; los assets van en trozos y direccionados por contenido.
+   - Escritura con `rev` en una transacción.
+   - Regla de dependency-cruiser: solo `features/cloud/firebase` importa `firebase/*`.
+   - Presupuesto del chunk `cloud` en CI.
+3. **Reglas** en `firebase/firestore.rules`, con tests en el emulador (job de CI con Firebase Emulator Suite).
+4. **Interfaz:**
+   - «Compartir» con el enlace `?casa=<id>` y el aviso de privacidad y de vencimiento.
+   - Estado de guardado en la barra y aviso de fork.
+   - «Mis casas», hoy con un registro local.
+5. **Fork al primer cambio** de quien no es dueño (también dentro de una sesión colaborativa, a nombre del anfitrión), con `replaceState` de la URL.
+6. **Limpieza:**
+   - `cleanup.yml` diario y manual (con `dry-run`) + `scripts/cloud/cleanup.mjs`.
+   - Borra las casas con más de 30 días sin visitas.
+   - Barre los assets que ninguna casa referencia.
+   - Se prueba contra el emulador.
+7. **Configuración:**
+   - Variables `VITE_FIREBASE_*` en el workflow de Pages.
+   - Sin ellas, la nube queda desactivada y la app funciona como hoy.
+
+**Aceptación:**
+
+- E2E con el emulador: crear una casa, abrir el enlace en otro contexto y verla igual (también con un cuadro con foto).
+- E2E: editar desde el otro contexto crea un fork y el original no cambia.
+- E2E: el dueño sigue editando el original.
+- La limpieza borra solo lo vencido.
+- La carga inicial no crece.
+
+**Requiere del dueño del repo:**
+
+- Crear el proyecto de Firebase en plan Spark con Firestore y Auth anónima.
+- Cargar el secreto `FIREBASE_SERVICE_ACCOUNT` y las variables web.
+- Decidir las preguntas abiertas del ADR-0012.
+
+### I11 — Muebles personalizados (L) — ADR-0013
+
+1. **Documento:**
+   - `schemaVersion` 2 con `customItems`, migración v1 → v2 y test con fixture.
+   - Esquema Zod de `CustomItemSpec` y `compileCustomItem`.
+   - El resolvedor `itemDefinitionFor(project, ref)` reemplaza los usos directos de `itemCatalog`.
+   - El test de contrato se extiende con fast-check.
+2. **Comandos:**
+   - `addCustomItem` es idempotente y va en la misma transacción que la ubicación.
+   - `replaceCustomItem`.
+   - `deleteItems` quita las especificaciones que quedan sin uso.
+3. **Biblioteca:** puerto `FurnitureLibrary` y adaptador IndexedDB (store `furniture`), con miniaturas.
+4. **Interfaz:**
+   - Submenú «Muebles personalizados»: crear, mi biblioteca y los de este proyecto.
+   - Editor de piezas con vista previa y la opción «Partir de un mueble del catálogo».
+   - «Guardar en mis muebles» y «Editar copia» en el inspector.
+5. **Modelos 3D (segunda entrega):**
+   - Primitiva `model` en `Part`.
+   - Importar GLB/glTF con cargador bajo demanda: normaliza la escala, el frente y el origen, y aplica topes de tamaño y de triángulos.
+   - El modelo viaja como asset por IndexedDB, nube (chunks) y WebRTC.
+
+**Aceptación:**
+
+- E2E: crear un mueble, ubicarlo, compartir el enlace, y en otro contexto verlo y guardarlo en su biblioteca.
+- Durante una sesión colaborativa, el invitado ve el mueble personalizado del anfitrión.
+- Exportar e importar `.zip` conserva modelos y especificaciones.
+
+### I12 — Varias plantas, escaleras y ascensores (L)
+
+El documento ya tiene `levels[]` con `elevation`, todos los comandos reciben `levelId` y la presencia de la colaboración ya informa el nivel.
+
+1. **Dominio:**
+   - Comandos `addLevel` (sobre el último, con la elevación sugerida = elevación + alto de muros + losa; opción de copiar el contorno del de abajo), `removeLevel`, `renameLevel`, `duplicateLevel` y `setLevelElevation`.
+   - Ajuste `slabThickness`.
+   - Las definiciones pueden declarar `floorOpening(params)`, un polígono que perfora la losa del nivel de arriba.
+   - `levelVoids(project, level)` deriva los vanos de losa desde los elementos del nivel inferior (escaleras, ducto de ascensor, «vacío» para doble altura), sin datos duplicados.
+   - Validación: que la escalera llegue a la elevación del nivel siguiente.
+2. **Catálogo:**
+   - Escaleras: recta, en L, en U y caracol.
+     - Paramétricas: ancho, número de peldaños, huella y contrahuella calculadas con la regla de Blondel (2c + h ≈ 63 cm), y baranda.
+     - La altura se toma de la diferencia entre niveles.
+   - Ascensor:
+     - Cabina y ducto; el parámetro `span` indica cuántos niveles sube.
+     - Declara una afordancia nueva, `travel`.
+   - Elemento «vacío».
+3. **Visor:**
+   - Se dibujan todos los niveles a su elevación.
+   - En edición, el activo es editable, los de arriba se ocultan (casa de muñecas) y los de abajo se ven.
+   - El cielo de un nivel es la losa del siguiente, con sus vanos.
+   - En recorrido y vuelo se ve y se colisiona con todo.
+   - Las escaleras colisionan como rampa (el controlador cinemático sube suave) y se ven con peldaños.
+   - El plano muestra en tenue el nivel de abajo para alinear.
+4. **Recorrido:**
+   - Al pisar otra planta cambia el nivel activo, y con él el panel y la presencia.
+   - En el ascensor, el HUD ofrece los pisos y anima la subida.
+5. **Interfaz:**
+   - Selector de planta en «Espacios» y en móvil.
+   - Atajos `PgUp`/`PgDn`.
+   - Los avatares de la colaboración se ven en todas las plantas durante el recorrido.
+
+**Aceptación:**
+
+- E2E: casa de 2 plantas con escalera en U.
+- E2E: subir caminando en el recorrido, con el nivel activo cambiando.
+- E2E: bajar en ascensor.
+- Los vanos de losa coinciden con la escalera (test de dominio).
+
+### I13 — Del plano existente a la ficha (M)
+
+- **Plano de fondo a escala:**
+  - Imagen o PDF (primera página).
+  - Se calibra marcando dos puntos y escribiendo la distancia real.
+  - Opacidad y bloqueo ajustables.
+  - Se guarda como asset del nivel: es un dato del documento, así que viaja en el enlace.
+- **Ficha:**
+  - PNG o PDF del plano con cotas, nombres y m² por espacio y total, más capturas 3D elegidas.
+  - Se arma en la app, sin servidor.
+
+### I14 — Presentación (M)
+
+- **Vistas guardadas:** pose de cámara + modo, en el documento.
+- **Recorrido guiado:** interpolación entre las vistas guardadas.
+- **Modo presentación:** solo lectura, UI mínima, a pantalla completa y con enlace directo `?casa=…&presentar=1`.
+- **Puertas operables en el recorrido:**
+  - Clic o tecla `E` para abrir o cerrar.
+  - Colisión dinámica.
+  - El estado se guarda en `params.open`.
+
+### Orden y dependencias
+
+```
+I9 (independiente, rápido) ─┐
+I10 nube ───────────────────┼─▶ I11 muebles (los modelos usan los assets de la nube)
+                            └─▶ I13/I14 (el enlace de presentación usa la nube)
+I12 plantas (independiente; conviene antes de I13 para que la ficha sea por planta)
+```
+
+Cada iteración sigue §8: rama corta, tests (unitarios, contrato y E2E), docs y ADR, y CI en verde antes de `main`. Los cambios de esquema van con migración.
+
+### Preparado para cuentas (sin implementarlas)
+
+| Hoy                                                | Mañana, con cuentas                                                                                     |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Identity` anónima de Firebase (uid por navegador) | La misma identidad enlazada a Google o correo (`linkWithCredential`): **el mismo uid**, nada que migrar |
+| `houses.ownerUid` y reglas con `isOwner()`         | `members` con roles e `isMember(role)`; «Mis casas» = consulta por dueño                                |
+| Registro local de «Mis casas»                      | Consulta en Firestore, y fusión del registro local al iniciar sesión                                    |
+| `FurnitureLibrary` local (IndexedDB)               | `CloudFurnitureLibrary` (`users/{uid}/furniture`), con la local subida al iniciar sesión                |
+| `CustomItemSpec.author` opcional                   | Autoría visible, catálogo compartido o marketplace                                                      |
+| Documento sin datos de nube ni de usuario          | Igual: el documento sigue portable                                                                      |

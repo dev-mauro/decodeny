@@ -4,6 +4,8 @@ import { Suspense, useEffect, useMemo, useRef, useState, type Ref, type RefObjec
 import { PerspectiveCamera } from 'three';
 import { DEFAULT_PERSON, type PersonProfile } from './navigation/person-profile';
 import { navigationModes } from './navigation/registry';
+import { TouchControls, type TouchControlsLabels } from './navigation/TouchControls';
+import { createVirtualInput } from './navigation/virtual-input';
 import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
@@ -66,6 +68,11 @@ export interface DecodenyViewerProps {
   readonly walkStart?: Vec2 | null;
   /** Balanceo de cabeza al caminar; se ignora si el sistema pide reducir el movimiento. */
   readonly headBob?: boolean;
+  /**
+   * Controles táctiles en el recorrido y el vuelo (joystick y arrastrar para mirar), con sus
+   * textos. La aplicación los activa en pantallas táctiles.
+   */
+  readonly touchControls?: TouchControlsLabels | null;
   /** Día (sol + cielo) o noche (solo luminarias). */
   readonly lighting?: LightingMode;
   /**
@@ -141,6 +148,7 @@ export function DecodenyViewer({
   personProfile = DEFAULT_PERSON,
   walkStart = null,
   headBob = false,
+  touchControls = null,
   lighting = 'day',
   assetUrl,
   hiddenGroups,
@@ -161,6 +169,7 @@ export function DecodenyViewer({
   const mode = navigationModes.get(navigationMode) ?? navigationModes.require('edit');
   const Mode = mode.Component;
   const placing = mode.interactive && placement !== null;
+  const [virtualInput] = useState(createVirtualInput);
   const interactive = mode.interactive && !placing;
 
   return (
@@ -225,10 +234,14 @@ export function DecodenyViewer({
               onPointerLockChange={onPointerLockChange}
               walkStart={walkStart}
               headBob={headBob && !prefersReducedMotion()}
+              virtualInput={virtualInput}
             />
           </Suspense>
         )}
       </Canvas>
+      {touchControls && !mode.interactive && (
+        <TouchControls input={virtualInput} flying={mode.id === 'ghost'} labels={touchControls} />
+      )}
     </div>
   );
 }

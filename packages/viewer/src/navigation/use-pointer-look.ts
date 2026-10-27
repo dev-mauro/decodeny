@@ -1,8 +1,11 @@
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, type RefObject } from 'react';
 import { Euler } from 'three';
+import { consumeLook, type VirtualInput } from './virtual-input';
 
 export const LOOK_SENSITIVITY = 0.0022;
+/** Radianes por píxel al arrastrar el dedo para mirar. */
+export const TOUCH_LOOK_SENSITIVITY = 0.005;
 const MAX_PITCH = (85 * Math.PI) / 180;
 
 export interface LookState {
@@ -12,11 +15,13 @@ export interface LookState {
 
 /**
  * Mirada en primera persona con Pointer Lock: un clic sobre la vista captura el mouse y su
- * movimiento rota la cámara (yaw/pitch, sin roll). Informa cuándo se captura o libera.
+ * movimiento rota la cámara (yaw/pitch, sin roll). Informa cuándo se captura o libera. Con
+ * `touch`, arrastrar el dedo en los controles táctiles también gira la mirada.
  */
 export function usePointerLook(
   onLockChange?: (locked: boolean) => void,
   sensitivity = LOOK_SENSITIVITY,
+  touch?: VirtualInput,
 ): RefObject<LookState> {
   const camera = useThree((s) => s.camera);
   const element = useThree((s) => s.gl.domElement);
@@ -59,6 +64,18 @@ export function usePointerLook(
       lockChange.current?.(false);
     };
   }, [camera, element, sensitivity]);
+
+  useFrame(() => {
+    const delta = consumeLook(touch);
+    if (!delta) return;
+    const state = look.current;
+    state.yaw -= delta.dx * TOUCH_LOOK_SENSITIVITY;
+    state.pitch = Math.max(
+      -MAX_PITCH,
+      Math.min(MAX_PITCH, state.pitch - delta.dy * TOUCH_LOOK_SENSITIVITY),
+    );
+    camera.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
+  });
 
   return look;
 }

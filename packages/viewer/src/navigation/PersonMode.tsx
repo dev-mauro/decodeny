@@ -14,11 +14,11 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Euler } from 'three';
 import { chooseSpawn, groundCollider, itemColliders, wallColliders } from './colliders';
 import { createHeadBob, stepHeadBob } from './head-bob';
-import { useKeyboardIntent } from './input';
 import { capsuleDimensions } from './person-profile';
 import { stepPerson, type PersonMotionState } from './person-step';
 import type { NavigationModeProps } from './types';
 import { usePointerLook } from './use-pointer-look';
+import { useMovementIntent } from './virtual-input';
 
 /** Bajo esta altura (m) se considera que la persona cayó fuera del modelo y reaparece. */
 const RESPAWN_BELOW = -10;
@@ -68,11 +68,12 @@ function PersonController({
   onPointerLockChange,
   walkStart,
   headBob = false,
+  virtualInput,
 }: NavigationModeProps) {
   const camera = useThree((s) => s.camera);
   const { world } = useRapier();
-  const look = usePointerLook(onPointerLockChange);
-  const readIntent = useKeyboardIntent();
+  const look = usePointerLook(onPointerLockChange, undefined, virtualInput);
+  const readIntent = useMovementIntent(virtualInput);
   const body = useRef<RapierRigidBody>(null);
   const collider = useRef<RapierCollider>(null);
   const motion = useRef<PersonMotionState>({ verticalSpeed: 0 });

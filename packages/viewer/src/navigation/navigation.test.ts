@@ -15,6 +15,7 @@ import {
   worldToPlan,
 } from './colliders';
 import { BOB_AMPLITUDE, createHeadBob, stepHeadBob } from './head-bob';
+import { combineIntent, consumeLook, createVirtualInput, joystickVector } from './virtual-input';
 import { horizontalDirection, intentFromKeys, NO_MOVEMENT } from './input';
 import { capsuleDimensions, DEFAULT_PERSON } from './person-profile';
 
@@ -170,5 +171,28 @@ describe('punto de partida del recorrido', () => {
     const fallback = chooseSpawn(level, null, outside, 0, { x: 50_000, y: 0 });
     const room = spawnInRoom(level, level.rooms[0]!, 0);
     expect(fallback.feet).toEqual(room.feet);
+  });
+});
+
+describe('controles táctiles', () => {
+  it('el joystick normaliza, tiene zona muerta y corre en el borde', () => {
+    expect(joystickVector(2, 2, 50)).toMatchObject({ x: 0, y: 0, run: false });
+    const half = joystickVector(0, -25, 50);
+    expect(half.y).toBeCloseTo(0.5);
+    expect(half.run).toBe(false);
+    const edge = joystickVector(100, 0, 50);
+    expect(edge.x).toBeCloseTo(1);
+    expect(edge.knob).toEqual({ x: 50, y: 0 });
+    expect(edge.run).toBe(true);
+  });
+
+  it('se suma al teclado sin pasar de ±1 y la mirada se consume una vez', () => {
+    const input = createVirtualInput();
+    input.move = { x: 0.6, y: 0.8 };
+    input.look = { dx: 10, dy: -4 };
+    const intent = combineIntent({ forward: 1, right: 0, up: 0, run: false }, input);
+    expect(intent).toEqual({ forward: 1, right: 0.6, up: 0, run: false });
+    expect(consumeLook(input)).toEqual({ dx: 10, dy: -4 });
+    expect(consumeLook(input)).toBeNull();
   });
 });

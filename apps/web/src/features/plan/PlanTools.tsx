@@ -58,5 +58,17 @@ export function WallDrawHint() {
     (s) => s.view === 'plan' && s.planTool === 'wall' && s.placement === null,
   );
   if (!active) return null;
-  return <ToolHint text={t('viewport.wallHint')} testId="wall-draw-hint" />;
+  return (
+    <ToolHint
+      text={t('viewport.wallHint')}
+      testId="wall-draw-hint"
+      actions={[
+        {
+          label: t('viewport.wallDone'),
+          onClick: () => useUiStore.getState().setPlanTool('select'),
+          testId: 'wall-draw-done',
+        },
+      ]}
+    />
+  );
 }

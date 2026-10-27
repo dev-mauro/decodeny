@@ -4,6 +4,7 @@ import type { Box3 } from 'three';
 import type { ViewerCameraApi } from '../scene/EditCamera';
 import type { ViewerSelection } from '../selection';
 import type { PersonProfile } from './person-profile';
+import type { VirtualInput } from './virtual-input';
 
 /** Modos incluidos. El registro admite agregar otros (recorrido guiado, VR…). */
 export type BuiltInNavigationMode = 'edit' | 'ghost' | 'person';
@@ -22,6 +23,8 @@ export interface NavigationModeProps {
   readonly walkStart?: Vec2 | null | undefined;
   /** Balanceo de cabeza al caminar (apagado por defecto). */
   readonly headBob?: boolean | undefined;
+  /** Controles táctiles (joystick y mirada): se suman al teclado. */
+  readonly virtualInput?: VirtualInput | undefined;
 }
 
 export interface NavigationModeDefinition {

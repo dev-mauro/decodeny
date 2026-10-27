@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
+import { useCoarsePointer } from '@/shared/lib/use-media-query';
 import { Button } from '@/shared/ui/Button';
 import { useUiStore } from '@/state/ui-store';
 
@@ -14,7 +16,34 @@ export function WalkOverlay() {
   const setMode = useUiStore((s) => s.setNavigationMode);
   const headBob = useUiStore((s) => s.headBob);
   const setHeadBob = useUiStore((s) => s.setHeadBob);
+  const touch = useCoarsePointer();
   if (mode === 'edit') return null;
+
+  // En pantallas táctiles no hay mouse que capturar: los controles están en la vista (joystick y
+  // deslizar para mirar); solo se muestra una barra con la ayuda y la salida.
+  if (touch) {
+    return (
+      <div
+        className="pointer-events-none absolute inset-x-0 top-14 flex justify-center px-3"
+        data-testid="walk-touch-hud"
+      >
+        <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-slate-900/70 py-1 pr-1 pl-3 text-xs text-white shadow-lg">
+          <span>
+            {t(`navigation.${mode}`)} · {t('navigation.touchHint')}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMode('edit')}
+            aria-label={t('navigation.exit')}
+            data-testid="exit-walk"
+            className="flex size-8 items-center justify-center rounded-lg hover:bg-white/15"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const controls: [string, string][] = [
     [t('navigation.keysMove'), t('navigation.controlsMove')],

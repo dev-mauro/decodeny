@@ -35,6 +35,9 @@ export interface ItemPlacementSession {
   readonly pointer: { readonly point: Vec2; readonly snap: boolean } | null;
 }
 
+/** Panel abierto como hoja en el layout móvil. */
+export type MobilePanel = 'rooms' | 'catalog' | 'inspector' | null;
+
 /** Estado de interfaz (no forma parte del documento ni del historial). */
 interface UiState {
   readonly levelId: string | null;
@@ -81,6 +84,8 @@ interface UiState {
   readonly walkStart: Vec2 | null;
   /** Balanceo de cabeza al caminar (preferencia del usuario, se recuerda). */
   readonly headBob: boolean;
+  /** Layout móvil: panel abierto sobre la vista. */
+  readonly mobilePanel: MobilePanel;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
   readonly select: (selection: ViewerSelection | null, options?: { additive?: boolean }) => void;
   readonly selectMany: (targets: readonly ViewerSelection[], additive?: boolean) => void;
@@ -106,6 +111,7 @@ interface UiState {
   /** Empieza el recorrido en `point`. */
   readonly walkFrom: (point: Vec2) => void;
   readonly setHeadBob: (headBob: boolean) => void;
+  readonly setMobilePanel: (panel: MobilePanel) => void;
 }
 
 const HEAD_BOB_KEY = 'decodeny.headBob';
@@ -148,6 +154,7 @@ export const useUiStore = create<UiState>()((set) => ({
   pickingWalkStart: false,
   walkStart: null,
   headBob: readHeadBob(),
+  mobilePanel: null,
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
@@ -166,7 +173,13 @@ export const useUiStore = create<UiState>()((set) => ({
   setPickingWalkStart: (pickingWalkStart) =>
     set(
       pickingWalkStart
-        ? { pickingWalkStart, measuring: false, measurePoints: [], planTool: 'select' }
+        ? {
+            pickingWalkStart,
+            measuring: false,
+            measurePoints: [],
+            planTool: 'select',
+            mobilePanel: null,
+          }
         : { pickingWalkStart },
     ),
   walkFrom: (point) =>
@@ -180,6 +193,7 @@ export const useUiStore = create<UiState>()((set) => ({
       view: '3d',
       planTool: 'select',
     }),
+  setMobilePanel: (mobilePanel) => set({ mobilePanel }),
   setHeadBob: (headBob) => {
     try {
       localStorage.setItem(HEAD_BOB_KEY, headBob ? '1' : '0');
@@ -199,7 +213,14 @@ export const useUiStore = create<UiState>()((set) => ({
   setPlanTool: (planTool) =>
     set(
       planTool === 'wall'
-        ? { planTool, view: 'plan', navigationMode: 'edit', measuring: false, measurePoints: [] }
+        ? {
+            planTool,
+            view: 'plan',
+            navigationMode: 'edit',
+            measuring: false,
+            measurePoints: [],
+            mobilePanel: null,
+          }
         : { planTool },
     ),
   holdFinishEditor: () => {
@@ -231,7 +252,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setMeasuring: (measuring) =>
     set(
       measuring
-        ? { measuring, measurePoints: [], planTool: 'select' }
+        ? { measuring, measurePoints: [], planTool: 'select', mobilePanel: null }
         : { measuring, measurePoints: [] },
     ),
   // El tercer punto empieza una medición nueva.

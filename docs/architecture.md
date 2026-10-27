@@ -130,6 +130,14 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Accesibilidad:** con `prefers-reduced-motion`, la cámara no anima transiciones.
 - **Idiomas:** `es` (base, tipa las claves) y `en` (TypeScript exige cada traducción). El idioma elegido se recuerda; el formato de medidas (coma o punto decimal), los mensajes de validación y el catálogo siguen al idioma.
 
+## Móvil y táctil (I8)
+
+- **Layout:** desde 1024 px, tres columnas; por debajo, `MobileLayout`: la vista ocupa la pantalla y una barra inferior abre recintos, catálogo o propiedades como hoja. Las herramientas que piden tocar la vista (ubicar, dibujar, medir, elegir el punto de partida) cierran la hoja (`mobilePanel` en el estado de interfaz).
+- **Recorrido táctil:** `TouchControls` (visor) escribe en un `VirtualInput` mutable (joystick, mirada, subir/bajar) que los modos leen junto con el teclado (`useMovementIntent`, `combineIntent`); la app lo activa con `(pointer: coarse)` y le pasa los textos.
+- **Planta:** pellizcar con dos dedos hace zoom alrededor del punto entre ellos y cancela lo que se estuviera arrastrando.
+- **Atajos con equivalente táctil:** las indicaciones de herramienta (`ToolHint`) llevan botones (Dejar aquí, Girar, Cancelar, Terminar).
+- E2E con un proyecto `mobile` (Pixel 7 emulado) que corre `mobile.spec.ts`.
+
 ## Muros compartidos
 
 Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer.

@@ -446,7 +446,61 @@ export function PlanView({
     return { x: Math.round(p.x), y: Math.round(p.y) };
   };
 
+  // --- Dos dedos: pellizcar para hacer zoom y arrastrar para desplazar -----------------------
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; mid: { x: number; y: number }; view: ViewState } | null>(
+    null,
+  );
+  const pinchFrame = () => {
+    const [a, b] = [...touches.current.values()];
+    if (!a || !b) return null;
+    return {
+      dist: Math.hypot(a.x - b.x, a.y - b.y),
+      mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  };
+  const onPointerDownCapture = (e: ReactPointerEvent) => {
+    if (e.pointerType !== 'touch') return;
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.current.size !== 2) return;
+    // El segundo dedo convierte el gesto en pellizco: lo que se estuviera arrastrando se cancela.
+    const d = drag.current;
+    if (d?.moved && d.kind !== 'pan' && d.kind !== 'area') {
+      emit('cancel', { clientX: d.start.x, clientY: d.start.y, altKey: false });
+    }
+    drag.current = null;
+    setArea(null);
+    const frame = pinchFrame();
+    if (frame) pinch.current = { ...frame, view: current };
+    e.stopPropagation();
+  };
+  const endTouch = (e: ReactPointerEvent) => {
+    touches.current.delete(e.pointerId);
+    if (touches.current.size < 2) pinch.current = null;
+  };
+
   const onPointerMove = (e: ReactPointerEvent) => {
+    if (touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    const p = pinch.current;
+    const frame = p ? pinchFrame() : null;
+    if (p && frame && p.dist > 0) {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const s = Math.min(2, Math.max(0.005, p.view.s * (frame.dist / p.dist)));
+      // El punto de la planta bajo el centro inicial de los dedos queda bajo su centro actual.
+      const anchor = {
+        x: p.view.cx + (p.mid.x - rect.left - rect.width / 2) / p.view.s,
+        y: p.view.cy - (p.mid.y - rect.top - rect.height / 2) / p.view.s,
+      };
+      setView({
+        s,
+        cx: anchor.x - (frame.mid.x - rect.left - rect.width / 2) / s,
+        cy: anchor.y + (frame.mid.y - rect.top - rect.height / 2) / s,
+      });
+      return;
+    }
     const d = drag.current;
     if (placing && !d?.moved && e.buttons === 0) {
       placement.onEvent({ phase: 'move', point: toPlan(e.clientX, e.clientY), snap: !e.altKey });
@@ -699,9 +753,15 @@ export function PlanView({
       onPointerDown={(e) =>
         begin(e, onAreaSelect && !capturing && isAdditiveClick(e) ? 'area' : 'pan')
       }
+      onPointerDownCapture={onPointerDownCapture}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => {
+      onPointerUp={(e) => {
+        const wasPinch = pinch.current !== null || touches.current.size > 1;
+        endTouch(e);
+        if (!wasPinch) onPointerUp(e);
+      }}
+      onPointerCancel={(e) => {
+        endTouch(e);
         drag.current = null;
       }}
       onWheel={onWheel}

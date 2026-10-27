@@ -26,6 +26,13 @@ export type {
   NavigationModeProps,
 } from './navigation/types';
 export { DEFAULT_PERSON, capsuleDimensions, type PersonProfile } from './navigation/person-profile';
+export type { TouchControlsLabels } from './navigation/TouchControls';
+export {
+  combineIntent,
+  createVirtualInput,
+  joystickVector,
+  type VirtualInput,
+} from './navigation/virtual-input';
 export {
   DEFAULT_KEYMAP,
   intentFromKeys,

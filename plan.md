@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-26):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline y presupuestos de bundle y de carga inicial en CI ✅; pendientes: móvil/táctil —siguiente—, telemetría y reporte de errores —requieren un servicio externo—).
+> **Estado (2026-10-26):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—).
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -541,7 +541,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 ### I8 — Endurecimiento para producción
 
 - Rendimiento: perfiles con `r3f-perf`, _frameloop on-demand_ en edición ✅, BVH para raycasts, LOD de texturas, presupuestos verificados en CI ✅ (tamaño por chunk y JS inicial < 400 kB gzip; la vista 3D, las miniaturas y la física se cargan bajo demanda: hoy la carga inicial pesa ~225 kB).
-- Móvil/tablet: controles táctiles (joystick virtual en modo persona), UI responsiva.
+- Móvil/tablet ✅: layout móvil (vista a pantalla completa, paneles como hojas desde una barra inferior, menú compacto), controles táctiles del recorrido y el vuelo (joystick, deslizar para mirar, subir/bajar), pellizcar para hacer zoom en la planta, y equivalentes táctiles de los atajos (Dejar aquí, Girar, Cancelar, Terminar). Pendiente: selección múltiple táctil (hoy Shift/Ctrl) y escribir el largo al dibujar muros (en táctil se corrige después en el inspector).
 - Accesibilidad: navegación por teclado de toda la UI, contraste, `prefers-reduced-motion`, textos alternativos.
 - PWA/offline ✅ (service worker propio generado en el build, sin dependencias; precarga todo el build y avisa cuando hay una versión nueva), manejo de errores con _error boundaries_ ✅ y reporte (Sentry), telemetría anónima opt-in (requieren hosting).
 - i18n completo (es/en), formateo de unidades (m/cm, opcional pies/pulgadas).

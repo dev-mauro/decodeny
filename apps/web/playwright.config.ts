@@ -2,6 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 const isCI = Boolean(process.env.CI);
 
+const browser = {
+  ...(isCI ? {} : { channel: 'chrome' as const }),
+  // WebGL por software para que el canvas 3D funcione en modo headless.
+  launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+};
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -18,13 +24,18 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /mobile\.spec\.ts/,
       // Localmente usa el Chrome instalado (evita descargar navegadores); en CI, el de Playwright.
       use: {
         ...devices['Desktop Chrome'],
-        ...(isCI ? {} : { channel: 'chrome' }),
-        // WebGL por software para que el canvas 3D funcione en modo headless.
-        launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+        ...browser,
       },
+    },
+    {
+      // Teléfono táctil (layout móvil, joystick, gestos): solo los specs móviles.
+      name: 'mobile',
+      testMatch: /mobile\.spec\.ts/,
+      use: { ...devices['Pixel 7'], ...browser },
     },
   ],
   webServer: {

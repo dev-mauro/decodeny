@@ -47,6 +47,7 @@ export const es = {
     planTools: 'Herramientas de planta',
     toolSelect: 'Seleccionar y mover',
     toolWall: 'Dibujar muros (W)',
+    wallDone: 'Terminar',
     detectRooms: 'Detectar recintos en los contornos cerrados',
     wallHint:
       'Clic para empezar y en cada esquina · escribe el largo (3,5) y Enter · Esc termina · Alt: sin ajuste',
@@ -77,6 +78,11 @@ export const es = {
     keysFly: 'Espacio / C',
     keysSpeed: 'Rueda',
     keysPause: 'Esc',
+    touchJoystick: 'Joystick: moverse (al borde, correr)',
+    touchLook: 'Desliza para mirar',
+    touchUp: 'Subir',
+    touchDown: 'Bajar',
+    touchHint: 'Joystick para moverte · desliza para mirar',
     shortcut: 'Tecla {{key}}',
     pickStart: 'Recorrer desde un punto: haz clic en el piso donde quieres empezar',
     pickStartHint: 'Haz clic en el piso donde quieres empezar el recorrido · Esc cancela',
@@ -208,6 +214,9 @@ export const es = {
     search: 'Buscar en el catálogo',
     searchPlaceholder: 'Buscar: cama, sofá, clóset…',
     addsTo: 'Aparece en: {{room}}. Luego ubícalo con el puntero.',
+    placeHere: 'Dejar aquí',
+    placeRotate: 'Girar',
+    placeCancel: 'Cancelar',
     placeHint:
       'Mueve el puntero y haz clic para ubicarlo · R gira · Enter lo deja donde está · Esc cancela · Alt: sin ajuste',
     noRoom: 'Agrega un recinto para amoblarlo.',
@@ -356,6 +365,11 @@ export const es = {
   pwa: {
     updateReady: 'Hay una versión nueva de Decodeny',
     reload: 'Actualizar',
+  },
+  mobile: {
+    panels: 'Paneles',
+    close: 'Cerrar panel',
+    more: 'Más opciones',
   },
   notifications: {
     dismiss: 'Cerrar notificación',

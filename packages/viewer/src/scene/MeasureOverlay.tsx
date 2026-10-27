@@ -44,6 +44,8 @@ export function MeasureOverlay({
               (world[0]![2] + world[1]![2]) / 2,
             ]}
             center
+            // Por debajo de los paneles de la aplicación (drei usa un z-index enorme por defecto).
+            zIndexRange={[20, 0]}
             pointerEvents="none"
             style={{ pointerEvents: 'none' }}
           >

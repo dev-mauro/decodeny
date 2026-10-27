@@ -51,6 +51,7 @@ export const en: Translation<Resources> = {
     planTools: 'Plan tools',
     toolSelect: 'Select and move',
     toolWall: 'Draw walls (W)',
+    wallDone: 'Done',
     detectRooms: 'Detect rooms in closed outlines',
     wallHint:
       'Click to start and at each corner · type the length (3.5) and Enter · Esc ends · Alt: no snapping',
@@ -81,6 +82,11 @@ export const en: Translation<Resources> = {
     keysFly: 'Space / C',
     keysSpeed: 'Wheel',
     keysPause: 'Esc',
+    touchJoystick: 'Joystick: move (to the edge to run)',
+    touchLook: 'Swipe to look around',
+    touchUp: 'Up',
+    touchDown: 'Down',
+    touchHint: 'Joystick to move · swipe to look',
     shortcut: 'Key {{key}}',
     pickStart: 'Walk from a point: click the floor where you want to start',
     pickStartHint: 'Click the floor where you want to start the walk · Esc cancels',
@@ -211,6 +217,9 @@ export const en: Translation<Resources> = {
     search: 'Search the catalog',
     searchPlaceholder: 'Search: bed, sofa, wardrobe…',
     addsTo: 'Appears in: {{room}}. Then place it with the pointer.',
+    placeHere: 'Leave here',
+    placeRotate: 'Rotate',
+    placeCancel: 'Cancel',
     placeHint:
       'Move the pointer and click to place it · R rotates · Enter leaves it where it is · Esc cancels · Alt: no snapping',
     noRoom: 'Add a room to furnish it.',
@@ -358,6 +367,11 @@ export const en: Translation<Resources> = {
   pwa: {
     updateReady: 'A new version of Decodeny is available',
     reload: 'Update',
+  },
+  mobile: {
+    panels: 'Panels',
+    close: 'Close panel',
+    more: 'More options',
   },
   notifications: {
     dismiss: 'Dismiss notification',

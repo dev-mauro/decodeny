@@ -13,7 +13,12 @@ import { PROJECT_TEMPLATES } from '@/features/samples/templates';
 import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch';
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
 import { useItemDragHandler } from '@/features/furniture/use-item-drag-handler';
-import { handlePlacementEvent } from '@/features/furniture/placement';
+import {
+  cancelPlacement,
+  confirmPlacement,
+  handlePlacementEvent,
+  rotatePlacement,
+} from '@/features/furniture/placement';
 import { handleWalkStartEvent } from '@/features/navigation/walk-start';
 import { itemsInArea } from '@/features/furniture/item-actions';
 import { useOpeningDragHandler } from '@/features/openings/use-opening-drag-handler';
@@ -26,6 +31,7 @@ import { Button, IconButton } from '@/shared/ui/Button';
 import { useProjectStore } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
+import { useCoarsePointer } from '@/shared/lib/use-media-query';
 import { ToolHint } from '@/shared/ui/ToolHint';
 import { notify } from '@/state/notifications-store';
 import { MeasurePanel, ViewportTools } from './ViewportTools';
@@ -91,6 +97,19 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const pickingWalkStart = useUiStore((s) => s.pickingWalkStart);
   const walkStart = useUiStore((s) => s.walkStart);
   const headBob = useUiStore((s) => s.headBob);
+  const coarse = useCoarsePointer();
+  const touchControls = useMemo(
+    () =>
+      coarse
+        ? {
+            joystick: t('navigation.touchJoystick'),
+            look: t('navigation.touchLook'),
+            up: t('navigation.touchUp'),
+            down: t('navigation.touchDown'),
+          }
+        : null,
+    [coarse, t],
+  );
   // Una sola sesión de ubicación a la vez: un mueble nuevo o el punto de partida del recorrido.
   const placement = useMemo(
     () =>
@@ -181,6 +200,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 onPointerLockChange={setPointerLocked}
                 walkStart={walkStart}
                 headBob={headBob}
+                touchControls={touchControls}
                 locale={i18n.language}
               />
             </Suspense>
@@ -197,9 +217,41 @@ export function Viewport({ cameraRef }: ViewportProps) {
       </div>
 
       <WallDrawHint />
-      {pointerHeight !== null && <ToolHint text={t('catalog.placeHint')} testId="placement-hint" />}
+      {pointerHeight !== null && (
+        <ToolHint
+          text={t('catalog.placeHint')}
+          testId="placement-hint"
+          actions={[
+            {
+              label: t('catalog.placeHere'),
+              onClick: () => confirmPlacement(),
+              testId: 'placement-confirm',
+            },
+            {
+              label: t('catalog.placeRotate'),
+              onClick: () => rotatePlacement(90),
+              testId: 'placement-rotate',
+            },
+            {
+              label: t('catalog.placeCancel'),
+              onClick: cancelPlacement,
+              testId: 'placement-cancel',
+            },
+          ]}
+        />
+      )}
       {pickingWalkStart && pointerHeight === null && (
-        <ToolHint text={t('navigation.pickStartHint')} testId="walk-start-hint" />
+        <ToolHint
+          text={t('navigation.pickStartHint')}
+          testId="walk-start-hint"
+          actions={[
+            {
+              label: t('catalog.placeCancel'),
+              onClick: () => useUiStore.getState().setPickingWalkStart(false),
+              testId: 'walk-start-cancel',
+            },
+          ]}
+        />
       )}
 
       <ViewportTools viewerRef={viewerRef} />

@@ -20,9 +20,29 @@ function expose(id: string, blob: Blob): void {
   useAssetStore.setState((s) => ({ urls: { ...s.urls, [id]: URL.createObjectURL(blob) } }));
 }
 
-/** Guarda una imagen (en memoria y en IndexedDB) bajo el id de su asset. */
-export async function saveAssetBlob(id: string, blob: Blob): Promise<void> {
+type AssetListener = (id: string, blob: Blob) => void;
+const listeners = new Set<AssetListener>();
+
+/**
+ * Avisa de cada imagen agregada en este equipo (no de las recibidas de otro participante), p. ej.
+ * para enviarla a la sesión colaborativa. Devuelve la desuscripción.
+ */
+export function onLocalAsset(listener: AssetListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/**
+ * Guarda una imagen (en memoria y en IndexedDB) bajo el id de su asset. `remote`: llegó de otro
+ * participante (no se vuelve a avisar).
+ */
+export async function saveAssetBlob(
+  id: string,
+  blob: Blob,
+  options: { readonly remote?: boolean } = {},
+): Promise<void> {
   expose(id, blob);
+  if (!options.remote) for (const listener of listeners) listener(id, blob);
   try {
     await (await database()).put(STORES.assets, blob, id);
   } catch {

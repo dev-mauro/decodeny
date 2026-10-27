@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { APP_NAME } from '@/config';
+import { CollabButton } from '@/features/collab/CollabDialog';
 import { exportCurrentProject, requestOpenFile } from '@/features/io/project-actions';
 import { useIoStore } from '@/features/io/io-store';
 import { Button, IconButton } from '@/shared/ui/Button';
@@ -91,6 +92,7 @@ export function TopBar() {
           <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden />
         </div>
         <MoreMenu onNew={() => confirm('new')} />
+        <CollabButton />
         <OptionsMenu />
         <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden />
         <IconButton

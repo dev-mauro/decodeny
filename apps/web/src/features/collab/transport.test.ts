@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { assetBlob, assetMessage } from './asset-transfer';
 import { Deframer, frame } from './framing';
 import { answerCodeFrom, decodeSignal, encodeSignal, inviteCodeFrom } from './signal-codec';
 
@@ -57,5 +58,16 @@ describe('fragmentación de mensajes', () => {
     expect(results.slice(0, 3)).toEqual([null, null, null]);
     expect(results[3]).toEqual(big);
     expect(new Deframer().push(frame({ t: 'pose' })[0]!)).toEqual({ t: 'pose' });
+  });
+});
+
+describe('imágenes de la sesión', () => {
+  it('viajan como base64 sin perder bytes (también las grandes)', async () => {
+    const bytes = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 7) % 256);
+    const message = await assetMessage('asset_1', new Blob([bytes], { type: 'image/png' }));
+    expect(message).toMatchObject({ t: 'asset', id: 'asset_1', mime: 'image/png' });
+    const back = assetBlob(JSON.parse(JSON.stringify(message)) as typeof message);
+    expect(back.type).toBe('image/png');
+    expect(new Uint8Array(await back.arrayBuffer())).toEqual(bytes);
   });
 });

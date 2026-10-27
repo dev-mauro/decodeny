@@ -13,6 +13,7 @@ export {
   type ViewerPlacement,
   type ViewerSelection,
 } from './selection';
+export type { ViewerCameraPose, ViewerPeer, ViewerPeerPose, ViewerPeers } from './scene/peers';
 export { planToWorld, planDirToWorld, type Vec3Tuple } from './coords';
 export { buildWallMesh, WALL_SLOTS, type WallCut, type WallSlot } from './builders/wall-mesh';
 export { buildSurfaceMesh, type SurfaceFacing } from './builders/surface-mesh';

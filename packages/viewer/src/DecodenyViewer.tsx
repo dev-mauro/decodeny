@@ -1,4 +1,4 @@
-import { findLevel, type Project, type Vec2 } from '@decodeny/domain';
+import { findLevel, mmToMeters, type Project, type Vec2 } from '@decodeny/domain';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, useState, type Ref, type RefObject } from 'react';
 import { PerspectiveCamera } from 'three';
@@ -18,6 +18,9 @@ import type { ItemGroup } from './scene/item-groups';
 import type { MeasurePoint } from './scene/measure';
 import { LevelView } from './scene/LevelView';
 import { PlacementPointer } from './scene/PlacementPointer';
+import { CameraPoseReporter } from './scene/CameraPoseReporter';
+import { PeerAvatars } from './scene/PeerAvatars';
+import type { ViewerCameraPose, ViewerPeers } from './scene/peers';
 import { SceneEnvironment, type LightingMode } from './scene/SceneEnvironment';
 import type {
   ItemDragEvent,
@@ -98,6 +101,10 @@ export interface DecodenyViewerProps {
   readonly onGraphicsRestored?: () => void;
   /** Cuadrícula de trabajo sobre el suelo (paso en mm); `null` sin cuadrícula. */
   readonly grid?: { readonly step: number } | null;
+  /** Otros participantes de una sesión colaborativa: se dibuja su cuerpo. */
+  readonly peers?: ViewerPeers | null;
+  /** Pose de la cámara cuando cambia (~12 por segundo como máximo), p. ej. para compartirla. */
+  readonly onCameraPose?: (pose: ViewerCameraPose) => void;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -161,6 +168,8 @@ export function DecodenyViewer({
   trueSurfaceColors = false,
   onGraphicsRestored,
   grid = null,
+  peers = null,
+  onCameraPose,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -187,6 +196,7 @@ export function DecodenyViewer({
       data-ready={ready || undefined}
       data-placing={placing || undefined}
       data-true-surface-colors={trueSurfaceColors || undefined}
+      data-peers={peers && peers.list.length > 0 ? peers.list.length : undefined}
       style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <Canvas
@@ -233,6 +243,10 @@ export function DecodenyViewer({
           />
         )}
         {placing && <PlacementPointer placement={placement} />}
+        {level && peers && peers.list.length > 0 && (
+          <PeerAvatars peers={peers} floorY={mmToMeters(level.elevation)} />
+        )}
+        {onCameraPose && <CameraPoseReporter onPose={onCameraPose} />}
         {level && (
           <Suspense fallback={null}>
             <Mode

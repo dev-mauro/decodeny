@@ -1,6 +1,7 @@
 import type { ViewerCameraApi } from '@decodeny/viewer';
 import { useRef } from 'react';
 import { useDesktopLayout } from '@/shared/lib/use-media-query';
+import { CollabDialog } from '@/features/collab/CollabDialog';
 import { IoDialogs } from '@/features/io/IoDialogs';
 import { CreateRoomDialog } from '@/features/rooms/CreateRoomDialog';
 import { LeftPanel } from './LeftPanel';
@@ -46,6 +47,7 @@ export function App() {
           onCreated={() => requestAnimationFrame(() => cameraRef.current?.fitToContent())}
         />
         <IoDialogs />
+        <CollabDialog />
         <Toaster />
       </div>
     </ErrorBoundary>

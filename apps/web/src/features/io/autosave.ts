@@ -30,6 +30,8 @@ export function startAutosave(): () => void {
   let warned = false;
   const unsubscribe = useProjectStore.subscribe((state, previous) => {
     if (state.project === previous.project) return;
+    // Invitado de una sesión colaborativa: el documento es del anfitrión; no pisa el propio.
+    if (state.sync?.history) return;
     clearTimeout(timer);
     timer = setTimeout(() => {
       saveAutosave(serializeProject(state.project, { generator: GENERATOR })).catch(() => {

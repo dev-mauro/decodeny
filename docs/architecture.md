@@ -147,6 +147,13 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Dibujo de muros:** guías de alineación (el punto se engancha a la x o la y de un nodo y se dibuja una guía); con el dedo se arrastra y se suelta en cada esquina (radio de captura mayor) y la indicación permite escribir un largo y elegir la dirección (`ViewerApi.drawSegment`).
 - **Gestos:** `usePreventBrowserZoom` evita que pellizcar sobre las vistas haga zoom de la página (incluido Safari en iOS); el resto de la página conserva el zoom del navegador.
 
+## Colaboración en tiempo real (ADR-0011)
+
+- **Transporte** (`features/collab`): WebRTC entre navegadores, sin servidor propio. STUN públicos e ICE no incremental: la oferta y la respuesta completas se comprimen (`signal-codec.ts`, formato `D1.o.…` / `D1.a.…`) y se intercambian a mano (enlace `#join=…` y código de respuesta). Estrella: cada invitado se conecta solo con el anfitrión. Por par, dos canales negociados (`peer-link.ts`): `doc` (confiable, ordenado, mensajes grandes fragmentados con `framing.ts`) y `presence` (sin reintentos).
+- **Documento:** el store emite cada cambio local (`ProjectSync.onChange`: comando con sus argumentos e ids generados, deshacer/rehacer o reemplazo) y acepta operaciones remotas (`applyRemote`, `applyHistory`, `syncProject`), rehaciendo encima una vista previa en curso. `HostSync` es la autoridad de orden: ejecuta las operaciones de los invitados con los mismos ids (`commandByType` + `replayIds`), las registra en su historial (el de la sesión) y difunde los parches numerados. `GuestSync` es optimista: lo visible es lo confirmado más los pendientes reejecutados; lo que el anfitrión rechaza se descarta. Deshacer es de la sesión. Los invitados no autoguardan (el documento es del anfitrión).
+- **Presencia:** el visor informa la pose de la cámara (`onCameraPose`, ~12 Hz) y dibuja a los demás (`peers`: lista + `pose(id)` + `subscribe`, para no pasar por React a cada pose). Cuerpo simple con nombre: de pie en el recorrido, flotando en edición y vuelo; en el plano no se dibuja. Las poses se reenvían cada segundo aunque no cambien.
+- **Imágenes:** `onLocalAsset` avisa las imágenes nuevas; viajan en base64 por el canal del documento y el anfitrión envía las del proyecto a quien entra.
+
 ## Muros compartidos
 
 Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer.

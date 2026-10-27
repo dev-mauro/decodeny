@@ -16,6 +16,8 @@ import {
   type RefObject,
 } from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
+import { useInSession } from '@/features/collab/collab-store';
+import { shareCameraPose, useViewerPeers } from '@/features/collab/session';
 import { useTranslation } from 'react-i18next';
 import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
 import { PROJECT_TEMPLATES } from '@/features/samples/templates';
@@ -158,6 +160,9 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const assetUrls = useAssetStore((s) => s.urls);
   const assetUrl = useCallback((id: string) => assetUrls[id], [assetUrls]);
   const isEmpty = level.rooms.length === 0 && level.walls.length === 0;
+  // Sesión colaborativa: los demás se ven en 3D y la cámara propia se comparte.
+  const peers = useViewerPeers(level.id);
+  const inSession = useInSession();
 
   return (
     <section
@@ -226,6 +231,8 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 headBob={headBob}
                 touchControls={touchControls}
                 grid={grid}
+                peers={peers}
+                {...(inSession ? { onCameraPose: shareCameraPose } : {})}
                 locale={i18n.language}
               />
             </Suspense>

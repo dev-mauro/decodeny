@@ -559,7 +559,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 | Ventanas en arco, puertas especiales                                | Perfil de corte poligonal (§5.2)                                    |
 | Más materiales (mármol, piedra, madera natural)                     | Catálogo de materiales + pipeline KTX2                              |
 | Compartir proyecto por link / guardado en la nube                   | Documento serializable + capa de persistencia intercambiable        |
-| Colaboración en tiempo real                                         | Comandos + patches (migrables a CRDT, ej. Yjs)                      |
+| Colaboración en tiempo real ✅ (WebRTC, ADR-0011)                   | Comandos + patches (migrables a CRDT, ej. Yjs)                      |
 | WebXR (visores VR)                                                  | `NavigationMode` registrable                                        |
 | Ingreso por lenguaje natural ("living de 4×5 con ventana al norte") | Los comandos de dominio son una API invocable por un LLM            |
 | Importar planos (imagen de fondo a escala, DXF)                     | Registro de formatos de import                                      |

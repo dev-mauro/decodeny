@@ -1,8 +1,8 @@
 // Service worker de Decodeny: la aplicación funciona sin conexión.
 // El build inserta la versión de la caché y la lista de archivos (ver `serviceWorker()` en vite.config.ts).
-const CACHE = 'decodeny-dcca071de70f';
+const CACHE = 'decodeny-94ce72289654';
 /** @type {string[]} */
-const PRECACHE = ["index.html","assets/PersonMode-vDvUeJ4o.js","assets/index-BCBRS6le.css","assets/index-BY6XlQOr.js","assets/r3f-DP0IIxJo.js","assets/three-CASG3kcf.js","favicon.svg","manifest.webmanifest"];
+const PRECACHE = ["index.html","assets/PersonMode-ck2yB7fL.js","assets/canvas-Cb0bE-sf.js","assets/index-B4sXT6uj.css","assets/index-D4pWVQib.js","assets/item-thumbnails-CmI6Q0Xb.js","assets/part-geometry-C7F-fgwB.js","assets/r3f-Br7uEHW8.js","assets/three-CG__uD_D.js","assets/vendor-L2DOUzVG.js","favicon.svg","manifest.webmanifest"];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));

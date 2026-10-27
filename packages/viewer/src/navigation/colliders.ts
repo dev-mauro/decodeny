@@ -15,6 +15,7 @@ import {
   pointInPolygon,
   openingEnvelope,
   roomInteriorPolygon,
+  roomsOfWall,
   scale,
   sub,
   type Level,
@@ -23,6 +24,7 @@ import {
   type Wall,
 } from '@decodeny/domain';
 import { planToWorld, type Vec3Tuple } from '../coords';
+import type { ViewerSelection } from '../selection';
 
 /** Caja de colisión orientada (metros, mundo). */
 export interface BoxCollider {
@@ -164,3 +166,34 @@ export function itemColliders(level: Level): BoxCollider[] {
 
 /** Convierte una posición de mundo (m) a planta (mm). */
 export const worldToPlan = (x: number, z: number): Vec2 => ({ x: x * 1000, y: -z * 1000 });
+
+/**
+ * Dónde aparece la persona al entrar al recorrido: en `start` (punto elegido en la planta) si
+ * cae dentro de un recinto; si no, donde está la cámara si está dentro de uno; si no, en el
+ * recinto seleccionado o en el primero.
+ */
+export function chooseSpawn(
+  level: Level,
+  selection: ViewerSelection | null,
+  camera: { position: { x: number; z: number } },
+  yaw: number,
+  start: Vec2 | null = null,
+): SpawnPoint {
+  if (start && roomAt(level, start)) {
+    const [x, , z] = planToWorld(start);
+    return { feet: [x, level.elevation / 1000, z], yaw };
+  }
+  const plan = worldToPlan(camera.position.x, camera.position.z);
+  if (roomAt(level, plan)) {
+    return { feet: [camera.position.x, level.elevation / 1000, camera.position.z], yaw };
+  }
+  const selectedRoomId =
+    selection?.kind === 'room'
+      ? selection.id
+      : selection
+        ? roomsOfWall(level, selection.id)[0]?.id
+        : undefined;
+  const room = level.rooms.find((r) => r.id === selectedRoomId) ?? level.rooms[0];
+  if (room) return spawnInRoom(level, room, yaw);
+  return { feet: [0, level.elevation / 1000, 0], yaw };
+}

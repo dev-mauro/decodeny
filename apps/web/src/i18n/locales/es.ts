@@ -77,6 +77,10 @@ export const es = {
     keysSpeed: 'Rueda',
     keysPause: 'Esc',
     shortcut: 'Tecla {{key}}',
+    pickStart: 'Recorrer desde un punto: haz clic en el piso donde quieres empezar',
+    pickStartHint: 'Haz clic en el piso donde quieres empezar el recorrido · Esc cancela',
+    startOutside: 'Elige un punto dentro de un recinto.',
+    headBob: 'Balanceo de cabeza al caminar',
   },
   empty: {
     title: 'Comienza con las medidas',

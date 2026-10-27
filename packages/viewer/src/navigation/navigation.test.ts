@@ -6,7 +6,15 @@ import {
   type Level,
 } from '@decodeny/domain';
 import { describe, expect, it } from 'vitest';
-import { groundCollider, roomAt, spawnInRoom, wallColliders, worldToPlan } from './colliders';
+import {
+  chooseSpawn,
+  groundCollider,
+  roomAt,
+  spawnInRoom,
+  wallColliders,
+  worldToPlan,
+} from './colliders';
+import { BOB_AMPLITUDE, createHeadBob, stepHeadBob } from './head-bob';
 import { horizontalDirection, intentFromKeys, NO_MOVEMENT } from './input';
 import { capsuleDimensions, DEFAULT_PERSON } from './person-profile';
 
@@ -130,5 +138,37 @@ describe('intención de movimiento', () => {
     // En diagonal no se avanza más rápido.
     const [dx, dz] = horizontalDirection({ ...forward, right: 1 }, 0);
     expect(Math.hypot(dx, dz)).toBeCloseTo(1);
+  });
+});
+
+describe('balanceo de cabeza', () => {
+  it('quieto no se mueve; caminando oscila dentro de la amplitud y se apaga al detenerse', () => {
+    const state = createHeadBob();
+    for (let i = 0; i < 60; i++) expect(Math.abs(stepHeadBob(state, 0, 1 / 60))).toBe(0);
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < 180; i++) {
+      const y = stepHeadBob(state, 1.4, 1 / 60);
+      min = Math.min(min, y);
+      max = Math.max(max, y);
+    }
+    expect(max - min).toBeGreaterThan(BOB_AMPLITUDE * 0.8);
+    expect(max - min).toBeLessThanOrEqual(BOB_AMPLITUDE + 1e-9);
+    for (let i = 0; i < 120; i++) stepHeadBob(state, 0, 1 / 60);
+    expect(Math.abs(stepHeadBob(state, 0, 1 / 60))).toBeLessThan(0.001);
+  });
+});
+
+describe('punto de partida del recorrido', () => {
+  it('aparece en el punto elegido si cae en un recinto; si no, en el recinto', () => {
+    const level = levelWithRoom();
+    const outside = { position: { x: 100, z: 100 } };
+    const chosen = chooseSpawn(level, null, outside, 0.5, { x: 1000, y: 2000 });
+    expect(chosen.feet[0]).toBeCloseTo(1);
+    expect(chosen.feet[2]).toBeCloseTo(-2);
+    expect(chosen.yaw).toBe(0.5);
+    const fallback = chooseSpawn(level, null, outside, 0, { x: 50_000, y: 0 });
+    const room = spawnInRoom(level, level.rooms[0]!, 0);
+    expect(fallback.feet).toEqual(room.feet);
   });
 });

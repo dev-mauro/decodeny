@@ -12,6 +12,8 @@ export function WalkOverlay() {
   const mode = useUiStore((s) => s.navigationMode);
   const locked = useUiStore((s) => s.pointerLocked);
   const setMode = useUiStore((s) => s.setNavigationMode);
+  const headBob = useUiStore((s) => s.headBob);
+  const setHeadBob = useUiStore((s) => s.setHeadBob);
   if (mode === 'edit') return null;
 
   const controls: [string, string][] = [
@@ -67,6 +69,17 @@ export function WalkOverlay() {
             </div>
           ))}
         </dl>
+        {mode === 'person' && (
+          <label className="pointer-events-auto flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={headBob}
+              onChange={(e) => setHeadBob(e.target.checked)}
+              data-testid="head-bob"
+            />
+            {t('navigation.headBob')}
+          </label>
+        )}
         <Button
           className="pointer-events-auto"
           onClick={() => setMode('edit')}

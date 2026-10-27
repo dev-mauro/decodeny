@@ -97,7 +97,8 @@ export function useShortcuts(): void {
         if (nudgeSelectedItems(dx, dy)) e.preventDefault();
       } else if (key === 'escape') {
         const ui = useUiStore.getState();
-        if (ui.measuring) ui.setMeasuring(false);
+        if (ui.pickingWalkStart) ui.setPickingWalkStart(false);
+        else if (ui.measuring) ui.setMeasuring(false);
         else ui.select(null);
       } else if (!mod && /^[1-9]$/.test(e.key)) {
         switchMode(e.key);

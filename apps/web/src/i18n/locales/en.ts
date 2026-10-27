@@ -81,6 +81,10 @@ export const en: Translation<Resources> = {
     keysSpeed: 'Wheel',
     keysPause: 'Esc',
     shortcut: 'Key {{key}}',
+    pickStart: 'Walk from a point: click the floor where you want to start',
+    pickStartHint: 'Click the floor where you want to start the walk · Esc cancels',
+    startOutside: 'Pick a point inside a room.',
+    headBob: 'Head bob while walking',
   },
   empty: {
     title: 'Start with the measurements',

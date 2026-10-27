@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from 'react';
 import { Box3, Sphere, Vector3 } from 'three';
+import { prefersReducedMotion } from './motion';
 
 /** API imperativa de cámara expuesta a la UI (botones "Encuadrar", "Vista superior"). */
 export interface ViewerCameraApi {
@@ -31,8 +32,6 @@ const DEFAULT_AZIMUTH = Math.PI / 5;
 const DEFAULT_POLAR = Math.PI / 3.6;
 
 /** Preferencia de accesibilidad: sin transiciones animadas de cámara. */
-const prefersReducedMotion = (): boolean =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Cámara orbital del modo edición (rotar, desplazar, acercar). */
 export function EditCamera({ bounds, apiRef, autoFitted }: EditCameraProps) {

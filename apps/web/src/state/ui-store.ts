@@ -75,6 +75,12 @@ interface UiState {
    */
   readonly finishEditors: number;
   readonly placement: ItemPlacementSession | null;
+  /** Eligiendo con un clic en el piso dónde empieza el recorrido. */
+  readonly pickingWalkStart: boolean;
+  /** Punto de partida del recorrido en curso (planta, mm); `null`: el automático. */
+  readonly walkStart: Vec2 | null;
+  /** Balanceo de cabeza al caminar (preferencia del usuario, se recuerda). */
+  readonly headBob: boolean;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
   readonly select: (selection: ViewerSelection | null, options?: { additive?: boolean }) => void;
   readonly selectMany: (targets: readonly ViewerSelection[], additive?: boolean) => void;
@@ -96,6 +102,21 @@ interface UiState {
   /** Marca un editor de terminación como en uso; devuelve la función que lo libera. */
   readonly holdFinishEditor: () => () => void;
   readonly setPlacement: (placement: ItemPlacementSession | null) => void;
+  readonly setPickingWalkStart: (picking: boolean) => void;
+  /** Empieza el recorrido en `point`. */
+  readonly walkFrom: (point: Vec2) => void;
+  readonly setHeadBob: (headBob: boolean) => void;
+}
+
+const HEAD_BOB_KEY = 'decodeny.headBob';
+
+/** Balanceo de cabeza recordado (apagado por defecto: puede marear). */
+function readHeadBob(): boolean {
+  try {
+    return localStorage.getItem(HEAD_BOB_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /** Altura de corte por defecto: sobre muebles bajos, bajo dinteles y ventanas altas. */
@@ -124,18 +145,49 @@ export const useUiStore = create<UiState>()((set) => ({
   planTool: 'select',
   finishEditors: 0,
   placement: null,
+  pickingWalkStart: false,
+  walkStart: null,
+  headBob: readHeadBob(),
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
   // Recorrer o volar implica la vista 3D.
+  // El punto de partida elegido vale para un recorrido: al salir, vuelve el automático.
   setNavigationMode: (navigationMode) =>
-    set({
+    set((s) => ({
       navigationMode,
       pointerLocked: false,
       measuring: false,
       measurePoints: [],
+      pickingWalkStart: false,
+      walkStart: navigationMode === 'person' ? s.walkStart : null,
       ...(navigationMode === 'edit' ? {} : { view: '3d' as const, planTool: 'select' as const }),
+    })),
+  setPickingWalkStart: (pickingWalkStart) =>
+    set(
+      pickingWalkStart
+        ? { pickingWalkStart, measuring: false, measurePoints: [], planTool: 'select' }
+        : { pickingWalkStart },
+    ),
+  walkFrom: (point) =>
+    set({
+      walkStart: point,
+      pickingWalkStart: false,
+      navigationMode: 'person',
+      pointerLocked: false,
+      measuring: false,
+      measurePoints: [],
+      view: '3d',
+      planTool: 'select',
     }),
+  setHeadBob: (headBob) => {
+    try {
+      localStorage.setItem(HEAD_BOB_KEY, headBob ? '1' : '0');
+    } catch {
+      // Preferencia no persistida: vale para esta sesión.
+    }
+    set({ headBob });
+  },
   // La medición sigue activa al cambiar de vista; sus puntos no (la planta mide sin altura).
   setView: (view) =>
     set(

@@ -1,4 +1,4 @@
-import { roomsOfWall, type Level } from '@decodeny/domain';
+import type { Level } from '@decodeny/domain';
 import { useFrame, useThree } from '@react-three/fiber';
 import {
   CapsuleCollider,
@@ -12,16 +12,8 @@ import {
 } from '@react-three/rapier';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Euler } from 'three';
-import type { ViewerSelection } from '../selection';
-import {
-  groundCollider,
-  itemColliders,
-  roomAt,
-  spawnInRoom,
-  wallColliders,
-  worldToPlan,
-  type SpawnPoint,
-} from './colliders';
+import { chooseSpawn, groundCollider, itemColliders, wallColliders } from './colliders';
+import { createHeadBob, stepHeadBob } from './head-bob';
 import { useKeyboardIntent } from './input';
 import { capsuleDimensions } from './person-profile';
 import { stepPerson, type PersonMotionState } from './person-step';
@@ -69,30 +61,14 @@ const LevelColliders = memo(function LevelColliders({ level }: { readonly level:
   );
 });
 
-/** Recinto de partida: el que contiene la cámara, el seleccionado o el primero. */
-function chooseSpawn(
-  level: Level,
-  selection: ViewerSelection | null,
-  camera: { position: { x: number; z: number } },
-  yaw: number,
-): SpawnPoint {
-  const plan = worldToPlan(camera.position.x, camera.position.z);
-  const containing = roomAt(level, plan);
-  if (containing) {
-    return { feet: [camera.position.x, level.elevation / 1000, camera.position.z], yaw };
-  }
-  const selectedRoomId =
-    selection?.kind === 'room'
-      ? selection.id
-      : selection
-        ? roomsOfWall(level, selection.id)[0]?.id
-        : undefined;
-  const room = level.rooms.find((r) => r.id === selectedRoomId) ?? level.rooms[0];
-  if (room) return spawnInRoom(level, room, yaw);
-  return { feet: [0, level.elevation / 1000, 0], yaw };
-}
-
-function PersonController({ level, selection, profile, onPointerLockChange }: NavigationModeProps) {
+function PersonController({
+  level,
+  selection,
+  profile,
+  onPointerLockChange,
+  walkStart,
+  headBob = false,
+}: NavigationModeProps) {
   const camera = useThree((s) => s.camera);
   const { world } = useRapier();
   const look = usePointerLook(onPointerLockChange);
@@ -109,6 +85,7 @@ function PersonController({ level, selection, profile, onPointerLockChange }: Na
       selection,
       camera,
       new Euler().setFromQuaternion(camera.quaternion, 'YXZ').y,
+      walkStart ?? null,
     ),
   );
   const spawnCenter: [number, number, number] = [
@@ -164,9 +141,19 @@ function PersonController({ level, selection, profile, onPointerLockChange }: Na
     b.setNextKinematicTranslation(next);
   });
 
-  useFrame(() => {
+  // Balanceo de cabeza opcional, según la velocidad horizontal real (no la intención).
+  const bob = useRef(createHeadBob());
+  const last = useRef<{ x: number; z: number } | null>(null);
+  useFrame((_, dt) => {
     const t = body.current?.translation();
-    if (t) camera.position.set(t.x, t.y + dims.eyeOffset, t.z);
+    if (!t) return;
+    let offset = 0;
+    if (headBob && dt > 0) {
+      const prev = last.current ?? t;
+      offset = stepHeadBob(bob.current, Math.hypot(t.x - prev.x, t.z - prev.z) / dt, dt);
+    }
+    last.current = { x: t.x, z: t.z };
+    camera.position.set(t.x, t.y + dims.eyeOffset + offset, t.z);
   });
 
   return (

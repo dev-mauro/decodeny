@@ -1,4 +1,4 @@
-import { findLevel, type Project } from '@decodeny/domain';
+import { findLevel, type Project, type Vec2 } from '@decodeny/domain';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, type Ref, type RefObject } from 'react';
 import { PerspectiveCamera } from 'three';
@@ -7,6 +7,7 @@ import { navigationModes } from './navigation/registry';
 import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
+import { prefersReducedMotion } from './scene/motion';
 import type { ViewerCameraApi } from './scene/EditCamera';
 import { ContextLossGuard } from './scene/ContextLossGuard';
 import { ViewerApiBridge, type ViewerApi } from './scene/ViewerApiBridge';
@@ -61,6 +62,10 @@ export interface DecodenyViewerProps {
   /** Se invoca cuando el recorrido captura o libera el mouse (Pointer Lock). */
   readonly onPointerLockChange?: (locked: boolean) => void;
   readonly personProfile?: PersonProfile;
+  /** Punto de partida del recorrido (planta, mm), p. ej. elegido con un clic en el piso. */
+  readonly walkStart?: Vec2 | null;
+  /** Balanceo de cabeza al caminar; se ignora si el sistema pide reducir el movimiento. */
+  readonly headBob?: boolean;
   /** Día (sol + cielo) o noche (solo luminarias). */
   readonly lighting?: LightingMode;
   /**
@@ -123,6 +128,8 @@ export function DecodenyViewer({
   navigationMode = 'edit',
   onPointerLockChange,
   personProfile = DEFAULT_PERSON,
+  walkStart = null,
+  headBob = false,
   lighting = 'day',
   assetUrl,
   hiddenGroups,
@@ -200,6 +207,8 @@ export function DecodenyViewer({
               cameraApiRef={cameraRef}
               autoFitted={autoFitted}
               onPointerLockChange={onPointerLockChange}
+              walkStart={walkStart}
+              headBob={headBob && !prefersReducedMotion()}
             />
           </Suspense>
         )}

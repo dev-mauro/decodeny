@@ -61,6 +61,8 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - La entrada se abstrae en `MovementIntent` (adelante/derecha/arriba/correr): hoy la produce el teclado (`KeyboardEvent.code`, independiente del layout); en I8 la producirá un joystick táctil.
 - El paso físico de la persona (`stepPerson`) es una función pura sobre un controlador cinemático; se prueba en Node contra Rapier real (`person-physics.test.ts`).
 - `PersonProfile` define estatura, altura de ojos, radio, velocidades y escalón máximo: base para futuros perfiles y para sentarse/acostarse.
+- **Punto de partida:** `chooseSpawn` usa `walkStart` (planta) si cae en un recinto; si no, la cámara si está dentro de uno, o el recinto seleccionado. La app lo elige con la ubicación con el puntero (ADR-0010): un clic en el piso, en 3D o en la planta.
+- **Balanceo de cabeza** (`headBob`, opcional y recordado): `stepHeadBob` sube y baja la cámara una vez por paso según la velocidad real; se desactiva con `prefers-reduced-motion`.
 
 ## Puertas y ventanas (I3)
 

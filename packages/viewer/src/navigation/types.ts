@@ -1,4 +1,4 @@
-import type { Level } from '@decodeny/domain';
+import type { Level, Vec2 } from '@decodeny/domain';
 import type { ComponentType, RefObject } from 'react';
 import type { Box3 } from 'three';
 import type { ViewerCameraApi } from '../scene/EditCamera';
@@ -18,6 +18,10 @@ export interface NavigationModeProps {
   /** Si ya se encuadró el contenido alguna vez (evita reencuadrar al volver a edición). */
   readonly autoFitted: RefObject<boolean>;
   readonly onPointerLockChange?: ((locked: boolean) => void) | undefined;
+  /** Punto de partida elegido (planta, mm); si no cae en un recinto se usa el automático. */
+  readonly walkStart?: Vec2 | null | undefined;
+  /** Balanceo de cabeza al caminar (apagado por defecto). */
+  readonly headBob?: boolean | undefined;
 }
 
 export interface NavigationModeDefinition {

@@ -424,8 +424,8 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - Pointer lock + WASD/flechas, mouse para mirar, Shift para trotar (≈1,4 m/s caminando, ≈3 m/s trotando).
 - Rapier: character controller kinemático con cápsula (radio ≈0,25 m), gravedad, _step offset_ (preparado para escaleras futuras), deslizamiento contra muros.
 - Colliders generados automáticamente desde el documento (muros por tramos entre vanos, piso, luego muebles).
-- Punto de aparición: centro del recinto seleccionado o "click en el piso para aparecer aquí".
-- Balanceo de cabeza opcional (apagado por defecto; accesibilidad/mareo).
+- Punto de aparición: centro del recinto seleccionado o "click en el piso para aparecer aquí" ✅.
+- Balanceo de cabeza opcional (apagado por defecto; accesibilidad/mareo) ✅.
 
 **Modo fantasma (vista libre)**
 

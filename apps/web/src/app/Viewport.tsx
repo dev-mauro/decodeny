@@ -15,6 +15,7 @@ import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
 import { useItemDragHandler } from '@/features/furniture/use-item-drag-handler';
 import { handlePlacementEvent } from '@/features/furniture/placement';
+import { handleWalkStartEvent } from '@/features/navigation/walk-start';
 import { itemsInArea } from '@/features/furniture/item-actions';
 import { useOpeningDragHandler } from '@/features/openings/use-opening-drag-handler';
 import { useNodeDragHandler } from '@/features/plan/use-node-drag-handler';
@@ -71,10 +72,18 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const measurePoints = useUiStore((s) => s.measurePoints);
   const editingFinish = useUiStore((s) => s.finishEditors > 0);
   const pointerHeight = useUiStore((s) => s.placement?.pointerHeight ?? null);
+  const pickingWalkStart = useUiStore((s) => s.pickingWalkStart);
+  const walkStart = useUiStore((s) => s.walkStart);
+  const headBob = useUiStore((s) => s.headBob);
+  // Una sola sesión de ubicación a la vez: un mueble nuevo o el punto de partida del recorrido.
   const placement = useMemo(
     () =>
-      pointerHeight === null ? null : { height: pointerHeight, onEvent: handlePlacementEvent },
-    [pointerHeight],
+      pointerHeight !== null
+        ? { height: pointerHeight, onEvent: handlePlacementEvent }
+        : pickingWalkStart
+          ? { height: 0, onEvent: handleWalkStartEvent }
+          : null,
+    [pickingWalkStart, pointerHeight],
   );
   const addMeasurePoint = useUiStore((s) => s.addMeasurePoint);
   const viewerRef = useRef<ViewerApi>(null);
@@ -144,6 +153,8 @@ export function Viewport({ cameraRef }: ViewportProps) {
               cameraRef={cameraRef}
               navigationMode={navigationMode}
               onPointerLockChange={setPointerLocked}
+              walkStart={walkStart}
+              headBob={headBob}
               locale={i18n.language}
             />
           )}
@@ -159,7 +170,10 @@ export function Viewport({ cameraRef }: ViewportProps) {
       </div>
 
       <WallDrawHint />
-      {placement && <ToolHint text={t('catalog.placeHint')} testId="placement-hint" />}
+      {pointerHeight !== null && <ToolHint text={t('catalog.placeHint')} testId="placement-hint" />}
+      {pickingWalkStart && pointerHeight === null && (
+        <ToolHint text={t('navigation.pickStartHint')} testId="walk-start-hint" />
+      )}
 
       <ViewportTools viewerRef={viewerRef} />
       <MeasurePanel />

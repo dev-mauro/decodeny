@@ -1,5 +1,6 @@
 import { MousePointer2, PenLine, ScanSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { WalkFromPointButton } from '@/features/navigation/WalkFromPointButton';
 import { detectRoomsFromWalls } from '@/features/walls/wall-actions';
 import { cn } from '@/shared/lib/cn';
 import { IconButton } from '@/shared/ui/Button';
@@ -45,6 +46,7 @@ export function PlanTools() {
       >
         <ScanSearch className="size-4" />
       </IconButton>
+      <WalkFromPointButton />
     </div>
   );
 }

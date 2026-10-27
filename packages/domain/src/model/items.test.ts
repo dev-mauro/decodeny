@@ -288,6 +288,14 @@ describe('ajuste a muros al arrastrar', () => {
     expect(snap.neighbors).toEqual([0]);
   });
 
+  it('sin muros cerca, se ajusta al paso de la cuadrícula elegido', () => {
+    const bench = benchWithRoom();
+    const snap = snapItemPlacement(level(bench), { x: 1_870, y: 1_640 }, 0, NIGHTSTAND, {
+      gridStep: 250,
+    });
+    expect(snap.position).toEqual({ x: 1_750, y: 1_750 });
+  });
+
   it('lejos de otros muebles no se ajusta a ellos', () => {
     const bench = benchWithRoom();
     const snap = snapItemPlacement(level(bench), { x: 2000, y: 1500 }, 0, NIGHTSTAND, {

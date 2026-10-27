@@ -71,8 +71,8 @@ function bestAxisSnap(
   return best;
 }
 
-const snapToGrid = (v: number, axisAligned: boolean) =>
-  axisAligned ? Math.round(v / ROOM_GRID_STEP) * ROOM_GRID_STEP : Math.round(v);
+const snapToGrid = (v: number, axisAligned: boolean, step = ROOM_GRID_STEP) =>
+  axisAligned ? Math.round(v / step) * step : Math.round(v);
 
 /**
  * Ajusta la traslación de un recinto para que sus muros coincidan en eje con los de los
@@ -84,6 +84,8 @@ export function snapRoomTranslation(
   roomId: string,
   delta: Vec2,
   threshold = ROOM_SNAP_DISTANCE,
+  /** Paso de la grilla cuando no hay muros cerca (mm). */
+  gridStep = ROOM_GRID_STEP,
 ): RoomSnap {
   const room = requireRoom(level, roomId);
   const positions = nodePositions(level);
@@ -112,7 +114,10 @@ export function snapRoomTranslation(
     () => true,
   );
   if (!first) {
-    return { delta: { x: snapToGrid(delta.x, true), y: snapToGrid(delta.y, true) }, wallIds: [] };
+    return {
+      delta: { x: snapToGrid(delta.x, true, gridStep), y: snapToGrid(delta.y, true, gridStep) },
+      wallIds: [],
+    };
   }
   let snapped = add(delta, scale(first.normal, first.offset));
   const wallIds = [first.target.wallId];
@@ -141,7 +146,7 @@ export function snapRoomTranslation(
     else {
       const axisAligned = Math.abs(along.x) < 1e-9 || Math.abs(along.y) < 1e-9;
       const free = dot(snapped, along);
-      snapped = add(snapped, scale(along, snapToGrid(free, axisAligned) - free));
+      snapped = add(snapped, scale(along, snapToGrid(free, axisAligned, gridStep) - free));
     }
   }
   return { delta: { x: Math.round(snapped.x), y: Math.round(snapped.y) }, wallIds };
@@ -159,13 +164,14 @@ export function snapNodePosition(
   nodeId: string,
   p: Vec2,
   threshold = NODE_SNAP_DISTANCE,
+  gridStep = ROOM_GRID_STEP,
 ): Vec2 {
   const positions = nodePositions(level);
   const neighbors = level.walls.flatMap((w) =>
     w.start === nodeId ? [w.end] : w.end === nodeId ? [w.start] : [],
   );
-  let x = Math.round(p.x / ROOM_GRID_STEP) * ROOM_GRID_STEP;
-  let y = Math.round(p.y / ROOM_GRID_STEP) * ROOM_GRID_STEP;
+  let x = Math.round(p.x / gridStep) * gridStep;
+  let y = Math.round(p.y / gridStep) * gridStep;
   let bestX = threshold;
   let bestY = threshold;
   for (const id of neighbors) {
@@ -193,6 +199,37 @@ export interface DrawSnap {
   /** Punto ajustado (mm, enteros). */
   readonly point: Vec2;
   readonly kind: DrawSnapKind;
+  /**
+   * Nodos con los que el punto quedó parejo (misma x o misma y): la vista dibuja una guía desde
+   * cada uno. Evita, p. ej., que un muro paralelo a otro termine unos centímetros más allá.
+   */
+  readonly guides?: readonly Vec2[];
+}
+
+/**
+ * Alinea el punto con nodos existentes: en x, en y o en ambas si `axes` lo permite (con la
+ * dirección bloqueada solo se ajusta el eje en que se avanza). Devuelve el punto y las guías.
+ */
+function alignToNodes(
+  positions: ReadonlyMap<string, Vec2>,
+  p: Vec2,
+  axes: { readonly x: boolean; readonly y: boolean },
+  tolerance: number,
+  exclude: Vec2 | null,
+): { point: Vec2; guides: Vec2[] } {
+  let bestX: Vec2 | null = null;
+  let bestY: Vec2 | null = null;
+  for (const n of positions.values()) {
+    if (n.x === exclude?.x && n.y === exclude.y) continue;
+    const dx = Math.abs(n.x - p.x);
+    const dy = Math.abs(n.y - p.y);
+    if (axes.x && dx <= tolerance && (!bestX || dx < Math.abs(bestX.x - p.x))) bestX = n;
+    if (axes.y && dy <= tolerance && (!bestY || dy < Math.abs(bestY.y - p.y))) bestY = n;
+  }
+  return {
+    point: { x: bestX ? bestX.x : p.x, y: bestY ? bestY.y : p.y },
+    guides: [bestX, bestY].filter((g): g is Vec2 => g !== null),
+  };
 }
 
 /**
@@ -207,6 +244,8 @@ export function snapDrawPoint(
   from: Vec2 | null,
   tolerance: number,
   free = false,
+  /** Paso de la grilla y del largo bloqueado (mm). */
+  gridStep = ROOM_GRID_STEP,
 ): DrawSnap {
   const round = (p: Vec2): Vec2 => ({ x: Math.round(p.x), y: Math.round(p.y) });
   if (free) return { point: round(raw), kind: 'free' };
@@ -269,14 +308,33 @@ export function snapDrawPoint(
   }
 
   if (from && locked) {
-    const along = Math.round(dot(sub(raw, from), locked) / ROOM_GRID_STEP) * ROOM_GRID_STEP;
-    return { point: round(add(from, scale(locked, along))), kind: 'angle' };
+    const along = Math.round(dot(sub(raw, from), locked) / gridStep) * gridStep;
+    const point = round(add(from, scale(locked, along)));
+    // Horizontal: se ajusta la x; vertical: la y; en diagonal no (movería la dirección).
+    const horizontal = locked.y === 0;
+    const vertical = locked.x === 0;
+    if (!horizontal && !vertical) return { point, kind: 'angle' };
+    const aligned = alignToNodes(positions, point, { x: horizontal, y: vertical }, tolerance, from);
+    return aligned.guides.length > 0
+      ? { point: aligned.point, kind: 'angle', guides: aligned.guides }
+      : { point, kind: 'angle' };
   }
+  const point = {
+    x: Math.round(raw.x / gridStep) * gridStep,
+    y: Math.round(raw.y / gridStep) * gridStep,
+  };
+  const aligned = alignToNodes(positions, raw, { x: true, y: true }, tolerance, from);
+  if (aligned.guides.length === 0) return { point, kind: 'grid' };
+  // Lo alineado toma la coordenada del nodo; el otro eje sigue en la grilla.
+  const ax = aligned.guides.some(
+    (g) => g.x === aligned.point.x && Math.abs(g.x - raw.x) <= tolerance,
+  );
+  const ay = aligned.guides.some(
+    (g) => g.y === aligned.point.y && Math.abs(g.y - raw.y) <= tolerance,
+  );
   return {
-    point: {
-      x: Math.round(raw.x / ROOM_GRID_STEP) * ROOM_GRID_STEP,
-      y: Math.round(raw.y / ROOM_GRID_STEP) * ROOM_GRID_STEP,
-    },
+    point: { x: ax ? aligned.point.x : point.x, y: ay ? aligned.point.y : point.y },
     kind: 'grid',
+    guides: aligned.guides,
   };
 }

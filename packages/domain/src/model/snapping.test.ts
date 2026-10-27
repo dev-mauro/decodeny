@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { createRectangularRoom, moveRoom } from '../commands';
 import { benchWithRoom, createBench, type TestBench } from '../test-utils/fixtures';
 import { requireLevel, roomsOfWall } from './queries';
-import { ROOM_SNAP_DISTANCE, snapDrawPoint, snapRoomTranslation } from './snapping';
+import {
+  ROOM_SNAP_DISTANCE,
+  snapDrawPoint,
+  snapNodePosition,
+  snapRoomTranslation,
+} from './snapping';
 
 const T = 150;
 
@@ -106,5 +111,47 @@ describe('snapDrawPoint', () => {
       point: { x: 2003, y: -21 },
       kind: 'free',
     });
+  });
+});
+
+describe('cuadrícula', () => {
+  it('el dibujo, los nodos y los recintos se ajustan al paso de la cuadrícula', () => {
+    const bench = benchWithRoom();
+    const lvl = requireLevel(bench.project, bench.levelId);
+    // Lejos de muros y nodos: punta a la grilla de 50 cm.
+    expect(snapDrawPoint(lvl, { x: 9_740, y: 8_260 }, null, 50, false, 500)).toEqual({
+      point: { x: 9_500, y: 8_500 },
+      kind: 'grid',
+    });
+    // Con dirección bloqueada, el largo va de a 50 cm.
+    expect(
+      snapDrawPoint(lvl, { x: 12_740, y: 10_010 }, { x: 10_000, y: 10_000 }, 50, false, 500),
+    ).toEqual({ point: { x: 12_500, y: 10_000 }, kind: 'angle' });
+    const corner = lvl.nodes[0]!;
+    expect(snapNodePosition(lvl, corner.id, { x: 5_180, y: 5_320 }, 150, 500)).toEqual({
+      x: 5_000,
+      y: 5_500,
+    });
+  });
+});
+
+describe('guías de alineación al dibujar', () => {
+  it('un muro paralelo termina parejo con el extremo del muro cercano', () => {
+    const bench = benchWithRoom();
+    const lvl = requireLevel(bench.project, bench.levelId);
+    // El recinto tiene esquinas de eje en x = -75 y x = 4075. Se dibuja una paralela más arriba,
+    // y el puntero queda 6 cm antes del final.
+    const snap = snapDrawPoint(lvl, { x: 4_015, y: 5_010 }, { x: -75, y: 5_000 }, 100);
+    expect(snap.kind).toBe('angle');
+    expect(snap.point).toEqual({ x: 4_075, y: 5_000 });
+    expect(snap.guides?.some((g) => g.x === 4_075)).toBe(true);
+  });
+
+  it('sin dirección bloqueada alinea x e y por separado', () => {
+    const bench = benchWithRoom();
+    const lvl = requireLevel(bench.project, bench.levelId);
+    const snap = snapDrawPoint(lvl, { x: 4_040, y: 6_330 }, null, 100);
+    expect(snap.point).toEqual({ x: 4_075, y: 6_330 });
+    expect(snap.guides).toHaveLength(1);
   });
 });

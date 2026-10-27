@@ -38,8 +38,11 @@ test('capas, corte de muros y captura de imagen', async ({ page }) => {
   await page.getByTestId('toggle-layers').click();
   await page.getByTestId('layer-furniture').uncheck();
   await expect(page.getByTestId('layer-furniture')).not.toBeChecked();
-  await page.getByTestId('layer-section').check();
+  // El corte de muros está en Opciones.
+  await page.getByTestId('options').click();
+  await page.getByTestId('option-section').check();
   await expect(page.getByTestId('section-height')).toHaveValue('1,20');
+  await page.keyboard.press('Escape');
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByTestId('capture').click();

@@ -1,4 +1,6 @@
 import { Grid } from '@react-three/drei';
+import { FloorGrid } from './FloorGrid';
+import { setFloorGrid } from '../materials/finish-materials';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { Object3D, PMREMGenerator, Sphere, Vector3, type Box3 } from 'three';
@@ -33,6 +35,13 @@ interface SceneEnvironmentProps {
   readonly bounds: Box3 | null;
   /** Noche: sin sol y con poca luz ambiente; solo iluminan las luminarias. */
   readonly lighting?: LightingMode;
+  /**
+   * Cuadrícula de trabajo (paso en mm): se dibuja sobre los pisos, más marcada que la del suelo
+   * decorativo, con líneas mayores cada metro. `null`: solo la del suelo, bajo los pisos.
+   */
+  readonly gridStep?: number | null;
+  /** Altura del piso del nivel (mm), donde va la cuadrícula de trabajo. */
+  readonly gridElevation?: number;
 }
 
 const LIGHTING: Record<
@@ -44,6 +53,7 @@ const LIGHTING: Record<
     sun: number;
     env: number;
     grid: readonly [string, string];
+    workGrid: readonly [string, string];
   }
 > = {
   day: {
@@ -53,6 +63,7 @@ const LIGHTING: Record<
     sun: 1.8,
     env: 0.55,
     grid: ['#cfd3da', '#a9afb9'],
+    workGrid: ['#7d8794', '#4b5563'],
   },
   night: {
     background: '#151a24',
@@ -61,14 +72,30 @@ const LIGHTING: Record<
     sun: 0,
     env: 0.05,
     grid: ['#232a37', '#2f3848'],
+    workGrid: ['#8b96a8', '#c3cad6'],
   },
 };
 
 const DEFAULT_CENTER = new Vector3(0, 0, 0);
 
 /** Iluminación base, suelo de referencia y grilla métrica (celdas de 0,5 m, secciones de 1 m). */
-export function SceneEnvironment({ bounds, lighting = 'day' }: SceneEnvironmentProps) {
+export function SceneEnvironment({
+  bounds,
+  lighting = 'day',
+  gridStep = null,
+  gridElevation = 0,
+}: SceneEnvironmentProps) {
   const look = LIGHTING[lighting];
+  const invalidate = useThree((st) => st.invalidate);
+  // La cuadrícula sobre los pisos va en su shader (ver `setFloorGrid`): mismo paso y origen.
+  useEffect(() => {
+    setFloorGrid(
+      gridStep ? gridStep / 1000 : 0,
+      gridStep && gridStep < 1000 ? Math.round(1000 / gridStep) : 5,
+      look.workGrid[1],
+    );
+    invalidate();
+  }, [gridStep, invalidate, look.workGrid]);
   const target = useMemo(() => new Object3D(), []);
   const { center, radius } = useMemo(() => {
     if (!bounds) return { center: DEFAULT_CENTER, radius: 8 };
@@ -109,18 +136,27 @@ export function SceneEnvironment({ bounds, lighting = 'day' }: SceneEnvironmentP
         <planeGeometry args={[1000, 1000]} />
         <shadowMaterial opacity={0.12} />
       </mesh>
-      <Grid
-        position-y={-0.002}
-        infiniteGrid
-        cellSize={0.5}
-        cellThickness={0.6}
-        cellColor={look.grid[0]}
-        sectionSize={1}
-        sectionThickness={1}
-        sectionColor={look.grid[1]}
-        fadeDistance={90}
-        fadeStrength={1.4}
-      />
+      {gridStep ? (
+        <FloorGrid
+          bounds={bounds}
+          stepMm={gridStep}
+          elevationMm={gridElevation}
+          colors={look.workGrid}
+        />
+      ) : (
+        <Grid
+          position-y={-0.002}
+          infiniteGrid
+          cellSize={0.5}
+          cellThickness={0.6}
+          cellColor={look.grid[0]}
+          sectionSize={1}
+          sectionThickness={1}
+          sectionColor={look.grid[1]}
+          fadeDistance={90}
+          fadeStrength={1.4}
+        />
+      )}
     </>
   );
 }

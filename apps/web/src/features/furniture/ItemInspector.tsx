@@ -18,6 +18,7 @@ import {
 import { Copy, Move, RotateCcw, RotateCw, Trash2, TriangleAlert } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCoarsePointer } from '@/shared/lib/use-media-query';
 import { ParamField } from '@/features/catalog/ParamField';
 import { Button, IconButton } from '@/shared/ui/Button';
 import { LengthField } from '@/shared/ui/LengthField';
@@ -37,6 +38,7 @@ interface ItemInspectorProps {
 /** Propiedades de un mueble, generadas desde su definición de catálogo. */
 export function ItemInspector({ level, item }: ItemInspectorProps) {
   const { t, i18n } = useTranslation();
+  const touch = useCoarsePointer();
   const run = useCommand();
   const select = useUiStore((s) => s.select);
   const ref = { levelId: level.id, itemId: item.id };
@@ -254,7 +256,13 @@ export function ItemInspector({ level, item }: ItemInspectorProps) {
         )}
         <p className="flex gap-2 text-xs text-slate-500">
           <Move className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          {t(definition.mount === 'wall' ? 'furniture.dragHintWall' : 'furniture.dragHint')}
+          {t(
+            definition.mount === 'wall'
+              ? 'furniture.dragHintWall'
+              : touch
+                ? 'furniture.dragHintTouch'
+                : 'furniture.dragHint',
+          )}
         </p>
       </fieldset>
 

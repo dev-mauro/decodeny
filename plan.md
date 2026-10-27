@@ -535,7 +535,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - Detección automática de recintos a partir del grafo de muros (ciclos mínimos) ✅: al cerrar un contorno se crea el recinto; un tabique que cruza un recinto lo divide (la parte mayor conserva nombre y terminaciones); borrar el muro que separa dos recintos los une.
 - Herramienta de medición (distancia entre dos puntos en 3D y 2D) ✅, área de recintos (m²) ✅.
 - Plantillas de inicio (estudio, 1D1B, 2D2B).
-- Capas/visibilidad (ocultar cielo, muebles, decoración), "corte" de muros a media altura en vista de edición.
+- Capas/visibilidad (ocultar cielo, muebles, decoración), "corte" de muros a media altura en vista de edición. Opciones ✅: corte de muros (solo la envolvente; los muebles quedan enteros), cuadrícula de trabajo con ancho elegible (también fija el paso de los ajustes) y modo solo lectura.
 - Capturas de pantalla (PNG) desde cualquier modo.
 
 ### I8 — Endurecimiento para producción

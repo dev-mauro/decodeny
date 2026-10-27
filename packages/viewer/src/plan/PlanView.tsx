@@ -48,6 +48,7 @@ import { itemGroupOf, type ItemGroup } from '../scene/item-groups';
 import { measureDistance, type MeasurePoint } from '../scene/measure';
 import { clipToSlab } from '../scene/section-geometry';
 import { isAdditiveClick } from '../scene/interaction';
+import { usePreventBrowserZoom } from '../scene/use-prevent-browser-zoom';
 import type { ViewerApi } from '../scene/ViewerApiBridge';
 import { measureOutlines, snapMeasurePoint, type MeasureSnap } from './measure-snap';
 import {
@@ -97,11 +98,15 @@ export interface PlanViewProps {
   readonly onWallDraw?: (from: Vec2, to: Vec2) => void;
   /** Esc sin nada en curso: salir de la herramienta. */
   readonly onToolExit?: () => void;
+  /** Hay un tramo en curso (un punto de partida puesto): habilita escribir largo y dirección. */
+  readonly onDrawChainChange?: (active: boolean) => void;
   /** Ubicación con el puntero (mismo contrato que en la vista 3D; la altura no aplica). */
   readonly placement?: ViewerPlacement | null;
   /** Medición (mismo contrato que la vista 3D): cada clic entrega un punto (z = 0). */
   readonly onMeasurePoint?: (point: MeasurePoint) => void;
   readonly measurePoints?: readonly MeasurePoint[];
+  /** Cuadrícula de trabajo (paso en mm): se dibuja y fija el paso del dibujo de muros. */
+  readonly grid?: { readonly step: number } | null;
   readonly hiddenGroups?: ReadonlySet<ItemGroup>;
   readonly apiRef?: Ref<ViewerApi>;
   readonly locale?: string;
@@ -130,6 +135,9 @@ const COLORS = {
 const DRAG_TOLERANCE_PX = 4;
 /** Radio de captura al dibujar muros (px de pantalla). */
 const DRAW_SNAP_PX = 10;
+/** Con el dedo se apunta peor: radio de captura mayor. */
+const DRAW_SNAP_PX_TOUCH = 24;
+const GUIDE_COLOR = '#ea580c';
 const MIN_DRAWN_WALL = 10;
 
 const SNAP_COLORS: Record<DrawSnap['kind'], string> = {
@@ -202,15 +210,18 @@ export function PlanView({
   wallThickness = 150,
   onWallDraw,
   onToolExit,
+  onDrawChainChange,
   placement = null,
   onMeasurePoint,
   measurePoints = NO_POINTS,
+  grid = null,
   hiddenGroups,
   apiRef,
   locale = 'es',
 }: PlanViewProps) {
   const level = findLevel(project, levelId);
   const svgRef = useRef<SVGSVGElement>(null);
+  usePreventBrowserZoom(svgRef);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [view, setView] = useState<ViewState | null>(null);
   const [hovered, setHovered] = useState<ViewerSelection | null>(null);
@@ -221,6 +232,10 @@ export function PlanView({
   const measuring = onMeasurePoint !== undefined && !placing;
   const drawing = tool === 'wall' && !placing && !measuring;
   const [measureCursor, setMeasureCursor] = useState<MeasureSnap | null>(null);
+  const chainActive = drawing && draw.from !== null;
+  useEffect(() => {
+    onDrawChainChange?.(chainActive);
+  }, [chainActive, onDrawChainChange]);
   // Al dibujar o ubicar, las entidades no capturan el puntero: todo clic es para la herramienta.
   const capturing = drawing || placing || measuring;
   // La cadena en curso se descarta al cambiar de herramienta o de nivel.
@@ -365,7 +380,7 @@ export function PlanView({
     start: { x: number; y: number };
     startPlan: Vec2;
     moved: boolean;
-    kind: 'pan' | 'area' | 'room' | 'item' | 'opening' | 'node';
+    kind: 'pan' | 'area' | 'draw' | 'room' | 'item' | 'opening' | 'node';
     id: string;
     /** Recuadro empezado sobre una entidad: si no hay arrastre, es un clic aditivo sobre ella. */
     clickTarget?: ViewerSelection;
@@ -414,10 +429,26 @@ export function PlanView({
   };
 
   // --- Dibujo de muros -----------------------------------------------------------------------
-  const snapAt = (clientX: number, clientY: number, free: boolean): DrawSnap | null =>
+  const snapAt = (clientX: number, clientY: number, free: boolean, touch = false) =>
     level
-      ? snapDrawPoint(level, toPlan(clientX, clientY), draw.from, DRAW_SNAP_PX / current.s, free)
+      ? snapDrawPoint(
+          level,
+          toPlan(clientX, clientY),
+          draw.from,
+          (touch ? DRAW_SNAP_PX_TOUCH : DRAW_SNAP_PX) / current.s,
+          free,
+          grid?.step,
+        )
       : null;
+
+  /** Agrega un tramo de `length` mm en `direction` desde el punto actual (largo exacto). */
+  const drawSegment = (direction: Vec2, length: number): boolean => {
+    if (!level || !draw.from || length < MIN_DRAWN_WALL) return false;
+    const p = add(draw.from, scale(normalize(direction), length));
+    // Paso 1 mm: el largo escrito no se redondea a la cuadrícula.
+    placePoint(snapDrawPoint(level, { x: Math.round(p.x), y: Math.round(p.y) }, null, 2, false, 1));
+    return true;
+  };
 
   /** Agrega el punto: el primero empieza la cadena; los siguientes dibujan un tramo. */
   const placePoint = (to: DrawSnap) => {
@@ -502,6 +533,14 @@ export function PlanView({
       return;
     }
     const d = drag.current;
+    // Dibujo con el dedo: el punto sigue al dedo (con ajustes) y se fija al soltar.
+    if (d?.kind === 'draw') {
+      if (d.pointerId === e.pointerId) {
+        d.moved = true;
+        setDraw((prev) => ({ ...prev, cursor: snapAt(e.clientX, e.clientY, false, true) }));
+      }
+      return;
+    }
     if (placing && !d?.moved && e.buttons === 0) {
       placement.onEvent({ phase: 'move', point: toPlan(e.clientX, e.clientY), snap: !e.altKey });
     }
@@ -532,6 +571,11 @@ export function PlanView({
     const d = drag.current;
     if (d?.pointerId !== e.pointerId) return;
     drag.current = null;
+    if (d.kind === 'draw') {
+      const snap = snapAt(e.clientX, e.clientY, false, true);
+      if (snap) placePoint(snap);
+      return;
+    }
     if (d.kind === 'area') {
       setArea(null);
       if (!d.moved) {
@@ -603,7 +647,7 @@ export function PlanView({
         consume();
         const end = typedEnd(draw);
         if (!end || !level) return;
-        placePoint(snapDrawPoint(level, end, null, 2));
+        placePoint(snapDrawPoint(level, end, null, 2, false, 1));
       } else if (e.key === 'Escape') {
         if (drag.current?.moved) return;
         consume();
@@ -659,6 +703,7 @@ export function PlanView({
   };
 
   useImperativeHandle(apiRef, () => ({
+    drawSegment,
     captureImage: async (scaleFactor = 2) => {
       const svg = svgRef.current;
       if (!svg) return null;
@@ -750,9 +795,15 @@ export function PlanView({
       data-testid="plan-view"
       viewBox={viewBox}
       style={{ background: COLORS.background, cursor: capturing ? 'crosshair' : undefined }}
-      onPointerDown={(e) =>
-        begin(e, onAreaSelect && !capturing && isAdditiveClick(e) ? 'area' : 'pan')
-      }
+      onPointerDown={(e) => {
+        // Con el dedo, dibujar es arrastrar y soltar; desplazar el plano, con dos dedos.
+        if (drawing && e.pointerType === 'touch') {
+          begin(e, 'draw');
+          setDraw((prev) => ({ ...prev, cursor: snapAt(e.clientX, e.clientY, false, true) }));
+          return;
+        }
+        begin(e, onAreaSelect && !capturing && isAdditiveClick(e) ? 'area' : 'pan');
+      }}
       onPointerDownCapture={onPointerDownCapture}
       onPointerMove={onPointerMove}
       onPointerUp={(e) => {
@@ -791,6 +842,37 @@ export function PlanView({
             />
           );
         })}
+
+        {/* Cuadrícula de trabajo, alineada al origen del proyecto */}
+        {grid && (
+          <>
+            <defs>
+              <pattern
+                id="plan-grid"
+                width={grid.step}
+                height={grid.step}
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d={`M ${grid.step} 0 L 0 0 0 ${grid.step}`}
+                  fill="none"
+                  stroke="#94a3b8"
+                  strokeOpacity={0.55}
+                  strokeWidth={px(0.75)}
+                />
+              </pattern>
+            </defs>
+            <rect
+              x={current.cx - size.w / (2 * s)}
+              y={-current.cy - size.h / (2 * s)}
+              width={size.w / s}
+              height={size.h / s}
+              fill="url(#plan-grid)"
+              pointerEvents="none"
+              data-testid="plan-grid"
+            />
+          </>
+        )}
 
         {/* Muebles */}
         {data.items.map(({ item, footprint, front, name, mount }) => {
@@ -1076,6 +1158,17 @@ export function PlanView({
               </text>
             </>
           )}
+          {draw.cursor?.guides?.map((g, i) => (
+            <polyline
+              key={`guide-${i}`}
+              points={pts([g, draw.cursor!.point])}
+              stroke={GUIDE_COLOR}
+              strokeWidth={px(1.2)}
+              strokeDasharray={`${px(5)} ${px(4)}`}
+              fill="none"
+              data-testid="plan-draw-guide"
+            />
+          ))}
           {draw.cursor && (
             <circle
               cx={draw.cursor.point.x}

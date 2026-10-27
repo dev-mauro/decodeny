@@ -5,7 +5,16 @@ import {
   type ViewerCameraApi,
 } from '@decodeny/viewer';
 import { Maximize, PenLine, Plus, Sparkles, SquareDashed } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
 import { useTranslation } from 'react-i18next';
 import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
@@ -23,12 +32,13 @@ import { handleWalkStartEvent } from '@/features/navigation/walk-start';
 import { itemsInArea } from '@/features/furniture/item-actions';
 import { useOpeningDragHandler } from '@/features/openings/use-opening-drag-handler';
 import { useNodeDragHandler } from '@/features/plan/use-node-drag-handler';
-import { PlanTools, WallDrawHint } from '@/features/plan/PlanTools';
+import { PlanTools } from '@/features/plan/PlanTools';
+import { WallDrawHint } from '@/features/plan/WallDrawHint';
 import { ViewSwitch } from '@/features/plan/ViewSwitch';
 import { drawWall } from '@/features/walls/wall-actions';
 import { useRoomDragHandler } from '@/features/rooms/use-room-drag-handler';
 import { Button, IconButton } from '@/shared/ui/Button';
-import { useProjectStore } from '@/state/project-store';
+import { useProjectStore, useReadOnly } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 import { useCoarsePointer } from '@/shared/lib/use-media-query';
@@ -79,10 +89,16 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const setPointerLocked = useUiStore((s) => s.setPointerLocked);
   const highlighted = useUiStore((s) => s.highlighted);
   const setViewportHover = useUiStore((s) => s.setViewportHover);
-  const onRoomDrag = useRoomDragHandler();
-  const onOpeningDrag = useOpeningDragHandler();
-  const onItemDrag = useItemDragHandler();
-  const onNodeDrag = useNodeDragHandler();
+  // En solo lectura la vista no ofrece arrastres ni dibujo (el documento tampoco lo aceptaría).
+  const readOnly = useReadOnly();
+  const roomDrag = useRoomDragHandler();
+  const openingDrag = useOpeningDragHandler();
+  const itemDrag = useItemDragHandler();
+  const nodeDrag = useNodeDragHandler();
+  const onRoomDrag = readOnly ? undefined : roomDrag;
+  const onOpeningDrag = readOnly ? undefined : openingDrag;
+  const onItemDrag = readOnly ? undefined : itemDrag;
+  const onNodeDrag = readOnly ? undefined : nodeDrag;
   const view = useUiStore((s) => s.view);
   const planTool = useUiStore((s) => s.planTool);
   const setPlanTool = useUiStore((s) => s.setPlanTool);
@@ -97,6 +113,11 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const pickingWalkStart = useUiStore((s) => s.pickingWalkStart);
   const walkStart = useUiStore((s) => s.walkStart);
   const headBob = useUiStore((s) => s.headBob);
+  const gridSettings = useUiStore((s) => s.grid);
+  const grid = useMemo(
+    () => (gridSettings.enabled ? { step: gridSettings.step } : null),
+    [gridSettings.enabled, gridSettings.step],
+  );
   const coarse = useCoarsePointer();
   const touchControls = useMemo(
     () =>
@@ -122,6 +143,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
   );
   const addMeasurePoint = useUiStore((s) => s.addMeasurePoint);
   const viewerRef = useRef<ViewerApi>(null);
+  const [drawChain, setDrawChain] = useState(false);
   // Diagnóstico de rendimiento (`?perf`): los tests de presupuesto leen el costo de dibujar.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('perf')) return;
@@ -157,19 +179,21 @@ export function Viewport({ cameraRef }: ViewportProps) {
               onAreaSelect={onAreaSelect}
               highlighted={highlighted}
               onHoverChange={setViewportHover}
-              onRoomDrag={onRoomDrag}
-              onItemDrag={onItemDrag}
-              onOpeningDrag={onOpeningDrag}
-              onNodeDrag={onNodeDrag}
-              tool={planTool}
+              {...(onRoomDrag ? { onRoomDrag } : {})}
+              {...(onItemDrag ? { onItemDrag } : {})}
+              {...(onOpeningDrag ? { onOpeningDrag } : {})}
+              {...(onNodeDrag ? { onNodeDrag } : {})}
+              tool={readOnly ? 'select' : planTool}
               wallThickness={project.settings.defaultWallThickness}
-              onWallDraw={drawWall}
+              {...(readOnly ? {} : { onWallDraw: drawWall })}
               onToolExit={exitPlanTool}
+              onDrawChainChange={setDrawChain}
               placement={placement}
               measurePoints={measurePoints}
               {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}
               hiddenGroups={hiddenGroups}
               apiRef={viewerRef}
+              grid={grid}
               locale={i18n.language}
             />
           ) : (
@@ -182,9 +206,9 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 onSelectionChange={select}
                 highlighted={highlighted}
                 onHoverChange={setViewportHover}
-                onRoomDrag={onRoomDrag}
-                onOpeningDrag={onOpeningDrag}
-                onItemDrag={onItemDrag}
+                {...(onRoomDrag ? { onRoomDrag } : {})}
+                {...(onOpeningDrag ? { onOpeningDrag } : {})}
+                {...(onItemDrag ? { onItemDrag } : {})}
                 placement={placement}
                 lighting={lighting}
                 assetUrl={assetUrl}
@@ -201,6 +225,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 walkStart={walkStart}
                 headBob={headBob}
                 touchControls={touchControls}
+                grid={grid}
                 locale={i18n.language}
               />
             </Suspense>
@@ -216,10 +241,10 @@ export function Viewport({ cameraRef }: ViewportProps) {
         {view === 'plan' && <PlanTools />}
       </div>
 
-      <WallDrawHint />
+      <WallDrawHint viewerRef={viewerRef} chainActive={drawChain} />
       {pointerHeight !== null && (
         <ToolHint
-          text={t('catalog.placeHint')}
+          text={t(coarse ? 'catalog.placeHintTouch' : 'catalog.placeHint')}
           testId="placement-hint"
           actions={[
             {
@@ -242,7 +267,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
       )}
       {pickingWalkStart && pointerHeight === null && (
         <ToolHint
-          text={t('navigation.pickStartHint')}
+          text={t(coarse ? 'navigation.pickStartHintTouch' : 'navigation.pickStartHint')}
           testId="walk-start-hint"
           actions={[
             {
@@ -274,13 +299,15 @@ export function Viewport({ cameraRef }: ViewportProps) {
             <h2 className="text-lg font-semibold text-slate-900">{t('empty.title')}</h2>
             <p className="text-sm text-slate-500">{t('empty.body')}</p>
             <div className="mt-1 flex flex-wrap justify-center gap-2">
-              <Button
-                variant="primary"
-                icon={<Plus className="size-4" />}
-                onClick={() => openCreate(true)}
-              >
-                {t('empty.addRoom')}
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant="primary"
+                  icon={<Plus className="size-4" />}
+                  onClick={() => openCreate(true)}
+                >
+                  {t('empty.addRoom')}
+                </Button>
+              )}
               <Button
                 icon={<Sparkles className="size-4" />}
                 onClick={loadSampleProject}
@@ -288,13 +315,15 @@ export function Viewport({ cameraRef }: ViewportProps) {
               >
                 {t('empty.loadSample')}
               </Button>
-              <Button
-                icon={<PenLine className="size-4" />}
-                onClick={() => setPlanTool('wall')}
-                data-testid="empty-draw-walls"
-              >
-                {t('empty.drawWalls')}
-              </Button>
+              {!readOnly && (
+                <Button
+                  icon={<PenLine className="size-4" />}
+                  onClick={() => setPlanTool('wall')}
+                  data-testid="empty-draw-walls"
+                >
+                  {t('empty.drawWalls')}
+                </Button>
+              )}
             </div>
             <p className="mt-2 text-xs text-slate-500">{t('empty.templates')}</p>
             <div className="flex flex-wrap justify-center gap-1.5">

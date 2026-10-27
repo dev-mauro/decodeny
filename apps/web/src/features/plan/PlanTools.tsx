@@ -4,7 +4,7 @@ import { WalkFromPointButton } from '@/features/navigation/WalkFromPointButton';
 import { detectRoomsFromWalls } from '@/features/walls/wall-actions';
 import { cn } from '@/shared/lib/cn';
 import { IconButton } from '@/shared/ui/Button';
-import { ToolHint } from '@/shared/ui/ToolHint';
+import { useReadOnly } from '@/state/project-store';
 import { useUiStore } from '@/state/ui-store';
 
 const TOOLS = [
@@ -17,6 +17,14 @@ export function PlanTools() {
   const { t } = useTranslation();
   const tool = useUiStore((s) => s.planTool);
   const setTool = useUiStore((s) => s.setPlanTool);
+  const readOnly = useReadOnly();
+  if (readOnly) {
+    return (
+      <div className="flex gap-1 rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur">
+        <WalkFromPointButton />
+      </div>
+    );
+  }
   return (
     <div className="flex gap-1 rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur">
       <div role="radiogroup" aria-label={t('viewport.planTools')} className="flex gap-1">
@@ -48,27 +56,5 @@ export function PlanTools() {
       </IconButton>
       <WalkFromPointButton />
     </div>
-  );
-}
-
-/** Indicaciones mientras se dibujan muros. */
-export function WallDrawHint() {
-  const { t } = useTranslation();
-  const active = useUiStore(
-    (s) => s.view === 'plan' && s.planTool === 'wall' && s.placement === null,
-  );
-  if (!active) return null;
-  return (
-    <ToolHint
-      text={t('viewport.wallHint')}
-      testId="wall-draw-hint"
-      actions={[
-        {
-          label: t('viewport.wallDone'),
-          onClick: () => useUiStore.getState().setPlanTool('select'),
-          testId: 'wall-draw-done',
-        },
-      ]}
-    />
   );
 }

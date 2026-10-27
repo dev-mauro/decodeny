@@ -52,6 +52,13 @@ export const en: Translation<Resources> = {
     toolSelect: 'Select and move',
     toolWall: 'Draw walls (W)',
     wallDone: 'Done',
+    wallHintTouch: 'Drag your finger and lift it at each corner · two fingers to move the plan',
+    wallLength: 'Length',
+    wallLengthHint: 'Tap the first point to type lengths',
+    wallRight: 'Segment to the right',
+    wallUp: 'Segment up',
+    wallLeft: 'Segment to the left',
+    wallDown: 'Segment down',
     detectRooms: 'Detect rooms in closed outlines',
     wallHint:
       'Click to start and at each corner · type the length (3.5) and Enter · Esc ends · Alt: no snapping',
@@ -91,6 +98,7 @@ export const en: Translation<Resources> = {
     pickStart: 'Walk from a point: click the floor where you want to start',
     pickStartHint: 'Click the floor where you want to start the walk · Esc cancels',
     startOutside: 'Pick a point inside a room.',
+    pickStartHintTouch: 'Tap the floor where you want to start the walk',
     headBob: 'Head bob while walking',
   },
   empty: {
@@ -164,6 +172,8 @@ export const en: Translation<Resources> = {
     selectWall: 'Select wall: {{name}}',
     dragHint:
       'You can also drag the floor of the selected room in the view. It snaps to neighboring walls to share them (hold Alt to move freely).',
+    dragHintTouch:
+      'You can also drag the floor of the selected space in the view. It snaps to neighboring walls to share them.',
     delete: 'Delete room',
     deleted: 'Room “{{name}}” deleted',
     ofRoom: 'Belongs to',
@@ -218,6 +228,7 @@ export const en: Translation<Resources> = {
     searchPlaceholder: 'Search: bed, sofa, wardrobe…',
     addsTo: 'Appears in: {{room}}. Then place it with the pointer.',
     placeHere: 'Leave here',
+    placeHintTouch: 'Tap where you want to place it',
     placeRotate: 'Rotate',
     placeCancel: 'Cancel',
     placeHint:
@@ -251,6 +262,7 @@ export const en: Translation<Resources> = {
     rotateRight: 'Rotate 90° right (Shift+R)',
     dragHint:
       'Drag the item in the view: it rests against nearby walls and corners (Alt to move freely). Arrows: 1 cm; Shift+arrows: 10 cm.',
+    dragHintTouch: 'Drag the item in the view: it rests against nearby walls and corners.',
     elevation: 'Height above floor',
     ceilingMounted: 'Hangs from the room ceiling: follows its height automatically.',
     dragHintWall:
@@ -263,6 +275,7 @@ export const en: Translation<Resources> = {
     selectedMany_other: '{{count}} items selected',
     multiHint:
       'Shift or Ctrl + click adds or removes items; in the plan, Shift + drag selects an area. Drag them together in the view; arrows nudge them, R rotates them.',
+    multiHintTouch: 'Drag them together in the view; use the buttons to rotate or delete them.',
     warningOverlap: 'Overlaps another item.',
     warningWall: 'Goes through a wall.',
     unknown: 'Unknown type ({{def}}): shown as a box and kept when exporting.',
@@ -336,6 +349,7 @@ export const en: Translation<Resources> = {
     'too-short': 'That measurement leaves a side shorter than {{min}} mm.',
     'out-of-range': 'Value out of the allowed range.',
     'opening-conflict': 'The opening does not fit in the wall.',
+    'read-only': 'Read-only mode: turn it off in Options to edit.',
     opening: {
       height: 'The opening is taller than the wall (leave at least a 2 cm header).',
       wall: 'The opening does not fit in the free length of the wall (away from corners).',
@@ -367,6 +381,21 @@ export const en: Translation<Resources> = {
   pwa: {
     updateReady: 'A new version of Decodeny is available',
     reload: 'Update',
+  },
+  options: {
+    title: 'Options',
+    language: 'Language',
+    grid: 'Floor grid',
+    gridStep: 'Grid size',
+    gridHint: 'Walls, furniture and spaces snap to the grid.',
+    readOnly: 'Read only',
+    readOnlyActive: 'Read-only mode: turn it off in Options to add furniture.',
+    readOnlyHint:
+      'To show the project without changing it by accident. You can still walk, measure and export.',
+  },
+  toolHint: {
+    hide: 'Hide hint',
+    show: 'Show hint',
   },
   mobile: {
     panels: 'Panels',

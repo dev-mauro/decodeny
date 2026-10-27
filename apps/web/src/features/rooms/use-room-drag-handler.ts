@@ -2,7 +2,7 @@ import { moveRoom, roundVec, snapRoomTranslation } from '@decodeny/domain';
 import type { RoomDragEvent } from '@decodeny/viewer';
 import { useCallback } from 'react';
 import { useProjectStore } from '@/state/project-store';
-import { activeLevel, useUiStore } from '@/state/ui-store';
+import { activeLevel, snapStep, useUiStore } from '@/state/ui-store';
 
 /**
  * Convierte el arrastre de un recinto en la vista en una transacción: se previsualiza en cada
@@ -20,7 +20,7 @@ export function useRoomDragHandler(): (event: RoomDragEvent) => void {
     const base = store.transaction?.base ?? store.project;
     const level = activeLevel(base, ui.levelId);
     const snap = event.snap
-      ? snapRoomTranslation(level, event.roomId, event.delta)
+      ? snapRoomTranslation(level, event.roomId, event.delta, undefined, snapStep())
       : { delta: roundVec(event.delta), wallIds: [] };
     store.preview(moveRoom, {
       levelId: level.id,

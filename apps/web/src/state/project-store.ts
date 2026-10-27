@@ -2,6 +2,7 @@ import {
   checkIntegrity,
   createEmptyProject,
   createId,
+  DomainError,
   EMPTY_HISTORY,
   executeCommand,
   isDomainError,
@@ -9,7 +10,6 @@ import {
   redo as redoHistory,
   undo as undoHistory,
   type Command,
-  type DomainError,
   type HistoryState,
   type Patch,
   type Project,
@@ -36,6 +36,12 @@ interface Transaction {
 
 interface ProjectState {
   readonly project: Project;
+  /**
+   * Solo lectura: ningún comando ni vista previa modifica el documento (tampoco deshacer). Abrir
+   * otro proyecto sí se permite. Se recuerda en el navegador.
+   */
+  readonly readOnly: boolean;
+  readonly setReadOnly: (readOnly: boolean) => void;
   readonly history: HistoryState;
   readonly transaction: Transaction | null;
   readonly dispatch: <A, R>(
@@ -68,6 +74,18 @@ export function newProject(): Project {
 
 const ctx = { ids: createId };
 
+const READ_ONLY_KEY = 'decodeny.readOnly';
+
+function readStoredReadOnly(): boolean {
+  try {
+    return localStorage.getItem(READ_ONLY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const readOnlyError = () => new DomainError('read-only', 'El proyecto está en modo solo lectura');
+
 function checkInDev(type: string, project: Project): void {
   if (!import.meta.env.DEV) return;
   const issues = checkIntegrity(project);
@@ -78,8 +96,21 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   project: newProject(),
   history: EMPTY_HISTORY,
   transaction: null,
+  readOnly: readStoredReadOnly(),
+
+  setReadOnly: (readOnly) => {
+    try {
+      localStorage.setItem(READ_ONLY_KEY, readOnly ? '1' : '0');
+    } catch {
+      // Preferencia no persistida: vale para esta sesión.
+    }
+    // Una vista previa en curso (p. ej. ubicando un mueble) se descarta al bloquear.
+    if (readOnly) get().cancelPreview();
+    set({ readOnly });
+  },
 
   dispatch: (command, args, options) => {
+    if (get().readOnly) return { ok: false, error: readOnlyError() };
     get().cancelPreview();
     const { project, history } = get();
     try {
@@ -103,12 +134,14 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   },
 
   undo: () => {
+    if (get().readOnly) return;
     get().cancelPreview();
     const out = undoHistory(get().project, get().history);
     if (out) set(out);
   },
 
   redo: () => {
+    if (get().readOnly) return;
     get().cancelPreview();
     const out = redoHistory(get().project, get().history);
     if (out) set(out);
@@ -119,6 +152,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   },
 
   preview: (command, args) => {
+    if (get().readOnly) return { ok: false, error: readOnlyError() };
     const base = get().transaction?.base ?? get().project;
     try {
       const out = executeCommand(base, command, args, ctx);
@@ -158,5 +192,6 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
 }));
 
 export const useProject = () => useProjectStore((s) => s.project);
-export const useCanUndo = () => useProjectStore((s) => s.history.past.length > 0);
-export const useCanRedo = () => useProjectStore((s) => s.history.future.length > 0);
+export const useCanUndo = () => useProjectStore((s) => !s.readOnly && s.history.past.length > 0);
+export const useCanRedo = () => useProjectStore((s) => !s.readOnly && s.history.future.length > 0);
+export const useReadOnly = () => useProjectStore((s) => s.readOnly);

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { CatalogPanel } from '@/features/furniture/CatalogPanel';
 import { RoomsPanel } from '@/features/rooms/RoomsPanel';
 import { cn } from '@/shared/lib/cn';
+import { useMediaQuery } from '@/shared/lib/use-media-query';
 import { useUiStore, type MobilePanel } from '@/state/ui-store';
 import { InspectorPanel } from './InspectorPanel';
 import { Viewport } from './Viewport';
@@ -19,10 +20,13 @@ const TABS = [
 function Sheet({
   title,
   onClose,
+  side,
   children,
 }: {
   readonly title: string;
   readonly onClose: () => void;
+  /** Horizontal: panel a la derecha, a toda la altura (abajo no hay lugar). */
+  readonly side: boolean;
   readonly children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -30,11 +34,18 @@ function Sheet({
     <section
       aria-label={title}
       data-testid="mobile-sheet"
-      className="absolute inset-x-0 bottom-0 z-30 flex max-h-[62%] flex-col rounded-t-2xl border-t border-slate-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.12)]"
+      className={cn(
+        'absolute z-30 flex flex-col bg-white',
+        side
+          ? 'inset-y-0 right-0 w-[min(360px,55%)] border-l border-slate-200 pt-2 shadow-[-8px_0_24px_rgba(15,23,42,0.12)]'
+          : 'inset-x-0 bottom-0 max-h-[62%] rounded-t-2xl border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.12)]',
+      )}
     >
-      <div className="flex items-center justify-between px-2 pt-1">
-        <span aria-hidden className="mx-auto mt-1 h-1 w-10 rounded-full bg-slate-300" />
-      </div>
+      {!side && (
+        <div className="flex items-center justify-between px-2 pt-1">
+          <span aria-hidden className="mx-auto mt-1 h-1 w-10 rounded-full bg-slate-300" />
+        </div>
+      )}
       <button
         type="button"
         onClick={onClose}
@@ -61,6 +72,8 @@ export function MobileLayout({
 }) {
   const { t } = useTranslation();
   const panel = useUiStore((s) => s.mobilePanel);
+  // Teléfono en horizontal (poca altura): riel a la izquierda y paneles a la derecha.
+  const landscape = useMediaQuery('(orientation: landscape) and (max-height: 600px)');
   const setPanel = useUiStore((s) => s.setMobilePanel);
   const selection = useUiStore((s) => s.selection);
 
@@ -78,12 +91,13 @@ export function MobileLayout({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="relative flex min-h-0 flex-1">
+    <div className={cn('flex min-h-0 flex-1', landscape ? 'flex-row-reverse' : 'flex-col')}>
+      <div className="relative flex min-h-0 min-w-0 flex-1">
         <Viewport cameraRef={cameraRef} />
         {panel && (
           <Sheet
             title={t(TABS.find((tab) => tab.id === panel)!.label)}
+            side={landscape}
             onClose={() => setPanel(null)}
           >
             {content[panel]}
@@ -92,7 +106,12 @@ export function MobileLayout({
       </div>
       <nav
         aria-label={t('mobile.panels')}
-        className="flex shrink-0 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
+        className={cn(
+          'flex shrink-0 bg-white',
+          landscape
+            ? 'w-16 flex-col border-r border-slate-200 pl-[env(safe-area-inset-left)]'
+            : 'border-t border-slate-200 pb-[env(safe-area-inset-bottom)]',
+        )}
       >
         {TABS.map(({ id, icon: Icon, label }) => {
           const active = panel === id;
@@ -104,7 +123,8 @@ export function MobileLayout({
               onClick={() => setPanel(active ? null : id)}
               data-testid={`mobile-tab-${id}`}
               className={cn(
-                'relative flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium',
+                'relative flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium',
+                landscape ? 'min-h-14 text-[10px]' : 'h-14',
                 active ? 'text-brand-700' : 'text-slate-500',
               )}
             >

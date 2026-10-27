@@ -35,6 +35,18 @@ export interface ItemPlacementSession {
   readonly pointer: { readonly point: Vec2; readonly snap: boolean } | null;
 }
 
+/** Pasos de cuadrícula disponibles (mm). */
+export const GRID_STEPS = [100, 250, 500, 1000] as const;
+export type GridStep = (typeof GRID_STEPS)[number];
+
+/** Paso de ajuste sin cuadrícula: 1 cm. */
+export const DEFAULT_SNAP_STEP = 10;
+
+export interface GridSettings {
+  readonly enabled: boolean;
+  readonly step: GridStep;
+}
+
 /** Panel abierto como hoja en el layout móvil. */
 export type MobilePanel = 'rooms' | 'catalog' | 'inspector' | null;
 
@@ -86,6 +98,8 @@ interface UiState {
   readonly headBob: boolean;
   /** Layout móvil: panel abierto sobre la vista. */
   readonly mobilePanel: MobilePanel;
+  /** Cuadrícula sobre el suelo: se ve en 3D y en el plano, y fija el paso de los ajustes. */
+  readonly grid: GridSettings;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
   readonly select: (selection: ViewerSelection | null, options?: { additive?: boolean }) => void;
   readonly selectMany: (targets: readonly ViewerSelection[], additive?: boolean) => void;
@@ -112,9 +126,23 @@ interface UiState {
   readonly walkFrom: (point: Vec2) => void;
   readonly setHeadBob: (headBob: boolean) => void;
   readonly setMobilePanel: (panel: MobilePanel) => void;
+  readonly setGrid: (grid: Partial<GridSettings>) => void;
 }
 
 const HEAD_BOB_KEY = 'decodeny.headBob';
+const GRID_KEY = 'decodeny.grid';
+
+function readGrid(): GridSettings {
+  try {
+    const raw = JSON.parse(
+      localStorage.getItem(GRID_KEY) ?? 'null',
+    ) as Partial<GridSettings> | null;
+    const step = GRID_STEPS.find((g) => g === raw?.step) ?? 500;
+    return { enabled: raw?.enabled === true, step };
+  } catch {
+    return { enabled: false, step: 500 };
+  }
+}
 
 /** Balanceo de cabeza recordado (apagado por defecto: puede marear). */
 function readHeadBob(): boolean {
@@ -155,6 +183,7 @@ export const useUiStore = create<UiState>()((set) => ({
   walkStart: null,
   headBob: readHeadBob(),
   mobilePanel: null,
+  grid: readGrid(),
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
@@ -194,6 +223,16 @@ export const useUiStore = create<UiState>()((set) => ({
       planTool: 'select',
     }),
   setMobilePanel: (mobilePanel) => set({ mobilePanel }),
+  setGrid: (partial) =>
+    set((s) => {
+      const grid = { ...s.grid, ...partial };
+      try {
+        localStorage.setItem(GRID_KEY, JSON.stringify(grid));
+      } catch {
+        // Preferencia no persistida: vale para esta sesión.
+      }
+      return { grid };
+    }),
   setHeadBob: (headBob) => {
     try {
       localStorage.setItem(HEAD_BOB_KEY, headBob ? '1' : '0');
@@ -297,3 +336,9 @@ useProjectStore.subscribe((state) => {
   const { placement } = ui;
   if (placement && !state.transaction) useUiStore.setState({ placement: null });
 });
+
+/** Paso de ajuste vigente (mm): el de la cuadrícula si está activa; si no, 1 cm. */
+export function snapStep(): number {
+  const { grid } = useUiStore.getState();
+  return grid.enabled ? grid.step : DEFAULT_SNAP_STEP;
+}

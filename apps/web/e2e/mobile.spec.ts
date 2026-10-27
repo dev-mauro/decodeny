@@ -58,7 +58,7 @@ test('un mueble se ubica con un toque: la hoja del catálogo se cierra', async (
   await expect(page.getByTestId('inspector-title')).toHaveText('Sillón');
 });
 
-test('en el recorrido hay joystick; se sale con la barra', async ({ page }) => {
+test('en el recorrido hay joystick; la X del aviso no sale del modo', async ({ page }) => {
   await loadSample(page);
   await page.getByTestId('mode-person').tap();
   const controls = page.getByTestId('touch-controls');
@@ -75,7 +75,11 @@ test('en el recorrido hay joystick; se sale con la barra', async ({ page }) => {
   await touch(controls, 'pointerup', 1, cx, cy - 40);
   await expect.poll(() => knob.evaluate((el) => el.style.top)).toBe(before);
 
-  await page.getByTestId('exit-walk').tap();
+  // La X del aviso solo lo cierra: se sigue en el recorrido.
+  await page.getByTestId('walk-hint-dismiss').tap();
+  await expect(page.getByTestId('walk-touch-hud')).toBeHidden();
+  await expect(page.getByTestId('viewer')).toHaveAttribute('data-navigation-mode', 'person');
+  await page.getByTestId('mode-edit').tap();
   await expect(page.getByTestId('viewer')).toHaveAttribute('data-navigation-mode', 'edit');
 });
 
@@ -96,4 +100,44 @@ test('en la planta, pellizcar hace zoom', async ({ page }) => {
   await touch(plan, 'pointerup', 2, cx + 120, cy);
   // Separar los dedos acerca la vista: el viewBox muestra menos planta.
   await expect.poll(width).toBeLessThan(before * 0.6);
+});
+
+test('en el plano se dibuja arrastrando el dedo y soltando en cada esquina', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('empty-draw-walls').tap();
+  const plan = page.getByTestId('plan-view');
+  const box = (await plan.boundingBox())!;
+  const walls = () => plan.locator('polygon').count();
+  const before = await walls();
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  // Primer punto: tocar. Luego, arrastrar hasta la esquina siguiente y soltar.
+  await touch(plan, 'pointerdown', 1, cx - 100, cy);
+  await touch(plan, 'pointerup', 1, cx - 100, cy);
+  await expect(page.getByTestId('wall-length')).toBeEnabled();
+  await touch(plan, 'pointerdown', 1, cx - 60, cy + 4);
+  await touch(plan, 'pointermove', 1, cx + 40, cy + 2);
+  await expect(page.getByTestId('plan-draw-length')).toBeVisible();
+  await touch(plan, 'pointermove', 1, cx + 100, cy);
+  await touch(plan, 'pointerup', 1, cx + 100, cy);
+  await expect.poll(walls).toBeGreaterThan(before);
+  // Las indicaciones táctiles no nombran teclas.
+  await expect(page.getByTestId('wall-draw-hint')).not.toContainText('Enter');
+});
+
+test.describe('teléfono en horizontal', () => {
+  test.use({ viewport: { width: 844, height: 390 } });
+
+  test('los paneles se abren a la derecha y la navegación queda a la izquierda', async ({
+    page,
+  }) => {
+    await loadSample(page);
+    const nav = (await page.getByRole('navigation').boundingBox())!;
+    expect(nav.x).toBeLessThan(10);
+    expect(nav.height).toBeGreaterThan(200);
+    await page.getByTestId('mobile-tab-rooms').tap();
+    const sheet = (await page.getByTestId('mobile-sheet').boundingBox())!;
+    expect(sheet.x).toBeGreaterThan(844 / 2);
+    expect(sheet.height).toBeGreaterThan(250);
+  });
 });

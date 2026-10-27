@@ -8,6 +8,7 @@ import { OpeningInspector } from '@/features/openings/OpeningInspector';
 import { RoomInspector } from '@/features/rooms/RoomInspector';
 import { contextRoomOfWall, wallDisplayName } from '@/features/walls/wall-context';
 import { WallInspector } from '@/features/walls/WallInspector';
+import { useReadOnly } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 
 /** Panel de propiedades de la selección actual. */
@@ -15,6 +16,7 @@ export function InspectorPanel() {
   const { t, i18n } = useTranslation();
   const level = useActiveLevel();
   const selection = useUiStore((s) => s.selection);
+  const readOnly = useReadOnly();
   const selectionGroup = useUiStore((s) => s.selectionGroup);
   // Varios muebles seleccionados: inspector del grupo.
   const groupItems =
@@ -57,16 +59,18 @@ export function InspectorPanel() {
         {title ?? t('inspector.title')}
       </h2>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        {room && <RoomInspector key={room.id} level={level} room={room} />}
-        {wall && (
-          <WallInspector key={wall.id} level={level} wall={wall} contextRoom={contextRoom} />
-        )}
-        {opening && <OpeningInspector key={opening.id} level={level} opening={opening} />}
-        {multi && <MultiItemInspector items={groupItems} />}
-        {item && !multi && <ItemInspector key={item.id} level={level} item={item} />}
-        {!room && !wall && !opening && !item && (
-          <p className="text-sm text-slate-500">{t('inspector.empty')}</p>
-        )}
+        <fieldset disabled={readOnly} className="contents" data-testid="inspector-fields">
+          {room && <RoomInspector key={room.id} level={level} room={room} />}
+          {wall && (
+            <WallInspector key={wall.id} level={level} wall={wall} contextRoom={contextRoom} />
+          )}
+          {opening && <OpeningInspector key={opening.id} level={level} opening={opening} />}
+          {multi && <MultiItemInspector items={groupItems} />}
+          {item && !multi && <ItemInspector key={item.id} level={level} item={item} />}
+          {!room && !wall && !opening && !item && (
+            <p className="text-sm text-slate-500">{t('inspector.empty')}</p>
+          )}
+        </fieldset>
       </div>
     </section>
   );

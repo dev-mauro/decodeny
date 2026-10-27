@@ -8,7 +8,9 @@ export type DomainErrorCode =
   | 'too-short'
   | 'out-of-range'
   /** Un vano no cabe en su muro (`params.reason`: `height`, `wall` u `overlap`). */
-  | 'opening-conflict';
+  | 'opening-conflict'
+  /** El documento está bloqueado para edición (lo decide la aplicación, p. ej. «solo lectura»). */
+  | 'read-only';
 
 export class DomainError extends Error {
   override readonly name = 'DomainError';

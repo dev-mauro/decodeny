@@ -2,7 +2,7 @@ import { moveItems, updateItem } from '@decodeny/domain';
 import type { ItemDragEvent } from '@decodeny/viewer';
 import { useCallback } from 'react';
 import { useProjectStore } from '@/state/project-store';
-import { activeLevel, useUiStore } from '@/state/ui-store';
+import { activeLevel, snapStep, useUiStore } from '@/state/ui-store';
 import { selectedTargets } from '@/state/selection-model';
 import { itemPlacementAt } from './item-placement';
 
@@ -29,7 +29,8 @@ export function useItemDragHandler(): (event: ItemDragEvent) => void {
       .filter((t) => t.kind === 'item')
       .map((t) => t.id);
     if (group.length > 1 && group.includes(item.id)) {
-      const round = (v: number) => (event.snap ? Math.round(v / 10) * 10 : v);
+      const step = snapStep();
+      const round = (v: number) => (event.snap ? Math.round(v / step) * step : v);
       store.preview(moveItems, {
         levelId: level.id,
         itemIds: group,

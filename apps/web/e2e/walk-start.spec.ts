@@ -14,7 +14,7 @@ test('se elige con un clic dónde empieza el recorrido', async ({ page }) => {
 
   // Fuera de los recintos: avisa y sigue esperando el clic.
   await page.getByTestId('plan-view').click({ position: { x: 5, y: 5 } });
-  await expect(page.getByText('Elige un punto dentro de un recinto.')).toBeVisible();
+  await expect(page.getByText('Elige un punto dentro de un espacio.')).toBeVisible();
   await expect(page.getByTestId('walk-start-hint')).toBeVisible();
 
   // En el piso del dormitorio: empieza el recorrido (vista 3D, modo persona).

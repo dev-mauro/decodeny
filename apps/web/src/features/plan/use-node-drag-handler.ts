@@ -2,7 +2,7 @@ import { moveNode, snapNodePosition } from '@decodeny/domain';
 import type { NodeDragEvent } from '@decodeny/viewer';
 import { useCallback } from 'react';
 import { useProjectStore } from '@/state/project-store';
-import { activeLevel, useUiStore } from '@/state/ui-store';
+import { activeLevel, snapStep, useUiStore } from '@/state/ui-store';
 
 /**
  * Arrastre de un vértice en la planta: se alinea con sus vecinos (muros a escuadra) o con la
@@ -19,7 +19,7 @@ export function useNodeDragHandler(): (event: NodeDragEvent) => void {
     const base = store.transaction?.base ?? store.project;
     const level = activeLevel(base, useUiStore.getState().levelId);
     const p = event.snap
-      ? snapNodePosition(level, event.nodeId, event.position)
+      ? snapNodePosition(level, event.nodeId, event.position, undefined, snapStep())
       : { x: Math.round(event.position.x), y: Math.round(event.position.y) };
     store.preview(moveNode, { levelId: level.id, nodeId: event.nodeId, x: p.x, y: p.y });
     if (event.phase === 'end') useProjectStore.getState().commitPreview();

@@ -18,6 +18,7 @@ import {
 import { Move, MousePointerClick, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCoarsePointer } from '@/shared/lib/use-media-query';
 import { RoomFurniture } from '@/features/furniture/RoomFurniture';
 import { RoomFinishes } from '@/features/materials/RoomFinishes';
 import { wallSelectionFrom } from '@/features/walls/wall-context';
@@ -37,6 +38,7 @@ interface RoomInspectorProps {
 
 export function RoomInspector({ level, room }: RoomInspectorProps) {
   const { t, i18n } = useTranslation();
+  const touch = useCoarsePointer();
   const run = useCommand();
   const select = useUiStore((s) => s.select);
   const viewportHover = useUiStore((s) => s.viewportHover);
@@ -174,7 +176,7 @@ export function RoomInspector({ level, room }: RoomInspectorProps) {
         </legend>
         <p className="flex gap-2 text-xs text-slate-500">
           <Move className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          {t('inspector.dragHint')}
+          {t(touch ? 'inspector.dragHintTouch' : 'inspector.dragHint')}
         </p>
         <div className="grid grid-cols-2 gap-2">
           <LengthField

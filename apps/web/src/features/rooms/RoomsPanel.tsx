@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
+import { useReadOnly } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 
 export function RoomsPanel() {
@@ -12,6 +13,7 @@ export function RoomsPanel() {
   const selection = useUiStore((s) => s.selection);
   const select = useUiStore((s) => s.select);
   const openCreate = useUiStore((s) => s.setCreateRoomOpen);
+  const readOnly = useReadOnly();
   const viewportHover = useUiStore((s) => s.viewportHover);
   const setHighlighted = useUiStore((s) => s.setHighlighted);
 
@@ -32,6 +34,7 @@ export function RoomsPanel() {
           variant="primary"
           icon={<Plus className="size-4" />}
           onClick={() => openCreate(true)}
+          disabled={readOnly}
           data-testid="add-room"
         >
           {t('rooms.add')}

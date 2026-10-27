@@ -333,6 +333,10 @@ export function LevelView({
       })}
       {level.items.map((item) => {
         if (hiddenGroups?.has(itemGroupOf(resolveItemDefinition(item.def).category))) return null;
+        const base = itemBase(level, item);
+        // Con el corte activo, lo que queda entero sobre la altura de corte (cuadros altos,
+        // lámparas de cielo) se oculta; los muebles no se cortan.
+        if (sectionHeight !== null && base >= sectionHeight) return null;
         const target = { kind: 'item', id: item.id } as const;
         return (
           <ItemView
@@ -340,7 +344,7 @@ export function LevelView({
             item={item}
             state={stateOf(target)}
             warning={interactive ? warnings.get(item.id) : undefined}
-            base={itemBase(level, item)}
+            base={base}
             assetUrl={assetUrl}
             showFootprint={interactive}
             onSelect={handleSelect}

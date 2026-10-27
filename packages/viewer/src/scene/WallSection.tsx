@@ -11,22 +11,28 @@ import { Plane, Vector3 } from 'three';
 import { MeshBuilder } from '../builders/mesh-data';
 import { toBufferGeometry } from '../builders/to-buffer-geometry';
 import { surfaceMaterial } from '../materials/default-materials';
+import { SECTION_PLANES } from '../materials/section-planes';
 import { clipToSlab } from './section-geometry';
 import { useKeyedGeometry } from './use-keyed-geometry';
 
 /**
- * Corte horizontal de la escena (como un plano de arquitectura): todo lo que está sobre la
- * altura de corte se recorta con un plano global, y los muros cortados muestran su sección.
+ * Corte horizontal de la envolvente (como un plano de arquitectura): muros, cielos y vanos se
+ * recortan sobre la altura de corte y los muros cortados muestran su sección. Los muebles no se
+ * cortan (ver `SECTION_PLANES`); los que quedan enteros sobre el corte se ocultan en `LevelView`.
  */
 export function SectionClipping({ heightMm }: { readonly heightMm: number | null }) {
   const gl = useThree((s) => s.gl);
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
-    gl.clippingPlanes =
-      heightMm === null ? [] : [new Plane(new Vector3(0, -1, 0), mmToMeters(heightMm))];
+    gl.localClippingEnabled = true;
+    SECTION_PLANES.length = 0;
+    if (heightMm !== null) {
+      SECTION_PLANES.push(new Plane(new Vector3(0, -1, 0), mmToMeters(heightMm)));
+    }
     invalidate();
     return () => {
-      gl.clippingPlanes = [];
+      SECTION_PLANES.length = 0;
+      invalidate();
     };
   }, [gl, heightMm, invalidate]);
   return null;

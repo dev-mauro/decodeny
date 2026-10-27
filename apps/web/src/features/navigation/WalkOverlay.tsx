@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { useCoarsePointer } from '@/shared/lib/use-media-query';
@@ -17,11 +18,15 @@ export function WalkOverlay() {
   const headBob = useUiStore((s) => s.headBob);
   const setHeadBob = useUiStore((s) => s.setHeadBob);
   const touch = useCoarsePointer();
+  // El aviso táctil se puede cerrar; vuelve a aparecer al entrar de nuevo a un modo.
+  const [dismissed, setDismissed] = useState<string | null>(null);
   if (mode === 'edit') return null;
 
   // En pantallas táctiles no hay mouse que capturar: los controles están en la vista (joystick y
-  // deslizar para mirar); solo se muestra una barra con la ayuda y la salida.
+  // deslizar para mirar). Se muestra un aviso con la ayuda; su X solo lo cierra (para salir del
+  // recorrido está «Edición» en la barra de modos).
   if (touch) {
+    if (dismissed === mode) return null;
     return (
       <div
         className="pointer-events-none absolute inset-x-0 top-14 flex justify-center px-3"
@@ -33,9 +38,9 @@ export function WalkOverlay() {
           </span>
           <button
             type="button"
-            onClick={() => setMode('edit')}
-            aria-label={t('navigation.exit')}
-            data-testid="exit-walk"
+            onClick={() => setDismissed(mode)}
+            aria-label={t('toolHint.hide')}
+            data-testid="walk-hint-dismiss"
             className="flex size-8 items-center justify-center rounded-lg hover:bg-white/15"
           >
             <X className="size-4" aria-hidden />

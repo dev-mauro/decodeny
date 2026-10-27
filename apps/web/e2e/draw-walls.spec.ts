@@ -42,12 +42,12 @@ test('dibuja muros en la planta, cierra un recinto, lo divide y une', async ({ p
   await page.keyboard.press('Enter');
   // Cierra en el punto inicial: se crea el recinto.
   await clickPlan(page, 0, 0);
-  await expect(page.getByTestId('rooms-list')).toContainText('Recinto 1');
+  await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
 
   // Tabique de muro a muro: divide el recinto en dos.
   await clickPlan(page, 1500, 0);
   await clickPlan(page, 1500, 3000);
-  await expect(page.getByTestId('rooms-list')).toContainText('Recinto 2');
+  await expect(page.getByTestId('rooms-list')).toContainText('Espacio 2');
 
   // Seleccionar el tabique y borrarlo: vuelve a ser un solo recinto.
   await page.keyboard.press('Escape');
@@ -55,8 +55,8 @@ test('dibuja muros en la planta, cierra un recinto, lo divide y une', async ({ p
   await clickPlan(page, 1500, 1500);
   await expect(page.getByTestId('wall-inspector')).toBeVisible();
   await page.getByTestId('delete-wall').click();
-  await expect(page.getByTestId('rooms-list')).not.toContainText('Recinto 2');
-  await expect(page.getByTestId('rooms-list')).toContainText('Recinto 1');
+  await expect(page.getByTestId('rooms-list')).not.toContainText('Espacio 2');
+  await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
 });
 
 test('los extremos de un muro se editan por coordenadas', async ({ page }) => {

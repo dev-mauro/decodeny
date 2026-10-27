@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 test('crea un recinto rectangular por medidas y lo edita', async ({ page }) => {
   await page.getByTestId('add-room').click();
-  const dialog = page.getByRole('dialog', { name: 'Nuevo recinto' });
+  const dialog = page.getByRole('dialog', { name: 'Nuevo espacio' });
   await expect(dialog).toBeVisible();
   await page.getByTestId('room-name').fill('Living');
   await setLength(page, 'room-width', '5,2');
@@ -84,7 +84,7 @@ test('exporta e importa el proyecto conservando los datos', async ({ page }) => 
   // Proyecto nuevo y reimportación del archivo exportado.
   await page.getByRole('button', { name: 'Nuevo' }).click();
   await page.getByRole('button', { name: 'Crear nuevo' }).click();
-  await expect(page.getByText('Aún no hay recintos.')).toBeVisible();
+  await expect(page.getByText('Aún no hay espacios.')).toBeVisible();
 
   await page.getByTestId('file-input').setInputFiles({
     name: 'depto.decodeny.json',

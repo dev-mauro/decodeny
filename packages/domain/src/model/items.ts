@@ -166,6 +166,8 @@ export interface ItemSnapOptions {
   readonly neighbors?: readonly (readonly Vec2[])[];
   /** Distancia de ajuste a otros muebles (mm). */
   readonly neighborThreshold?: number;
+  /** Paso de la grilla cuando no hay muros cerca (mm). */
+  readonly gridStep?: number;
 }
 
 export function snapItemPlacement(
@@ -206,7 +208,8 @@ export function snapItemPlacement(
       };
     }
   }
-  const grid = (v: number) => Math.round(v / ITEM_GRID_STEP) * ITEM_GRID_STEP;
+  const step = options.gridStep ?? ITEM_GRID_STEP;
+  const grid = (v: number) => Math.round(v / step) * step;
   const placed = best
     ? { position: best.position, rotation: best.rotation, wall: best.normal }
     : { position: { x: grid(center.x), y: grid(center.y) }, rotation, wall: null };

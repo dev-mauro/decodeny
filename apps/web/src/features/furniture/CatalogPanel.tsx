@@ -3,6 +3,7 @@ import { localize } from '@decodeny/domain';
 import { Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReadOnly } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 import { targetRoom } from './item-actions';
 import { startPlacement } from './placement';
@@ -15,6 +16,7 @@ const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toL
 export function CatalogPanel() {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
+  const readOnly = useReadOnly();
   const level = useActiveLevel();
   const selection = useUiStore((s) => s.selection);
   const room = targetRoom(level, selection) ?? level.rooms[0];
@@ -55,10 +57,18 @@ export function CatalogPanel() {
           />
         </label>
         <p className="text-xs text-slate-500" data-testid="catalog-target">
-          {room ? t('catalog.addsTo', { room: room.name }) : t('catalog.noRoom')}
+          {readOnly
+            ? t('options.readOnlyActive')
+            : room
+              ? t('catalog.addsTo', { room: room.name })
+              : t('catalog.noRoom')}
         </p>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="catalog-list">
+      <fieldset
+        disabled={readOnly}
+        className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 disabled:opacity-50"
+        data-testid="catalog-list"
+      >
         {groups.length === 0 && (
           <p className="px-2 py-2 text-sm text-slate-500">{t('catalog.noResults')}</p>
         )}
@@ -92,7 +102,7 @@ export function CatalogPanel() {
             </ul>
           </div>
         ))}
-      </div>
+      </fieldset>
     </section>
   );
 }

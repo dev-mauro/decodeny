@@ -7,6 +7,7 @@ import {
   type Level,
   type Vec2,
 } from '@decodeny/domain';
+import { snapStep } from '@/state/ui-store';
 
 export interface ItemPlacement {
   /** Posición en planta; `z` solo si el montaje la determina (objetos de superficie). */
@@ -41,6 +42,8 @@ export function itemPlacementAt(
   item: Pick<Item, 'id' | 'def' | 'params' | 'rotation'>,
   center: Vec2,
   snap: boolean,
+  /** Paso de la grilla (mm): el de la cuadrícula activa o 1 cm. */
+  gridStep = snapStep(),
 ): ItemPlacement {
   const mount = resolveItemDefinition(item.def).mount;
   const env = itemEnvelope(item);
@@ -52,6 +55,7 @@ export function itemPlacementAt(
     const neighbors = neighborsOf(level, new Set([item.id]));
     const s = snapItemPlacement(level, center, item.rotation, env, {
       neighbors: neighbors.map((n) => itemFootprint(n, itemEnvelope(n))),
+      gridStep,
     });
     placed = {
       position: s.position,
@@ -59,12 +63,15 @@ export function itemPlacementAt(
       alignedWith: s.neighbors.map((i) => neighbors[i]!.id),
     };
   } else if (snap && mount !== 'ceiling') {
-    const s = snapItemPlacement(level, center, item.rotation, env);
+    const s = snapItemPlacement(level, center, item.rotation, env, { gridStep });
     placed = { position: s.position, rotation: s.rotation, alignedWith: [] };
   } else {
     placed = {
       position: snap
-        ? { x: Math.round(center.x / 10) * 10, y: Math.round(center.y / 10) * 10 }
+        ? {
+            x: Math.round(center.x / gridStep) * gridStep,
+            y: Math.round(center.y / gridStep) * gridStep,
+          }
         : center,
       rotation: item.rotation,
       alignedWith: [],

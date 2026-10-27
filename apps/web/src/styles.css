@@ -20,6 +20,16 @@
   body {
     @apply bg-slate-100 text-slate-800 antialiased;
     font-family: var(--font-sans);
+    /* App a pantalla completa: sin "tirar para recargar" ni rebote al desplazar. */
+    overscroll-behavior: none;
+  }
+
+  /* Táctil: un toque es un toque (sin la espera ni el zoom del doble toque). */
+  button,
+  input,
+  select,
+  label {
+    touch-action: manipulation;
   }
 
   :focus-visible {

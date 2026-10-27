@@ -47,7 +47,7 @@ export const RoomSurfaces = memo(function RoomSurfaces({
     <group name={`room:${room.id}`}>
       <mesh
         geometry={floor}
-        material={finishMaterial(floorFinish ?? defaultFinish('floor'), state)}
+        material={finishMaterial(floorFinish ?? defaultFinish('floor'), state, true)}
         receiveShadow
         {...(onDragStart
           ? { onPointerDown: (e: ThreeEvent<PointerEvent>) => onDragStart(room.id, e) }

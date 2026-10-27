@@ -132,11 +132,20 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 
 ## Móvil y táctil (I8)
 
-- **Layout:** desde 1024 px, tres columnas; por debajo, `MobileLayout`: la vista ocupa la pantalla y una barra inferior abre recintos, catálogo o propiedades como hoja. Las herramientas que piden tocar la vista (ubicar, dibujar, medir, elegir el punto de partida) cierran la hoja (`mobilePanel` en el estado de interfaz).
+- **Layout:** desde 1024 px, tres columnas; por debajo, `MobileLayout` (en horizontal con poca altura, riel de navegación a la izquierda y paneles a la derecha): la vista ocupa la pantalla y una barra inferior abre recintos, catálogo o propiedades como hoja. Las herramientas que piden tocar la vista (ubicar, dibujar, medir, elegir el punto de partida) cierran la hoja (`mobilePanel` en el estado de interfaz).
 - **Recorrido táctil:** `TouchControls` (visor) escribe en un `VirtualInput` mutable (joystick, mirada, subir/bajar) que los modos leen junto con el teclado (`useMovementIntent`, `combineIntent`); la app lo activa con `(pointer: coarse)` y le pasa los textos.
 - **Planta:** pellizcar con dos dedos hace zoom alrededor del punto entre ellos y cancela lo que se estuviera arrastrando.
 - **Atajos con equivalente táctil:** las indicaciones de herramienta (`ToolHint`) llevan botones (Dejar aquí, Girar, Cancelar, Terminar).
 - E2E con un proyecto `mobile` (Pixel 7 emulado) que corre `mobile.spec.ts`.
+
+## Opciones, cuadrícula y solo lectura
+
+- **Opciones** (engranaje en la barra superior): idioma, corte de muros, cuadrícula y solo lectura.
+- **Solo lectura:** lo aplica el store del documento: `dispatch` y `preview` responden `DomainError('read-only')` y deshacer/rehacer no hacen nada; abrir otro proyecto sí se permite. La interfaz lo refleja (inspector y catálogo en un `fieldset` desactivado, sin arrastres, sin dibujo, indicador en la barra). Se recuerda en el navegador.
+- **Cuadrícula de trabajo:** paso de 10 cm, 25 cm, 50 cm o 1 m. Fija el paso de todos los ajustes (`gridStep` en `snapDrawPoint`, `snapItemPlacement`, `snapRoomTranslation`, `snapNodePosition`; en la app, `snapStep()`). Se ve en el plano (patrón SVG) y en 3D: sobre los pisos la pinta su shader (`setFloorGrid`, líneas con ancho en el mundo: no depende de la precisión de profundidad ni de derivadas) y fuera de los espacios hay líneas a ras del suelo (`FloorGrid`), ambas alineadas al origen del proyecto.
+- **Corte de muros:** un arreglo de planos compartido (`SECTION_PLANES`) recorta solo la envolvente (muros, pisos, cielos, vanos); los muebles no se cortan y los que quedan enteros sobre el corte se ocultan.
+- **Dibujo de muros:** guías de alineación (el punto se engancha a la x o la y de un nodo y se dibuja una guía); con el dedo se arrastra y se suelta en cada esquina (radio de captura mayor) y la indicación permite escribir un largo y elegir la dirección (`ViewerApi.drawSegment`).
+- **Gestos:** `usePreventBrowserZoom` evita que pellizcar sobre las vistas haga zoom de la página (incluido Safari en iOS); el resto de la página conserva el zoom del navegador.
 
 ## Muros compartidos
 

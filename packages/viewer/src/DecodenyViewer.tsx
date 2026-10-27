@@ -10,6 +10,7 @@ import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
 import { prefersReducedMotion } from './scene/motion';
+import { usePreventBrowserZoom } from './scene/use-prevent-browser-zoom';
 import type { ViewerCameraApi } from './scene/EditCamera';
 import { ContextLossGuard } from './scene/ContextLossGuard';
 import { ViewerApiBridge, type ViewerApi } from './scene/ViewerApiBridge';
@@ -95,6 +96,8 @@ export interface DecodenyViewerProps {
   readonly trueSurfaceColors?: boolean;
   /** Se invoca cuando el navegador restauró los gráficos tras perder el contexto WebGL. */
   readonly onGraphicsRestored?: () => void;
+  /** Cuadrícula de trabajo sobre el suelo (paso en mm); `null` sin cuadrícula. */
+  readonly grid?: { readonly step: number } | null;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -157,6 +160,7 @@ export function DecodenyViewer({
   measurePoints,
   trueSurfaceColors = false,
   onGraphicsRestored,
+  grid = null,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -166,6 +170,8 @@ export function DecodenyViewer({
   const autoFitted = useRef(false);
   // `data-ready` en la raíz: la escena ya se dibujó (útil para tests e integraciones).
   const [ready, setReady] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  usePreventBrowserZoom(rootRef);
   const mode = navigationModes.get(navigationMode) ?? navigationModes.require('edit');
   const Mode = mode.Component;
   const placing = mode.interactive && placement !== null;
@@ -174,6 +180,7 @@ export function DecodenyViewer({
 
   return (
     <div
+      ref={rootRef}
       className={className}
       data-testid="viewer"
       data-navigation-mode={mode.id}
@@ -192,7 +199,12 @@ export function DecodenyViewer({
         }}
         style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
       >
-        <SceneEnvironment bounds={bounds} lighting={lighting} />
+        <SceneEnvironment
+          bounds={bounds}
+          lighting={lighting}
+          gridStep={grid?.step ?? null}
+          gridElevation={level?.elevation ?? 0}
+        />
         <FirstFrame onFrame={() => setReady(true)} />
         <ViewerApiBridge apiRef={apiRef} />
         <ContextLossGuard onRestored={onGraphicsRestored} />

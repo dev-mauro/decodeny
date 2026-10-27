@@ -1,5 +1,6 @@
 import { Color, DoubleSide, MeshStandardMaterial, type Material } from 'three';
 import type { InteractionState } from '../selection';
+import { SECTION_PLANES } from './section-planes';
 
 /**
  * Materiales por defecto mientras no existan materiales de catálogo (I5). Se comparten
@@ -31,7 +32,13 @@ function cached(key: string, create: () => Material): Material {
 export function surfaceMaterial(role: SurfaceRole, state: InteractionState): Material {
   return cached(
     `${role}:${state}`,
-    () => new MeshStandardMaterial({ color: PALETTE[role][state], roughness: 0.92, metalness: 0 }),
+    () =>
+      new MeshStandardMaterial({
+        color: PALETTE[role][state],
+        roughness: 0.92,
+        metalness: 0,
+        clippingPlanes: SECTION_PLANES,
+      }),
   );
 }
 
@@ -50,10 +57,15 @@ const OPENING_TINT: Record<InteractionState, string | null> = {
   selected: '#93b9f8',
 };
 
-export function openingMaterial(slot: string, state: InteractionState): Material {
+export function openingMaterial(
+  slot: string,
+  state: InteractionState,
+  /** Los vanos se cortan con los muros; el vidrio de un mueble (`false`), no. */
+  section = true,
+): Material {
   if (slot === 'glass') {
     return cached(
-      `opening:glass:${state}`,
+      `opening:glass:${state}:${section ? 'cut' : 'whole'}`,
       () =>
         new MeshStandardMaterial({
           color: state === 'normal' ? '#cfe3f1' : '#a9c8f5',
@@ -63,6 +75,7 @@ export function openingMaterial(slot: string, state: InteractionState): Material
           opacity: 0.28,
           depthWrite: false,
           side: DoubleSide,
+          clippingPlanes: section ? SECTION_PLANES : null,
         }),
     );
   }
@@ -74,6 +87,7 @@ export function openingMaterial(slot: string, state: InteractionState): Material
         color: OPENING_TINT[state] ?? base.color,
         roughness: base.roughness,
         metalness: base.metalness,
+        clippingPlanes: SECTION_PLANES,
       }),
   );
 }
@@ -120,7 +134,7 @@ export function itemMaterial(
   color?: string,
   lit = false,
 ): Material {
-  if (slot === 'glass') return openingMaterial('glass', state);
+  if (slot === 'glass') return openingMaterial('glass', state, false);
   const base = ITEM_PALETTE[slot] ?? ITEM_PALETTE.unknown!;
   const glow = lit && (slot === 'bulb' || slot === 'shade');
   return cached(

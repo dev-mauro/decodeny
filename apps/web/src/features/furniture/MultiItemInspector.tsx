@@ -2,6 +2,7 @@ import { resolveItemDefinition } from '@decodeny/catalog';
 import { localize, type Item } from '@decodeny/domain';
 import { Copy, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useCoarsePointer } from '@/shared/lib/use-media-query';
 import { Button, IconButton } from '@/shared/ui/Button';
 import { notify } from '@/state/notifications-store';
 import { useProjectStore } from '@/state/project-store';
@@ -12,6 +13,7 @@ import { deleteSelectedItems, duplicateSelectedItems, rotateSelectedItems } from
 /** Propiedades de una selección múltiple de muebles: lista y acciones sobre todos. */
 export function MultiItemInspector({ items }: { readonly items: readonly Item[] }) {
   const { t, i18n } = useTranslation();
+  const touch = useCoarsePointer();
   const select = useUiStore((s) => s.select);
 
   const remove = () => {
@@ -24,7 +26,9 @@ export function MultiItemInspector({ items }: { readonly items: readonly Item[] 
 
   return (
     <div className="flex flex-col gap-5" data-testid="multi-item-inspector">
-      <p className="text-xs text-slate-500">{t('furniture.multiHint')}</p>
+      <p className="text-xs text-slate-500">
+        {t(touch ? 'furniture.multiHintTouch' : 'furniture.multiHint')}
+      </p>
       <ul className="flex flex-col gap-0.5" data-testid="multi-item-list">
         {items.map((item) => {
           const definition = resolveItemDefinition(item.def);

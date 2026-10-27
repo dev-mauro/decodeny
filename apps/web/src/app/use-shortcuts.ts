@@ -82,6 +82,7 @@ export function useShortcuts(): void {
         const ui = useUiStore.getState();
         ui.setView(ui.view === 'plan' ? '3d' : 'plan');
       } else if (!mod && key === 'w') {
+        if (store.readOnly) return;
         const ui = useUiStore.getState();
         ui.setPlanTool(ui.view === 'plan' && ui.planTool === 'wall' ? 'select' : 'wall');
       } else if (!mod && key === 'm') {

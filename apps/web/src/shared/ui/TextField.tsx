@@ -15,6 +15,7 @@ export interface TextFieldProps {
   readonly className?: string;
   readonly inputClassName?: string;
   readonly testId?: string;
+  readonly disabled?: boolean;
 }
 
 export function TextField({
@@ -29,6 +30,7 @@ export function TextField({
   className,
   inputClassName,
   testId,
+  disabled = false,
 }: TextFieldProps) {
   const id = useId();
   const [draft, setDraft] = useState(value);
@@ -60,6 +62,7 @@ export function TextField({
           inputClassName,
         )}
         value={draft}
+        disabled={disabled}
         placeholder={placeholder}
         maxLength={maxLength}
         onChange={(e) => setDraft(e.target.value)}

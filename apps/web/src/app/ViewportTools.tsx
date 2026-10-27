@@ -1,13 +1,12 @@
 import { formatLength } from '@decodeny/domain';
 import { measureDistance, type ItemGroup, type ViewerApi } from '@decodeny/viewer';
-import { Camera, Layers, Moon, Ruler, Scissors, Sun, X } from 'lucide-react';
+import { Camera, Layers, Moon, Ruler, Sun, X } from 'lucide-react';
 import { useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { downloadCapture } from '@/features/io/project-actions';
 import { cn } from '@/shared/lib/cn';
 import { IconButton } from '@/shared/ui/Button';
-import { LengthField } from '@/shared/ui/LengthField';
-import { DEFAULT_SECTION_HEIGHT, useUiStore } from '@/state/ui-store';
+import { useUiStore } from '@/state/ui-store';
 
 const GROUPS: readonly {
   id: ItemGroup;
@@ -18,7 +17,7 @@ const GROUPS: readonly {
   { id: 'lighting', label: 'viewport.layerLighting' },
 ];
 
-/** Herramientas de la vista: capas, corte, medición, día/noche y captura. */
+/** Herramientas de la vista: capas, medición, día/noche y captura. */
 export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<ViewerApi | null> }) {
   const { t } = useTranslation();
   const mode = useUiStore((s) => s.navigationMode);
@@ -26,14 +25,12 @@ export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<Vie
   const setLighting = useUiStore((s) => s.setLighting);
   const hidden = useUiStore((s) => s.hiddenGroups);
   const toggleGroup = useUiStore((s) => s.toggleGroup);
-  const section = useUiStore((s) => s.sectionHeight);
-  const setSection = useUiStore((s) => s.setSectionHeight);
   const measuring = useUiStore((s) => s.measuring);
   const setMeasuring = useUiStore((s) => s.setMeasuring);
   const [layersOpen, setLayersOpen] = useState(false);
+  // La iluminación es de la vista 3D; la medición, de ambas (en edición). El corte de muros está
+  // en Opciones.
   const plan = useUiStore((s) => s.view) === 'plan';
-  // El corte y la iluminación son de la vista 3D; la medición, de ambas (en edición).
-  const edit = mode === 'edit' && !plan;
 
   return (
     <div className="absolute right-3 bottom-3 flex flex-col items-end gap-2">
@@ -53,31 +50,6 @@ export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<Vie
               {t(label)}
             </label>
           ))}
-          {edit && (
-            <div className="mt-1 flex flex-col gap-2 border-t border-slate-200 pt-2">
-              <label className="flex items-center gap-2 text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={section !== null}
-                  onChange={(e) => setSection(e.target.checked ? DEFAULT_SECTION_HEIGHT : null)}
-                  data-testid="layer-section"
-                />
-                <Scissors className="size-3.5 text-slate-400" aria-hidden />
-                {t('viewport.section')}
-              </label>
-              {section !== null && (
-                <LengthField
-                  label={t('viewport.sectionHeight')}
-                  value={section}
-                  min={100}
-                  max={10_000}
-                  step={100}
-                  onCommit={setSection}
-                  testId="section-height"
-                />
-              )}
-            </div>
-          )}
         </div>
       )}
       <div className="flex gap-1 rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur">
@@ -95,7 +67,7 @@ export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<Vie
         <IconButton
           label={t('viewport.layers')}
           aria-pressed={layersOpen}
-          className={cn((hidden.size > 0 || section !== null) && 'text-brand-600')}
+          className={cn(hidden.size > 0 && 'text-brand-600')}
           onClick={() => setLayersOpen((v) => !v)}
           data-testid="toggle-layers"
         >

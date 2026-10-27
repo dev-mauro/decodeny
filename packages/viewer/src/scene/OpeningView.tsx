@@ -22,6 +22,8 @@ interface OpeningViewProps {
   readonly state: InteractionState;
   /** Símbolos de planta (arcos de apertura): solo en edición. */
   readonly showPlan: boolean;
+  /** Se recorta con su muro; `false` si el muro queda entero (corte de los que tapan). */
+  readonly sectioned?: boolean | undefined;
   readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
   readonly onDragStart?:
@@ -41,6 +43,7 @@ export const OpeningView = memo(function OpeningView({
   footprint,
   state,
   showPlan,
+  sectioned = true,
   onSelect,
   onHover,
   onDragStart,
@@ -80,7 +83,7 @@ export const OpeningView = memo(function OpeningView({
     >
       <PartMeshes
         parts={parts}
-        materialOf={(slot) => openingMaterial(slot, state)}
+        materialOf={(slot) => openingMaterial(slot, state, sectioned)}
         zSign={-1}
         castShadow={(slot) => slot !== 'glass'}
       />

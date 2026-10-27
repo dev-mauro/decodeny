@@ -29,15 +29,20 @@ function cached(key: string, create: () => Material): Material {
   return material;
 }
 
-export function surfaceMaterial(role: SurfaceRole, state: InteractionState): Material {
+/** `section`: se recorta con el corte de muros (lo de un muro que queda entero, no). */
+export function surfaceMaterial(
+  role: SurfaceRole,
+  state: InteractionState,
+  section = true,
+): Material {
   return cached(
-    `${role}:${state}`,
+    `${role}:${state}${section ? '' : ':whole'}`,
     () =>
       new MeshStandardMaterial({
         color: PALETTE[role][state],
         roughness: 0.92,
         metalness: 0,
-        clippingPlanes: SECTION_PLANES,
+        clippingPlanes: section ? SECTION_PLANES : null,
       }),
   );
 }
@@ -60,7 +65,7 @@ const OPENING_TINT: Record<InteractionState, string | null> = {
 export function openingMaterial(
   slot: string,
   state: InteractionState,
-  /** Los vanos se cortan con los muros; el vidrio de un mueble (`false`), no. */
+  /** Los vanos se cortan con su muro; el vidrio de un mueble o un muro entero (`false`), no. */
   section = true,
 ): Material {
   if (slot === 'glass') {
@@ -81,13 +86,13 @@ export function openingMaterial(
   }
   const base = OPENING_PALETTE[slot] ?? OPENING_PALETTE.frame!;
   return cached(
-    `opening:${slot}:${state}`,
+    `opening:${slot}:${state}${section ? '' : ':whole'}`,
     () =>
       new MeshStandardMaterial({
         color: OPENING_TINT[state] ?? base.color,
         roughness: base.roughness,
         metalness: base.metalness,
-        clippingPlanes: SECTION_PLANES,
+        clippingPlanes: section ? SECTION_PLANES : null,
       }),
   );
 }

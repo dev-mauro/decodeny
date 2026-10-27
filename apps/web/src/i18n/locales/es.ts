@@ -37,6 +37,11 @@ export const es = {
     layerLighting: 'Luminarias',
     section: 'Cortar muros para ver interiores',
     sectionHeight: 'Altura de corte',
+    sectionMode: 'Qué muros cortar',
+    sectionAll: 'Todos',
+    sectionFacing: 'Solo los que tapan la vista',
+    sectionFacingHint:
+      'Los muros del fondo quedan enteros; se cortan los que están entre la cámara y el interior.',
     measure: 'Medir distancia (M)',
     measureHint: 'Haz clic en dos puntos de la vista.',
     measureDistance: 'Distancia',

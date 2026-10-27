@@ -2,6 +2,7 @@ import { itemBase, itemEnvelope, resolveItemDefinition } from '@decodeny/catalog
 import {
   dot,
   itemWarnings,
+  levelWallExposure,
   levelWallFootprints,
   roomOfItem,
   mmToMeters,
@@ -14,9 +15,10 @@ import {
   roomsOfWall,
   type Level,
   type ResolvedMaterial,
+  type WallExposure,
   type WallFootprint,
 } from '@decodeny/domain';
-import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plane, Vector3, type Group } from 'three';
 import type { WallCut } from '../builders/wall-mesh';
@@ -36,6 +38,7 @@ import { LevelLights } from './LevelLights';
 import { MeasureClicks } from './MeasureClicks';
 import type { MeasurePoint } from './measure';
 import { MeasureOverlay } from './MeasureOverlay';
+import { facingCutWalls, sameWallSet, wallAt, type SectionMode } from './section-cutaway';
 import { SectionClipping, WallSectionCaps } from './WallSection';
 import { OpeningView } from './OpeningView';
 import { RoomDimensions } from './RoomDimensions';
@@ -65,6 +68,10 @@ interface LevelViewProps {
   readonly hiddenGroups?: ReadonlySet<ItemGroup> | undefined;
   /** Altura de corte (mm sobre el nivel) para ver los interiores; `null` sin corte. */
   readonly sectionHeight?: number | null | undefined;
+  /** `facing`: el corte solo recorta los muros que tapan el interior desde la cámara. */
+  readonly sectionMode?: SectionMode | undefined;
+  /** Muros recortados por el corte `facing` (ids ordenados), o `null` si no aplica. */
+  readonly onSectionCutChange?: ((wallIds: readonly string[] | null) => void) | undefined;
   /** Herramienta de medición: los clics marcan puntos en vez de seleccionar. */
   readonly onMeasurePoint?: ((point: MeasurePoint) => void) | undefined;
   readonly measurePoints?: readonly MeasurePoint[] | undefined;
@@ -96,6 +103,8 @@ export function LevelView({
   assetUrl,
   hiddenGroups,
   sectionHeight = null,
+  sectionMode = 'all',
+  onSectionCutChange,
   onMeasurePoint,
   measurePoints,
   trueSurfaceColors = false,
@@ -109,6 +118,15 @@ export function LevelView({
   const drag = usePlaneDrag();
 
   const footprints = useMemo(() => levelWallFootprints(level), [level]);
+  // Corte de los que tapan: qué muros se recortan según la cámara (`null`: aún sin calcular).
+  const cutaway = sectionHeight !== null && sectionMode === 'facing';
+  const exposure = useMemo(() => (cutaway ? levelWallExposure(level) : null), [cutaway, level]);
+  const [cutWalls, setCutWalls] = useState<ReadonlySet<string> | null>(null);
+  const activeCuts = exposure ? cutWalls : null;
+  useEffect(() => {
+    onSectionCutChange?.(activeCuts ? [...activeCuts].sort() : null);
+  }, [activeCuts, onSectionCutChange]);
+  const sectioned = (wallId: string) => !activeCuts || activeCuts.has(wallId);
   const cutsByWall = useMemo(() => {
     const map = new Map<string, WallCut[]>();
     for (const opening of level.openings) {
@@ -295,6 +313,7 @@ export function LevelView({
             leftFinish={wall.finish?.left ? finishes.get(wall.finish.left) : undefined}
             rightFinish={wall.finish?.right ? finishes.get(wall.finish.right) : undefined}
             state={surfaceStateOf({ kind: 'wall', id: wall.id })}
+            sectioned={sectioned(wall.id)}
             onSelect={handleSelect}
             onHover={handleHover}
           />
@@ -325,6 +344,7 @@ export function LevelView({
             footprint={footprint}
             state={stateOf(target)}
             showPlan={interactive}
+            sectioned={sectioned(opening.wallId)}
             onSelect={handleSelect}
             onHover={handleHover}
             onDragStart={movable(target) ? startOpeningDrag : undefined}
@@ -332,11 +352,17 @@ export function LevelView({
         );
       })}
       {level.items.map((item) => {
-        if (hiddenGroups?.has(itemGroupOf(resolveItemDefinition(item.def).category))) return null;
+        const definition = resolveItemDefinition(item.def);
+        if (hiddenGroups?.has(itemGroupOf(definition.category))) return null;
         const base = itemBase(level, item);
         // Con el corte activo, lo que queda entero sobre la altura de corte (cuadros altos,
-        // lámparas de cielo) se oculta; los muebles no se cortan.
-        if (sectionHeight !== null && base >= sectionHeight) return null;
+        // lámparas de cielo) se oculta; los muebles no se cortan. Lo montado en un muro que
+        // queda entero (corte de los que tapan) se sigue viendo.
+        const onWholeWall =
+          definition.mount === 'wall' &&
+          activeCuts !== null &&
+          !activeCuts.has(wallAt(footprints, item.position) ?? '');
+        if (sectionHeight !== null && base >= sectionHeight && !onWholeWall) return null;
         const target = { kind: 'item', id: item.id } as const;
         return (
           <ItemView
@@ -359,8 +385,14 @@ export function LevelView({
       )}
       <SectionClipping heightMm={sectionHeight === null ? null : level.elevation + sectionHeight} />
       {sectionHeight !== null && (
-        <WallSectionCaps level={level} footprints={footprints} heightMm={sectionHeight} />
+        <WallSectionCaps
+          level={level}
+          footprints={footprints}
+          heightMm={sectionHeight}
+          walls={activeCuts}
+        />
       )}
+      {exposure && <CutawayTracker exposure={exposure} onChange={setCutWalls} />}
       {dimensioned && (
         <RoomDimensions
           interior={dimensioned.entry.interior}
@@ -372,4 +404,28 @@ export function LevelView({
       )}
     </group>
   );
+}
+
+/** Recalcula, con cada cuadro dibujado, qué muros tapan el interior desde la cámara. */
+function CutawayTracker({
+  exposure,
+  onChange,
+}: {
+  readonly exposure: ReadonlyMap<string, WallExposure>;
+  readonly onChange: (walls: ReadonlySet<string>) => void;
+}) {
+  const current = useRef<ReadonlySet<string> | null>(null);
+  const invalidate = useThree((s) => s.invalidate);
+  // Con el dibujo bajo demanda, un cuadro nuevo hace el primer cálculo.
+  useEffect(() => invalidate(), [exposure, invalidate]);
+  useFrame(({ camera }) => {
+    // Mundo (m, norte = −Z) → planta (mm).
+    const eye = { x: camera.position.x * 1000, y: -camera.position.z * 1000 };
+    const next = facingCutWalls(exposure, eye, current.current ?? new Set());
+    if (current.current && sameWallSet(next, current.current)) return;
+    current.current = next;
+    onChange(next);
+    invalidate();
+  });
+  return null;
 }

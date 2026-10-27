@@ -11,6 +11,7 @@ import type {
   ItemGroup,
   MeasurePoint,
   PlanTool,
+  SectionMode,
   ViewerSelection,
 } from '@decodeny/viewer';
 import { create } from 'zustand';
@@ -100,6 +101,8 @@ interface UiState {
   readonly mobilePanel: MobilePanel;
   /** Cuadrícula sobre el suelo: se ve en 3D y en el plano, y fija el paso de los ajustes. */
   readonly grid: GridSettings;
+  /** Corte de muros: toda la envolvente o solo los muros que tapan el interior (se recuerda). */
+  readonly sectionMode: SectionMode;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
   readonly select: (selection: ViewerSelection | null, options?: { additive?: boolean }) => void;
   readonly selectMany: (targets: readonly ViewerSelection[], additive?: boolean) => void;
@@ -127,10 +130,20 @@ interface UiState {
   readonly setHeadBob: (headBob: boolean) => void;
   readonly setMobilePanel: (panel: MobilePanel) => void;
   readonly setGrid: (grid: Partial<GridSettings>) => void;
+  readonly setSectionMode: (mode: SectionMode) => void;
 }
 
 const HEAD_BOB_KEY = 'decodeny.headBob';
 const GRID_KEY = 'decodeny.grid';
+const SECTION_MODE_KEY = 'decodeny.sectionMode';
+
+function readSectionMode(): SectionMode {
+  try {
+    return localStorage.getItem(SECTION_MODE_KEY) === 'facing' ? 'facing' : 'all';
+  } catch {
+    return 'all';
+  }
+}
 
 function readGrid(): GridSettings {
   try {
@@ -184,6 +197,7 @@ export const useUiStore = create<UiState>()((set) => ({
   headBob: readHeadBob(),
   mobilePanel: null,
   grid: readGrid(),
+  sectionMode: readSectionMode(),
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
@@ -233,6 +247,14 @@ export const useUiStore = create<UiState>()((set) => ({
       }
       return { grid };
     }),
+  setSectionMode: (sectionMode) => {
+    try {
+      localStorage.setItem(SECTION_MODE_KEY, sectionMode);
+    } catch {
+      // Preferencia no persistida: vale para esta sesión.
+    }
+    set({ sectionMode });
+  },
   setHeadBob: (headBob) => {
     try {
       localStorage.setItem(HEAD_BOB_KEY, headBob ? '1' : '0');

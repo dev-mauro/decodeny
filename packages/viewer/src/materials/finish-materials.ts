@@ -131,8 +131,10 @@ export function finishMaterial(
   m: ResolvedMaterial,
   state: InteractionState,
   floor = false,
+  /** Se recorta con el corte de muros (la de un muro que queda entero, no). */
+  section = true,
 ): Material {
-  const key = `${finishKey(m)}|${state}${floor ? '|floor' : ''}`;
+  const key = `${finishKey(m)}|${state}${floor ? '|floor' : ''}${section ? '' : '|whole'}`;
   let material = materials.get(key);
   if (!material) {
     const standard = new MeshStandardMaterial({
@@ -142,7 +144,7 @@ export function finishMaterial(
       emissive: '#3b82f6',
       emissiveIntensity: EMISSIVE[state],
       // Las terminaciones visten la envolvente (muros, pisos, cielos): se cortan con ella.
-      clippingPlanes: SECTION_PLANES,
+      clippingPlanes: section ? SECTION_PLANES : null,
       ...(floor ? { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 } : {}),
     });
     if (floor) withFloorGrid(standard);

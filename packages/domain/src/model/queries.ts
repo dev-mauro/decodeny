@@ -254,3 +254,32 @@ export function wallFaceTowardRoom(level: Level, room: Room, wallId: string): Wa
 export function roomOnWallFace(level: Level, wallId: string, face: WallFace): Room | undefined {
   return roomsOfWall(level, wallId).find((r) => wallFaceTowardRoom(level, r, wallId) === face);
 }
+
+/**
+ * Cómo da un muro al exterior, para el corte que solo recorta lo que tapa el interior:
+ * `exterior` (una cara da a un recinto y la otra no; `outward` apunta hacia afuera), `interior`
+ * (recintos de los dos lados) o `free` (muro suelto, sin recintos).
+ */
+export type WallExposure =
+  | { readonly kind: 'exterior'; readonly mid: Vec2; readonly outward: Vec2 }
+  | { readonly kind: 'interior' | 'free'; readonly mid: Vec2 };
+
+export function levelWallExposure(level: Level): Map<string, WallExposure> {
+  const positions = nodePositions(level);
+  const out = new Map<string, WallExposure>();
+  for (const wall of level.walls) {
+    const a = requireNodePosition(positions, wall.start);
+    const b = requireNodePosition(positions, wall.end);
+    const mid = scale(add(a, b), 0.5);
+    const left = roomOnWallFace(level, wall.id, 'left') !== undefined;
+    const right = roomOnWallFace(level, wall.id, 'right') !== undefined;
+    if (left === right) {
+      out.set(wall.id, { kind: left ? 'interior' : 'free', mid });
+      continue;
+    }
+    const normal = perpLeft(normalize(sub(b, a)));
+    // La cara izquierda mira hacia perpLeft: si el recinto está a la izquierda, afuera es el otro lado.
+    out.set(wall.id, { kind: 'exterior', mid, outward: left ? scale(normal, -1) : normal });
+  }
+  return out;
+}

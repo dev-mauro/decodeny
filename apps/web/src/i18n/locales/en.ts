@@ -41,6 +41,11 @@ export const en: Translation<Resources> = {
     layerLighting: 'Light fixtures',
     section: 'Cut walls to see inside',
     sectionHeight: 'Cut height',
+    sectionMode: 'Which walls to cut',
+    sectionAll: 'All',
+    sectionFacing: 'Only those blocking the view',
+    sectionFacingHint:
+      'Walls at the back stay whole; walls between the camera and the inside are cut.',
     measure: 'Measure distance (M)',
     measureHint: 'Click two points in the view.',
     measureDistance: 'Distance',

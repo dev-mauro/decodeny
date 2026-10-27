@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 async function toScreen(page: Page, x: number, y: number) {
   const svg = page.getByTestId('plan-view');
@@ -72,4 +73,34 @@ test('muros exactos con largo y dirección, sin teclado; guías al quedar parejo
   // (Una línea vertical tiene caja de ancho cero: se comprueba que exista, no su "visibilidad".)
   await expect(page.getByTestId('plan-draw-guide')).not.toHaveCount(0);
   await expect(page.getByTestId('plan-draw-length')).toHaveText('3,00 m');
+});
+
+test('corte de los que tapan: al girar la cámara se recortan otros muros', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('load-sample').click();
+  await waitForScene(page);
+  await page.getByTestId('options').click();
+  await page.getByTestId('option-section').check();
+  const viewer = page.getByTestId('viewer');
+  // Con el corte de toda la envolvente no hay una lista de muros recortados.
+  await expect(viewer).not.toHaveAttribute('data-section-cut', /.*/);
+  await page.getByTestId('option-section-mode').selectOption('facing');
+  await page.keyboard.press('Escape');
+  await expect(viewer).toHaveAttribute('data-section-cut', /\S/);
+  const before = await viewer.getAttribute('data-section-cut');
+
+  // Media vuelta de órbita: arrastrar el fondo media altura de la vista.
+  const box = (await viewer.boundingBox())!;
+  const y = box.y + box.height * 0.15;
+  await page.mouse.move(box.x + box.width * 0.2, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.2 + box.height / 2, y, { steps: 12 });
+  await page.mouse.up();
+  await expect(viewer).not.toHaveAttribute('data-section-cut', before!);
+
+  // Se recuerda.
+  await page.reload();
+  await page.getByTestId('options').click();
+  await page.getByTestId('option-section').check();
+  await expect(page.getByTestId('option-section-mode')).toHaveValue('facing');
 });

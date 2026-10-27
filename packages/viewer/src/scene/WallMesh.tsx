@@ -17,6 +17,8 @@ interface WallMeshProps {
   readonly leftFinish?: ResolvedMaterial | undefined;
   readonly rightFinish?: ResolvedMaterial | undefined;
   readonly state: InteractionState;
+  /** Se recorta con el corte de muros; `false`: queda entero (corte de los que tapan). */
+  readonly sectioned?: boolean | undefined;
   readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
 }
@@ -28,6 +30,7 @@ export const WallMesh = memo(function WallMesh({
   leftFinish,
   rightFinish,
   state,
+  sectioned = true,
   onSelect,
   onHover,
 }: WallMeshProps) {
@@ -37,17 +40,17 @@ export const WallMesh = memo(function WallMesh({
     toBufferGeometry(buildWallMesh(footprint, wall.height, cuts), WALL_SLOTS),
   );
   const materials = useMemo(() => {
-    const side = surfaceMaterial('wallSide', state);
+    const side = surfaceMaterial('wallSide', state, sectioned);
     // Orden = WALL_SLOTS: left, right, top, cap, reveal, threshold.
     return [
-      finishMaterial(leftFinish ?? defaultFinish('wall'), state),
-      finishMaterial(rightFinish ?? defaultFinish('wall'), state),
-      surfaceMaterial('wallTop', state),
+      finishMaterial(leftFinish ?? defaultFinish('wall'), state, false, sectioned),
+      finishMaterial(rightFinish ?? defaultFinish('wall'), state, false, sectioned),
+      surfaceMaterial('wallTop', state, sectioned),
       side,
       side,
-      surfaceMaterial('threshold', 'normal'),
+      surfaceMaterial('threshold', 'normal', sectioned),
     ];
-  }, [leftFinish, rightFinish, state]);
+  }, [leftFinish, rightFinish, sectioned, state]);
   const target = useMemo<ViewerSelection>(() => ({ kind: 'wall', id: wall.id }), [wall.id]);
   /** La cara clicada indica desde qué recinto se mira el muro (slots 0 = left, 1 = right). */
   const faceOf = (e: ThreeEvent<MouseEvent>): ViewerSelection => {

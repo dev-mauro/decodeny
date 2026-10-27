@@ -1,4 +1,5 @@
 import { formatLength } from '@decodeny/domain';
+import type { SectionMode } from '@decodeny/viewer';
 import { Grid3x3, Lock, Scissors, Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { LengthField } from '@/shared/ui/LengthField';
@@ -12,6 +13,8 @@ export function OptionsMenu() {
   const { t, i18n } = useTranslation();
   const section = useUiStore((s) => s.sectionHeight);
   const setSection = useUiStore((s) => s.setSectionHeight);
+  const sectionMode = useUiStore((s) => s.sectionMode);
+  const setSectionMode = useUiStore((s) => s.setSectionMode);
   const grid = useUiStore((s) => s.grid);
   const setGrid = useUiStore((s) => s.setGrid);
   const readOnly = useProjectStore((s) => s.readOnly);
@@ -44,15 +47,32 @@ export function OptionsMenu() {
               {t('viewport.section')}
             </label>
             {section !== null && (
-              <LengthField
-                label={t('viewport.sectionHeight')}
-                value={section}
-                min={100}
-                max={10_000}
-                step={100}
-                onCommit={setSection}
-                testId="section-height"
-              />
+              <>
+                <LengthField
+                  label={t('viewport.sectionHeight')}
+                  value={section}
+                  min={100}
+                  max={10_000}
+                  step={100}
+                  onCommit={setSection}
+                  testId="section-height"
+                />
+                <label className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                  {t('viewport.sectionMode')}
+                  <select
+                    className="h-8 rounded-md border border-slate-300 bg-white px-1.5 text-sm text-slate-700"
+                    value={sectionMode}
+                    onChange={(e) => setSectionMode(e.target.value as SectionMode)}
+                    data-testid="option-section-mode"
+                  >
+                    <option value="all">{t('viewport.sectionAll')}</option>
+                    <option value="facing">{t('viewport.sectionFacing')}</option>
+                  </select>
+                </label>
+                {sectionMode === 'facing' && (
+                  <p className="text-xs text-slate-500">{t('viewport.sectionFacingHint')}</p>
+                )}
+              </>
             )}
           </div>
 

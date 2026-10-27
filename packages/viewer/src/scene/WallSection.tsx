@@ -56,26 +56,28 @@ function solidSpans(level: Level, wallId: string, heightMm: number) {
   return spans.filter(([a, b]) => b > a);
 }
 
-/** Secciones oscuras de los muros cortados (respetando puertas y ventanas). */
+/** Secciones oscuras de los muros cortados (respetando puertas y ventanas); `walls`: solo esos. */
 export function WallSectionCaps({
   level,
   footprints,
   heightMm,
+  walls = null,
 }: {
   readonly level: Level;
   readonly footprints: ReadonlyMap<string, WallFootprint>;
   readonly heightMm: number;
+  readonly walls?: ReadonlySet<string> | null;
 }) {
   const key = useMemo(
     () =>
-      `${heightMm}|${level.walls.map((w) => `${w.id}:${w.height}`).join()}|${JSON.stringify(level.openings)}|${[...footprints.values()].map((f) => f.polygon.map((p) => `${p.x},${p.y}`).join(';')).join('|')}`,
-    [footprints, heightMm, level.openings, level.walls],
+      `${heightMm}|${walls ? [...walls].sort().join() : '*'}|${level.walls.map((w) => `${w.id}:${w.height}`).join()}|${JSON.stringify(level.openings)}|${[...footprints.values()].map((f) => f.polygon.map((p) => `${p.x},${p.y}`).join(';')).join('|')}`,
+    [footprints, heightMm, level.openings, level.walls, walls],
   );
   const geometry = useKeyedGeometry(key, () => {
     const builder = new MeshBuilder(['section'] as const);
     for (const wall of level.walls) {
       const fp = footprints.get(wall.id);
-      if (!fp || wall.height <= heightMm) continue;
+      if (!fp || wall.height <= heightMm || (walls && !walls.has(wall.id))) continue;
       for (const [a, b] of solidSpans(level, wall.id, heightMm)) {
         const piece = clipToSlab(fp.polygon, fp.start, fp.dir, a, b);
         if (piece.length < 3) continue;

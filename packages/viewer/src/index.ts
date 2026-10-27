@@ -48,6 +48,7 @@ export {
   type PatternPainter,
 } from './materials/patterns';
 export type { LightingMode } from './scene/SceneEnvironment';
+export type { SectionMode } from './scene/section-cutaway';
 export {
   kelvinToColor,
   lampLights,

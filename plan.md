@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 planificada (§11): I9–I14**.
+> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10–I14 planificadas.
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -653,7 +653,7 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
 | Base      | Changesets (CHANGELOG), playground del catálogo, regresión visual                                                            | Escalar contenido y versiones                                                 | backlog        |
 | Base      | Accesibilidad: toda la UI por teclado, foco visible, textos alternativos                                                     | Pendiente de I8                                                               | backlog        |
 
-### I9 — Corte inteligente de muros (S)
+### I9 — Corte inteligente de muros (S) ✅
 
 **Objetivo:** con el corte activo, recortar solo los muros que tapan el interior desde la cámara. El muro del fondo, que da hacia afuera y se ve desde adentro, queda entero. El primer muro desde la cámara, aunque también dé hacia afuera, se recorta.
 

@@ -108,6 +108,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const lighting = useUiStore((s) => s.lighting);
   const hiddenGroups = useUiStore((s) => s.hiddenGroups);
   const sectionHeight = useUiStore((s) => s.sectionHeight);
+  const sectionMode = useUiStore((s) => s.sectionMode);
   const measuring = useUiStore((s) => s.measuring);
   const measurePoints = useUiStore((s) => s.measurePoints);
   const editingFinish = useUiStore((s) => s.finishEditors > 0);
@@ -220,6 +221,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 apiRef={viewerRef}
                 hiddenGroups={hiddenGroups}
                 sectionHeight={sectionHeight}
+                sectionMode={sectionMode}
                 measurePoints={measurePoints}
                 trueSurfaceColors={editingFinish}
                 {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}

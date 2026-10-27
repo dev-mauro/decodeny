@@ -10,6 +10,7 @@ import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
 import { prefersReducedMotion } from './scene/motion';
+import type { SectionMode } from './scene/section-cutaway';
 import { usePreventBrowserZoom } from './scene/use-prevent-browser-zoom';
 import type { ViewerCameraApi } from './scene/EditCamera';
 import { ContextLossGuard } from './scene/ContextLossGuard';
@@ -88,6 +89,12 @@ export interface DecodenyViewerProps {
   readonly hiddenGroups?: ReadonlySet<ItemGroup>;
   /** Corte horizontal de muros (mm) para ver los interiores; solo en edición. */
   readonly sectionHeight?: number | null;
+  /**
+   * `all`: el corte recorta toda la envolvente. `facing`: solo los muros que tapan el interior
+   * desde la cámara; los del fondo quedan enteros (la raíz expone los recortados en
+   * `data-section-cut`).
+   */
+  readonly sectionMode?: SectionMode;
   /** Herramienta de medición: cada clic en la escena entrega un punto. */
   readonly onMeasurePoint?: (point: MeasurePoint) => void;
   readonly measurePoints?: readonly MeasurePoint[];
@@ -163,6 +170,7 @@ export function DecodenyViewer({
   assetUrl,
   hiddenGroups,
   sectionHeight = null,
+  sectionMode = 'all',
   onMeasurePoint,
   measurePoints,
   trueSurfaceColors = false,
@@ -186,6 +194,7 @@ export function DecodenyViewer({
   const placing = mode.interactive && placement !== null;
   const [virtualInput] = useState(createVirtualInput);
   const interactive = mode.interactive && !placing;
+  const [sectionCut, setSectionCut] = useState<readonly string[] | null>(null);
 
   return (
     <div
@@ -197,6 +206,7 @@ export function DecodenyViewer({
       data-placing={placing || undefined}
       data-true-surface-colors={trueSurfaceColors || undefined}
       data-peers={peers && peers.list.length > 0 ? peers.list.length : undefined}
+      data-section-cut={sectionCut?.join(' ')}
       style={{ position: 'relative', width: '100%', height: '100%' }}
     >
       <Canvas
@@ -236,6 +246,8 @@ export function DecodenyViewer({
             assetUrl={assetUrl}
             hiddenGroups={hiddenGroups}
             sectionHeight={mode.interactive ? sectionHeight : null}
+            sectionMode={sectionMode}
+            onSectionCutChange={setSectionCut}
             onMeasurePoint={onMeasurePoint}
             measurePoints={measurePoints}
             trueSurfaceColors={trueSurfaceColors}

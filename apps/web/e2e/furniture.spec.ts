@@ -19,6 +19,8 @@ test('agrega un mueble desde el catálogo al recinto seleccionado y lo edita', a
   // La búsqueda ignora acentos.
   await page.getByTestId('catalog-search').fill('comoda');
   await expect(page.getByTestId('catalog-list')).toContainText('Cómoda');
+  // Miniatura generada desde la definición del mueble.
+  await expect(page.getByTestId('catalog-thumb-storage.dresser@1')).toBeVisible();
   await page.getByTestId('catalog-storage.dresser@1').click();
   // Queda en el lugar sugerido (Enter); también se puede ubicar con el puntero.
   await page.keyboard.press('Enter');

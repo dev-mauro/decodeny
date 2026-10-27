@@ -82,6 +82,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - Los muebles se mueven y eliminan con su recinto; en recorrido bloquean el paso (salvo `solid: false`) y la persona aparece lejos de ellos.
 - **Selección múltiple:** la interfaz tiene una selección principal (la del inspector) y un grupo (`selection-model.ts`, funciones puras). El visor recibe `selectionGroup`, dibuja el grupo como seleccionado e informa si un clic fue aditivo (Shift, Ctrl o Cmd, `SelectOptions`); en la planta, Shift + arrastrar emite un `AreaSelectEvent`. La aplicación decide qué entra (hoy, solo muebles). El grupo se arrastra, empuja, gira (alrededor de su centro), duplica, copia y borra junto, siempre en un solo paso de deshacer (`moveItems`, `rotateItems`).
 - En la planta, los muebles se dibujan por capas (lo plano abajo, lo de superficie arriba, lo de cielo al final) para que una alfombra no tape lo que tiene encima.
+- **Miniaturas:** `itemThumbnail` (visor) dibuja cada definición con sus parámetros por defecto en un renderer compartido fuera de pantalla, de a una por cuadro, y las guarda en memoria; la geometría de las piezas (`partGeometry`) es la misma que usa la escena.
 - El test de contrato del catálogo recorre cada definición con parámetros por defecto, mínimos, máximos, cada opción y cada preset, y exige que la caja envolvente coincida con las medidas (±1 mm).
 
 ## Materiales (I5)

@@ -1,5 +1,6 @@
 import type { Part } from '@decodeny/domain';
 import type { Material } from 'three';
+import { partGeometry } from './part-geometry';
 
 interface PartMeshesProps {
   readonly parts: readonly Part[];
@@ -9,51 +10,37 @@ interface PartMeshesProps {
   readonly castShadow?: (slot: string) => boolean;
 }
 
-const CYLINDER_SEGMENTS = 28;
-
 /** Piezas de catálogo (mm) como mallas de Three (m). Una malla por pieza: pocas por objeto. */
 export function PartMeshes({ parts, materialOf, zSign = 1, castShadow }: PartMeshesProps) {
   return (
     <>
       {parts.map((part, i) => {
-        const position = [
-          part.at[0] / 1000,
-          part.at[1] / 1000,
-          (zSign * part.at[2]) / 1000,
-        ] as const;
+        const geometry = partGeometry(part, zSign);
         const shadow = castShadow?.(part.slot) ?? true;
-        if (part.kind === 'box') {
+        if (geometry.kind === 'box') {
           return (
             <mesh
               key={i}
-              position={position}
-              rotation-y={part.rotationY ?? 0}
+              position={geometry.position}
+              rotation-y={geometry.rotationY}
               material={materialOf(part.slot, part.color)}
               castShadow={shadow}
               receiveShadow
             >
-              <boxGeometry args={[part.size[0] / 1000, part.size[1] / 1000, part.size[2] / 1000]} />
+              <boxGeometry args={geometry.args} />
             </mesh>
           );
         }
         return (
           <mesh
             key={i}
-            position={position}
-            // Sección elíptica cuando el mueble se escaló distinto en x y z.
-            scale-z={(part.radiusZ ?? part.radius) / part.radius}
+            position={geometry.position}
+            scale-z={geometry.scaleZ}
             material={materialOf(part.slot, part.color)}
             castShadow={shadow}
             receiveShadow
           >
-            <cylinderGeometry
-              args={[
-                (part.radiusTop ?? part.radius) / 1000,
-                part.radius / 1000,
-                part.height / 1000,
-                CYLINDER_SEGMENTS,
-              ]}
-            />
+            <cylinderGeometry args={geometry.args} />
           </mesh>
         );
       })}

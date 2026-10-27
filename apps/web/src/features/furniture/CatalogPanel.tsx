@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
 import { targetRoom } from './item-actions';
 import { startPlacement } from './placement';
-import { itemIcon } from './item-icons';
+import { ItemThumb } from './ItemThumb';
 
 /** Minúsculas y sin acentos, para buscar "cama", "comoda" o "clóset" indistintamente. */
 const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -69,7 +69,6 @@ export function CatalogPanel() {
             </h3>
             <ul className="flex flex-col">
               {items.map((def) => {
-                const Icon = itemIcon(def);
                 const name = localize(def.name, i18n.language);
                 return (
                   <li key={def.id}>
@@ -80,10 +79,7 @@ export function CatalogPanel() {
                       data-testid={`catalog-${def.id}`}
                       className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 transition-colors hover:bg-brand-50 hover:text-brand-700"
                     >
-                      <Icon
-                        className="size-4 shrink-0 text-slate-400 group-hover:text-brand-500"
-                        aria-hidden
-                      />
+                      <ItemThumb definition={def} />
                       <span className="min-w-0 flex-1 truncate">{name}</span>
                       <Plus
                         className="size-3.5 shrink-0 text-slate-300 group-hover:text-brand-500"

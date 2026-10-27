@@ -50,3 +50,4 @@ export {
 export { itemGroupOf, type ItemGroup } from './scene/item-groups';
 export { measureDistance, type MeasurePoint } from './scene/measure';
 export { PlanView, type NodeDragEvent, type PlanTool, type PlanViewProps } from './plan/PlanView';
+export { itemThumbnail, THUMBNAIL_SIZE } from './thumbnails/item-thumbnails';

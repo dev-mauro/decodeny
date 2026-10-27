@@ -483,7 +483,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - **Affordances declaradas** (`sit`, `lie`) en sillas, sofás, camas, aunque aún no se usen.
 - **Playground de catálogo** (ruta de desarrollo): cada definición con sliders de todos sus parámetros — herramienta clave para que el equipo de contenido escale el catálogo.
 
-**Notas de implementación:** ajuste a otros muebles ✅ (se juntan cara a cara y alinean bordes; contra un muro, se deslizan a lo largo de él). Selección múltiple ✅ (Shift/Ctrl + clic, recuadro en la planta, Ctrl+A; mover, girar, duplicar, copiar y borrar en grupo). Miniaturas por render offscreen, instancing y el playground de catálogo quedan pendientes (hoy: íconos por categoría y la propia app como playground). Medidas libres desde 10 cm (ver `comfortMin` en arquitectura).
+**Notas de implementación:** ajuste a otros muebles ✅ (se juntan cara a cara y alinean bordes; contra un muro, se deslizan a lo largo de él). Selección múltiple ✅ (Shift/Ctrl + clic, recuadro en la planta, Ctrl+A; mover, girar, duplicar, copiar y borrar en grupo). Miniaturas por render offscreen ✅ (un renderer compartido, de a una por cuadro; sin WebGL, ícono). Instancing y el playground de catálogo quedan pendientes (hoy la propia app sirve de playground). Medidas libres desde 10 cm (ver `comfortMin` en arquitectura).
 
 **Aceptación**
 

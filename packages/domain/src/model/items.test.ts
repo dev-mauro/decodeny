@@ -246,6 +246,54 @@ describe('ajuste a muros al arrastrar', () => {
       depth: 400,
       height: 900,
     });
-    expect(snap).toEqual({ position: { x: 2000, y: 1500 }, rotation: 15, againstWall: false });
+    expect(snap).toEqual({
+      position: { x: 2000, y: 1500 },
+      rotation: 15,
+      againstWall: false,
+      neighbors: [],
+    });
+  });
+
+  // Recinto interior de 0..4000 × 0..3000.
+  const NIGHTSTAND = { width: 500, depth: 400, height: 550 };
+  const box = (x1: number, y1: number, x2: number, y2: number) => [
+    { x: x1, y: y1 },
+    { x: x2, y: y1 },
+    { x: x2, y: y2 },
+    { x: x1, y: y2 },
+  ];
+
+  it('se junta al costado de otro mueble y alinea su respaldo', () => {
+    const bench = benchWithRoom();
+    // Cama de 1400 × 2000 con el respaldo en y = 2500.
+    const bed = box(300, 500, 1700, 2500);
+    const snap = snapItemPlacement(level(bench), { x: 2010, y: 2330 }, 0, NIGHTSTAND, {
+      neighbors: [bed],
+    });
+    expect(snap.position).toEqual({ x: 1950, y: 2300 });
+    expect(snap.neighbors).toEqual([0]);
+    expect(snap.againstWall).toBe(false);
+  });
+
+  it('contra un muro, se desliza a lo largo de él hasta el mueble vecino', () => {
+    const bench = benchWithRoom();
+    const cabinet = box(1000, 2600, 1500, 3000);
+    const snap = snapItemPlacement(level(bench), { x: 1790, y: 2780 }, 0, NIGHTSTAND, {
+      neighbors: [cabinet],
+    });
+    expect(snap.againstWall).toBe(true);
+    // Sigue apoyado en el muro norte (y = 3000) y queda pegado al costado del vecino (x = 1500).
+    expect(snap.position.y).toBe(2800);
+    expect(snap.position.x).toBe(1750);
+    expect(snap.neighbors).toEqual([0]);
+  });
+
+  it('lejos de otros muebles no se ajusta a ellos', () => {
+    const bench = benchWithRoom();
+    const snap = snapItemPlacement(level(bench), { x: 2000, y: 1500 }, 0, NIGHTSTAND, {
+      neighbors: [box(300, 500, 900, 900)],
+    });
+    expect(snap.position).toEqual({ x: 2000, y: 1500 });
+    expect(snap.neighbors).toEqual([]);
   });
 });

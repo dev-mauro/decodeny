@@ -137,11 +137,16 @@ export function itemsInRoom(level: Level, room: Room): Item[] {
 export const ITEM_SNAP_DISTANCE = 250;
 export const ITEM_GRID_STEP = 10;
 
+/** Distancia (mm) dentro de la cual un mueble se junta o alinea con otro. */
+export const NEIGHBOR_SNAP_DISTANCE = 120;
+
 export interface ItemSnap {
   readonly position: Vec2;
   readonly rotation: number;
   /** Se apoyó contra la cara interior de un muro. */
   readonly againstWall: boolean;
+  /** Índices (en `options.neighbors`) de los muebles con los que quedó junto o alineado. */
+  readonly neighbors: readonly number[];
 }
 
 /**
@@ -154,6 +159,13 @@ export interface ItemSnapOptions {
   readonly threshold?: number;
   /** Montaje en muro: siempre se apoya en el muro más cercano, esté donde esté. */
   readonly wallMounted?: boolean;
+  /**
+   * Huellas de otros muebles (el dominio no conoce el catálogo: la aplicación las calcula). El
+   * mueble se junta con el que tenga cara a cara (costado con costado) y se alinea con sus bordes.
+   */
+  readonly neighbors?: readonly (readonly Vec2[])[];
+  /** Distancia de ajuste a otros muebles (mm). */
+  readonly neighborThreshold?: number;
 }
 
 export function snapItemPlacement(
@@ -165,7 +177,7 @@ export function snapItemPlacement(
 ): ItemSnap {
   const threshold = options.threshold ?? ITEM_SNAP_DISTANCE;
   const wallThreshold = options.wallMounted ? Infinity : threshold;
-  let best: { distance: number; position: Vec2; rotation: number } | null = null;
+  let best: { distance: number; position: Vec2; rotation: number; normal: Vec2 } | null = null;
   for (const room of level.rooms) {
     const inner = roomInteriorPolygon(level, room);
     const ccw = isCounterClockwise(inner);
@@ -190,18 +202,127 @@ export function snapItemPlacement(
         distance,
         position: add(add(a, scale(u, t)), scale(n, env.depth / 2)),
         rotation: rotationFacing(n),
+        normal: n,
       };
     }
   }
-  if (best) {
-    return {
-      position: { x: Math.round(best.position.x), y: Math.round(best.position.y) },
-      rotation: best.rotation,
-      againstWall: true,
-    };
-  }
   const grid = (v: number) => Math.round(v / ITEM_GRID_STEP) * ITEM_GRID_STEP;
-  return { position: { x: grid(center.x), y: grid(center.y) }, rotation, againstWall: false };
+  const placed = best
+    ? { position: best.position, rotation: best.rotation, wall: best.normal }
+    : { position: { x: grid(center.x), y: grid(center.y) }, rotation, wall: null };
+  const aligned = options.wallMounted
+    ? { position: placed.position, neighbors: [] }
+    : snapToNeighbors(
+        placed.position,
+        placed.rotation,
+        env,
+        options.neighbors ?? [],
+        options.neighborThreshold ?? NEIGHBOR_SNAP_DISTANCE,
+        placed.wall,
+      );
+  return {
+    position: { x: Math.round(aligned.position.x), y: Math.round(aligned.position.y) },
+    rotation: placed.rotation,
+    againstWall: best !== null,
+    neighbors: aligned.neighbors,
+  };
+}
+
+interface Edge {
+  readonly a: Vec2;
+  readonly b: Vec2;
+  readonly u: Vec2;
+  /** Normal hacia afuera del polígono. */
+  readonly n: Vec2;
+  readonly length: number;
+}
+
+function polygonEdges(points: readonly Vec2[]): Edge[] {
+  const ccw = isCounterClockwise(points);
+  return points.map((a, i) => {
+    const b = points[(i + 1) % points.length]!;
+    const d = sub(b, a);
+    const u = normalize(d);
+    // Afuera es la derecha del recorrido antihorario.
+    const left = perpLeft(u);
+    return { a, b, u, n: ccw ? scale(left, -1) : left, length: Math.hypot(d.x, d.y) };
+  });
+}
+
+const PARALLEL = 0.999;
+
+/** Largo en común de dos bordes paralelos, medido a lo largo de `m`. */
+function overlapAlong(m: Edge, e: Edge): number {
+  const t1 = dot(sub(e.a, m.a), m.u);
+  const t2 = dot(sub(e.b, m.a), m.u);
+  return Math.min(Math.max(t1, t2), m.length) - Math.max(Math.min(t1, t2), 0);
+}
+
+/**
+ * Junta el mueble con un vecino cara a cara (el costado más cercano dentro del umbral) y luego,
+ * en el eje perpendicular, alinea un borde con el del vecino que mira hacia el mismo lado (p. ej.
+ * frentes alineados). Contra un muro solo se desliza a lo largo del muro.
+ */
+function snapToNeighbors(
+  position: Vec2,
+  rotation: number,
+  env: ItemEnvelope,
+  neighbors: readonly (readonly Vec2[])[],
+  threshold: number,
+  wallNormal: Vec2 | null,
+): { position: Vec2; neighbors: number[] } {
+  if (neighbors.length === 0) return { position, neighbors: [] };
+  const others = neighbors.map(polygonEdges);
+  const movingEdges = (p: Vec2) =>
+    polygonEdges(itemFootprint({ position: { ...p, z: 0 }, rotation }, env));
+  const free = (n: Vec2) => !wallNormal || Math.abs(dot(n, wallNormal)) < 1 - PARALLEL;
+
+  // 1. Contacto: borde propio frente a un borde ajeno (normales opuestas), con largo en común.
+  let touch: { shift: Vec2; axis: Vec2; index: number; gap: number } | null = null;
+  for (const m of movingEdges(position)) {
+    if (!free(m.n)) continue;
+    others.forEach((edges, index) => {
+      for (const e of edges) {
+        if (dot(m.n, e.n) > -PARALLEL) continue;
+        const gap = dot(sub(e.a, m.a), m.n);
+        if (Math.abs(gap) > threshold || overlapAlong(m, e) <= 1) continue;
+        if (!touch || Math.abs(gap) < Math.abs(touch.gap)) {
+          touch = { shift: scale(m.n, gap), axis: m.n, index, gap };
+        }
+      }
+    });
+  }
+  let snapped = position;
+  const matched: number[] = [];
+  const contact = touch as { shift: Vec2; axis: Vec2; index: number } | null;
+  if (contact) {
+    snapped = add(position, contact.shift);
+    matched.push(contact.index);
+  }
+
+  // 2. Alineación en el otro eje: bordes que miran hacia el mismo lado, en la misma recta.
+  let align: { shift: Vec2; index: number; offset: number } | null = null;
+  for (const m of movingEdges(snapped)) {
+    if (!free(m.n)) continue;
+    if (contact && Math.abs(dot(m.n, contact.axis)) > 1 - PARALLEL) continue;
+    others.forEach((edges, index) => {
+      if (contact && index !== contact.index) return;
+      for (const e of edges) {
+        if (dot(m.n, e.n) < PARALLEL) continue;
+        const offset = dot(sub(e.a, m.a), m.n);
+        if (Math.abs(offset) > threshold || Math.abs(offset) < 1e-6) continue;
+        if (!align || Math.abs(offset) < Math.abs(align.offset)) {
+          align = { shift: scale(m.n, offset), index, offset };
+        }
+      }
+    });
+  }
+  const alignment = align as { shift: Vec2; index: number } | null;
+  if (alignment) {
+    snapped = add(snapped, alignment.shift);
+    if (!matched.includes(alignment.index)) matched.push(alignment.index);
+  }
+  return { position: snapped, neighbors: matched };
 }
 
 /** Altura del cielo (mm, sobre el nivel) en un punto: la de su recinto, o la del muro más alto. */

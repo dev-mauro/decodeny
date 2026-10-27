@@ -15,15 +15,17 @@ import { itemPlacementAt } from './item-placement';
 export function useItemDragHandler(): (event: ItemDragEvent) => void {
   return useCallback((event: ItemDragEvent) => {
     const store = useProjectStore.getState();
+    const ui = useUiStore.getState();
     if (event.phase === 'cancel') {
       store.cancelPreview();
+      ui.setHighlighted([]);
       return;
     }
     const base = store.transaction?.base ?? store.project;
     const level = activeLevel(base, useUiStore.getState().levelId);
     const item = level.items.find((i) => i.id === event.itemId);
     if (!item) return;
-    const group = selectedTargets(useUiStore.getState())
+    const group = selectedTargets(ui)
       .filter((t) => t.kind === 'item')
       .map((t) => t.id);
     if (group.length > 1 && group.includes(item.id)) {
@@ -44,6 +46,12 @@ export function useItemDragHandler(): (event: ItemDragEvent) => void {
       position: placed.position,
       rotation: placed.rotation,
     });
-    if (event.phase === 'end') useProjectStore.getState().commitPreview();
+    if (event.phase === 'end') {
+      useProjectStore.getState().commitPreview();
+      ui.setHighlighted([]);
+    } else {
+      // Resalta los muebles con los que se junta o alinea.
+      ui.setHighlighted(placed.alignedWith.map((id) => ({ kind: 'item', id }) as const));
+    }
   }, []);
 }

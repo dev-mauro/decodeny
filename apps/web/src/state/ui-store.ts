@@ -136,11 +136,12 @@ export const useUiStore = create<UiState>()((set) => ({
       measurePoints: [],
       ...(navigationMode === 'edit' ? {} : { view: '3d' as const, planTool: 'select' as const }),
     }),
+  // La medición sigue activa al cambiar de vista; sus puntos no (la planta mide sin altura).
   setView: (view) =>
     set(
       view === 'plan'
-        ? { view, navigationMode: 'edit', measuring: false, measurePoints: [] }
-        : { view, planTool: 'select' },
+        ? { view, navigationMode: 'edit', measurePoints: [] }
+        : { view, planTool: 'select', measurePoints: [] },
     ),
   // Dibujar muros es una herramienta de la planta.
   setPlanTool: (planTool) =>
@@ -174,7 +175,13 @@ export const useUiStore = create<UiState>()((set) => ({
       return { hiddenGroups: next };
     }),
   setSectionHeight: (sectionHeight) => set({ sectionHeight }),
-  setMeasuring: (measuring) => set({ measuring, measurePoints: [] }),
+  // Medir y dibujar muros son herramientas excluyentes.
+  setMeasuring: (measuring) =>
+    set(
+      measuring
+        ? { measuring, measurePoints: [], planTool: 'select' }
+        : { measuring, measurePoints: [] },
+    ),
   // El tercer punto empieza una medición nueva.
   addMeasurePoint: (point) =>
     set((s) => ({

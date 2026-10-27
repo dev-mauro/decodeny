@@ -45,9 +45,11 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { itemGroupOf, type ItemGroup } from '../scene/item-groups';
+import { measureDistance, type MeasurePoint } from '../scene/measure';
 import { clipToSlab } from '../scene/section-geometry';
 import { isAdditiveClick } from '../scene/interaction';
 import type { ViewerApi } from '../scene/ViewerApiBridge';
+import { measureOutlines, snapMeasurePoint, type MeasureSnap } from './measure-snap';
 import {
   interactionState,
   sameSelection,
@@ -97,6 +99,9 @@ export interface PlanViewProps {
   readonly onToolExit?: () => void;
   /** Ubicación con el puntero (mismo contrato que en la vista 3D; la altura no aplica). */
   readonly placement?: ViewerPlacement | null;
+  /** Medición (mismo contrato que la vista 3D): cada clic entrega un punto (z = 0). */
+  readonly onMeasurePoint?: (point: MeasurePoint) => void;
+  readonly measurePoints?: readonly MeasurePoint[];
   readonly hiddenGroups?: ReadonlySet<ItemGroup>;
   readonly apiRef?: Ref<ViewerApi>;
   readonly locale?: string;
@@ -145,6 +150,8 @@ interface DrawState {
 
 const NO_DRAW: DrawState = { from: null, cursor: null, typed: '' };
 const NO_GROUP: readonly ViewerSelection[] = [];
+const NO_POINTS: readonly MeasurePoint[] = [];
+const MEASURE_COLOR = '#db2777';
 
 const isEditable = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement &&
@@ -196,6 +203,8 @@ export function PlanView({
   onWallDraw,
   onToolExit,
   placement = null,
+  onMeasurePoint,
+  measurePoints = NO_POINTS,
   hiddenGroups,
   apiRef,
   locale = 'es',
@@ -209,9 +218,11 @@ export function PlanView({
   /** Recuadro de selección en curso (esquinas en mm de planta). */
   const [area, setArea] = useState<{ a: Vec2; b: Vec2 } | null>(null);
   const placing = placement !== null;
-  const drawing = tool === 'wall' && !placing;
+  const measuring = onMeasurePoint !== undefined && !placing;
+  const drawing = tool === 'wall' && !placing && !measuring;
+  const [measureCursor, setMeasureCursor] = useState<MeasureSnap | null>(null);
   // Al dibujar o ubicar, las entidades no capturan el puntero: todo clic es para la herramienta.
-  const capturing = drawing || placing;
+  const capturing = drawing || placing || measuring;
   // La cadena en curso se descarta al cambiar de herramienta o de nivel.
   const drawKey = `${tool}|${levelId}`;
   const [drawFor, setDrawFor] = useState(drawKey);
@@ -241,6 +252,21 @@ export function PlanView({
     return { cx: (b.min.x + b.max.x) / 2, cy: (b.min.y + b.max.y) / 2, s };
   }, [level, size.h, size.w]);
   const current = view ?? fit();
+
+  const outlines = useMemo(
+    () => (level && measuring ? measureOutlines(level) : []),
+    [level, measuring],
+  );
+  /** Desde dónde se mide: el primer punto, si hay uno solo (el tercer clic empieza de nuevo). */
+  const measureFrom = measurePoints.length === 1 ? measurePoints[0]! : null;
+  const measureAt = (clientX: number, clientY: number, free: boolean) =>
+    snapMeasurePoint(
+      outlines,
+      toPlan(clientX, clientY),
+      measureFrom,
+      DRAW_SNAP_PX / current.s,
+      free,
+    );
 
   const data = useMemo(() => {
     if (!level) return null;
@@ -425,6 +451,7 @@ export function PlanView({
     if (placing && !d?.moved && e.buttons === 0) {
       placement.onEvent({ phase: 'move', point: toPlan(e.clientX, e.clientY), snap: !e.altKey });
     }
+    if (measuring && !d?.moved) setMeasureCursor(measureAt(e.clientX, e.clientY, e.altKey));
     if (drawing && !d?.moved) {
       const cursor = snapAt(e.clientX, e.clientY, e.altKey);
       setDraw((prev) => ({ ...prev, cursor }));
@@ -474,6 +501,9 @@ export function PlanView({
     if (!d.moved && d.kind === 'pan') {
       if (placing) {
         placement.onEvent({ phase: 'end', point: toPlan(e.clientX, e.clientY), snap: !e.altKey });
+      } else if (measuring) {
+        const snap = measureAt(e.clientX, e.clientY, e.altKey);
+        onMeasurePoint({ x: snap.point.x, y: snap.point.y, z: 0 });
       } else if (drawing) {
         const snap = snapAt(e.clientX, e.clientY, e.altKey);
         if (snap) placePoint(snap);
@@ -680,6 +710,7 @@ export function PlanView({
       }}
       onPointerLeave={() => {
         if (drawing) setDraw((prev) => ({ ...prev, cursor: null }));
+        setMeasureCursor(null);
       }}
     >
       <g pointerEvents={capturing ? 'none' : undefined}>
@@ -874,6 +905,58 @@ export function PlanView({
           />
         );
       })}
+
+      {/* Medición: puntos, tramo medido (o en curso hasta el puntero) y su largo */}
+      {measuring &&
+        (() => {
+          const [a, b] = measurePoints;
+          const end = b ?? (a && measureCursor ? { ...measureCursor.point, z: 0 } : undefined);
+          const label = a && end ? lerp(a, end, 0.5) : null;
+          return (
+            <g pointerEvents="none" data-testid="plan-measure">
+              {a && end && (
+                <polyline
+                  points={pts([a, end])}
+                  stroke={MEASURE_COLOR}
+                  strokeWidth={px(2)}
+                  strokeDasharray={b ? undefined : `${px(6)} ${px(4)}`}
+                  fill="none"
+                />
+              )}
+              {measurePoints.map((p, i) => (
+                <circle key={i} cx={p.x} cy={-p.y} r={px(4)} fill={MEASURE_COLOR} />
+              ))}
+              {measureCursor && measurePoints.length !== 2 && (
+                <circle
+                  cx={measureCursor.point.x}
+                  cy={-measureCursor.point.y}
+                  r={px(measureCursor.kind === 'corner' ? 7 : 5)}
+                  fill="#ffffff"
+                  stroke={MEASURE_COLOR}
+                  strokeWidth={px(2)}
+                />
+              )}
+              {a && end && label && (
+                <text
+                  x={label.x}
+                  y={-label.y}
+                  dy={-px(8)}
+                  textAnchor="middle"
+                  fontSize={px(12)}
+                  fontWeight={600}
+                  fill={MEASURE_COLOR}
+                  stroke="#ffffff"
+                  strokeWidth={px(3)}
+                  paintOrder="stroke"
+                  fontFamily="system-ui, sans-serif"
+                  data-testid="plan-measure-length"
+                >
+                  {formatLength(measureDistance(a, end), locale)}
+                </text>
+              )}
+            </g>
+          );
+        })()}
 
       {/* Recuadro de selección */}
       {area && (

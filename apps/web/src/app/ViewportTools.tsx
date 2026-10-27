@@ -32,7 +32,7 @@ export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<Vie
   const setMeasuring = useUiStore((s) => s.setMeasuring);
   const [layersOpen, setLayersOpen] = useState(false);
   const plan = useUiStore((s) => s.view) === 'plan';
-  // La medición, el corte y la iluminación son de la vista 3D.
+  // El corte y la iluminación son de la vista 3D; la medición, de ambas (en edición).
   const edit = mode === 'edit' && !plan;
 
   return (
@@ -81,7 +81,7 @@ export function ViewportTools({ viewerRef }: { readonly viewerRef: RefObject<Vie
         </div>
       )}
       <div className="flex gap-1 rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur">
-        {edit && (
+        {mode === 'edit' && (
           <IconButton
             label={t('viewport.measure')}
             aria-pressed={measuring}

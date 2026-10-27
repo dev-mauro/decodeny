@@ -533,7 +533,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 - **Vista de planta 2D** (SVG/Canvas, sincronizada con el mismo documento): dibujar muros con click + entrada numérica de longitud, arrastrar nodos, cotas automáticas.
 - ~~Muros compartidos entre recintos y uniones en T~~ (adelantado a I2.5, ADR-0007); cruces en X y muros sueltos ✅ (herramienta «Dibujar muros», tecla `W`).
 - Detección automática de recintos a partir del grafo de muros (ciclos mínimos) ✅: al cerrar un contorno se crea el recinto; un tabique que cruza un recinto lo divide (la parte mayor conserva nombre y terminaciones); borrar el muro que separa dos recintos los une.
-- Herramienta de medición (distancia entre dos puntos en 3D y 2D), área de recintos (m²).
+- Herramienta de medición (distancia entre dos puntos en 3D y 2D) ✅, área de recintos (m²) ✅.
 - Plantillas de inicio (estudio, 1D1B, 2D2B).
 - Capas/visibilidad (ocultar cielo, muebles, decoración), "corte" de muros a media altura en vista de edición.
 - Capturas de pantalla (PNG) desde cualquier modo.

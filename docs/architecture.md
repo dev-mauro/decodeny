@@ -101,7 +101,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Capturas:** `ViewerApi.captureImage(scale)` renderiza y lee el lienzo en el mismo paso (sin `preserveDrawingBuffer`); la app descarga un PNG.
 - **Capas:** `hiddenGroups` oculta muebles, decoración o luminarias (las luces siguen encendidas).
 - **Corte:** `sectionHeight` recorta la escena con un plano global y dibuja la sección oscura de los muros (sin los vanos que atraviesa), como en un plano.
-- **Medición:** con `onMeasurePoint`, los clics hacen un raycast propio sobre la geometría del nivel (los objetos detienen la propagación de sus eventos) y la app muestra distancia total, horizontal y vertical.
+- **Medición:** con `onMeasurePoint`, los clics hacen un raycast propio sobre la geometría del nivel (los objetos detienen la propagación de sus eventos) y la app muestra distancia total, horizontal y vertical. En la planta el contrato es el mismo (z = 0): `snapMeasurePoint` engancha esquinas y caras interiores de recintos y bordes de muebles, o fija la dirección cada 45°.
 - **Plantillas:** `ProjectBuilder` arma proyectos con los mismos comandos y reglas que la UI (ejemplo, estudio, 1D1B, 2D2B); cada plantilla se verifica sin superposiciones ni muebles fuera de recinto.
 
 ## Planta 2D (I7)

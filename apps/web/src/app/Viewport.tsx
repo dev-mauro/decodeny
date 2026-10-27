@@ -113,6 +113,8 @@ export function Viewport({ cameraRef }: ViewportProps) {
               onWallDraw={drawWall}
               onToolExit={exitPlanTool}
               placement={placement}
+              measurePoints={measurePoints}
+              {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}
               hiddenGroups={hiddenGroups}
               apiRef={viewerRef}
               locale={i18n.language}

@@ -58,6 +58,7 @@ export function startPlacement(definition: AnyItemDefinition): void {
   const ui = useUiStore.getState();
   if (ui.navigationMode !== 'edit') ui.setNavigationMode('edit');
   if (ui.planTool !== 'select') ui.setPlanTool('select');
+  if (ui.measuring) ui.setMeasuring(false);
   const store = useProjectStore.getState();
   store.cancelPreview();
   const level = activeLevel(store.project, ui.levelId);

@@ -78,6 +78,8 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Medidas libres:** los rangos son amplios (10 cm a 6 m). Por encima de `comfortMin` el mueble es paramétrico (las patas no engordan); por debajo, `buildItemParts` lo construye en el mínimo y lo escala a lo pedido, así nunca se rompe la geometría.
 - El dominio es agnóstico del catálogo: los avisos (`itemWarnings`: superposición o muro atravesado) y el ajuste al arrastrar (`snapItemPlacement`: respaldo contra el muro, costado contra la esquina) reciben la envolvente desde el catálogo (`itemEnvelope`).
 - Los muebles se mueven y eliminan con su recinto; en recorrido bloquean el paso (salvo `solid: false`) y la persona aparece lejos de ellos.
+- **Selección múltiple:** la interfaz tiene una selección principal (la del inspector) y un grupo (`selection-model.ts`, funciones puras). El visor recibe `selectionGroup`, dibuja el grupo como seleccionado e informa si un clic fue aditivo (Shift, Ctrl o Cmd, `SelectOptions`); en la planta, Shift + arrastrar emite un `AreaSelectEvent`. La aplicación decide qué entra (hoy, solo muebles). El grupo se arrastra, empuja, gira (alrededor de su centro), duplica, copia y borra junto, siempre en un solo paso de deshacer (`moveItems`, `rotateItems`).
+- En la planta, los muebles se dibujan por capas (lo plano abajo, lo de superficie arriba, lo de cielo al final) para que una alfombra no tape lo que tiene encima.
 - El test de contrato del catálogo recorre cada definición con parámetros por defecto, mínimos, máximos, cada opción y cada preset, y exige que la caja envolvente coincida con las medidas (±1 mm).
 
 ## Materiales (I5)

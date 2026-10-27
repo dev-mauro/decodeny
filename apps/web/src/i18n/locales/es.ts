@@ -238,6 +238,11 @@ export const es = {
     duplicate: 'Duplicar',
     delete: 'Eliminar',
     deleted: '«{{name}}» eliminado',
+    deletedMany: '{{count}} muebles eliminados',
+    selectedMany_one: '{{count}} mueble seleccionado',
+    selectedMany_other: '{{count}} muebles seleccionados',
+    multiHint:
+      'Shift o Ctrl + clic suma o quita muebles; en la planta, Shift + arrastrar selecciona un área. Arrástralos juntos en la vista; flechas para empujarlos, R para girarlos.',
     warningOverlap: 'Se superpone con otro mueble.',
     warningWall: 'Atraviesa un muro.',
     unknown: 'Tipo desconocido ({{def}}): se muestra como caja y se conserva al exportar.',

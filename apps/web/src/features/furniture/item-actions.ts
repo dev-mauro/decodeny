@@ -11,6 +11,8 @@ import {
   roomsOfWall,
   snapItemPlacement,
   updateItem,
+  moveItems,
+  rotateItems,
   definitionEnvelope,
   add,
   lerp,
@@ -21,6 +23,7 @@ import {
   roomSides,
   scale,
   type AnyItemDefinition,
+  type Item,
   type ItemEnvelope,
   type Level,
   type Opening,
@@ -28,8 +31,9 @@ import {
   type Room,
   type Vec2,
 } from '@decodeny/domain';
-import type { ViewerSelection } from '@decodeny/viewer';
+import { itemGroupOf, type ViewerSelection } from '@decodeny/viewer';
 import { useProjectStore } from '@/state/project-store';
+import { selectedTargets } from '@/state/selection-model';
 import { activeLevel, useUiStore } from '@/state/ui-store';
 import { runCommand } from '@/state/use-command';
 
@@ -169,30 +173,38 @@ export function initialItemSpot(level: Level, definition: AnyItemDefinition): In
   };
 }
 
-function selectedItem() {
-  const { level, selection } = current();
-  const item =
-    selection?.kind === 'item' ? level.items.find((i) => i.id === selection.id) : undefined;
-  return { level, item };
+/** Muebles seleccionados (el principal primero) del nivel activo. */
+export function selectedItems(): { level: Level; items: Item[] } {
+  const ui = useUiStore.getState();
+  const level = activeLevel(useProjectStore.getState().project, ui.levelId);
+  const items = selectedTargets(ui).flatMap((target) => {
+    const item = target.kind === 'item' ? level.items.find((i) => i.id === target.id) : undefined;
+    return item ? [item] : [];
+  });
+  return { level, items };
 }
 
-export function duplicateSelectedItem(): boolean {
-  const { level, item } = selectedItem();
-  if (!item) return false;
+/** Selecciona los muebles indicados; el primero queda como principal. */
+function selectItems(itemIds: readonly string[]): void {
+  useUiStore.getState().selectMany(itemIds.map((id) => ({ kind: 'item', id }) as const).reverse());
+}
+
+export function duplicateSelectedItems(): boolean {
+  const { level, items } = selectedItems();
+  if (items.length === 0) return false;
   const out = runCommand(duplicateItems, {
     levelId: level.id,
-    itemIds: [item.id],
+    itemIds: items.map((i) => i.id),
     offset: { x: COPY_OFFSET, y: -COPY_OFFSET },
   });
-  const copy = out.ok ? out.result.itemIds[0] : undefined;
-  if (copy) useUiStore.getState().select({ kind: 'item', id: copy });
+  if (out.ok) selectItems(out.result.itemIds);
   return true;
 }
 
-export function copySelectedItem(): boolean {
-  const { item } = selectedItem();
-  if (!item) return false;
-  useUiStore.getState().setClipboard([structuredClone(item)]);
+export function copySelectedItems(): boolean {
+  const { items } = selectedItems();
+  if (items.length === 0) return false;
+  useUiStore.getState().setClipboard(items.map((i) => structuredClone(i)));
   return true;
 }
 
@@ -205,9 +217,8 @@ export function pasteItemsFromClipboard(): boolean {
     items: clipboard,
     offset: { x: COPY_OFFSET, y: -COPY_OFFSET },
   });
-  const first = out.ok ? out.result.itemIds[0] : undefined;
-  if (first) {
-    useUiStore.getState().select({ kind: 'item', id: first });
+  if (out.ok && out.result.itemIds.length > 0) {
+    selectItems(out.result.itemIds);
     // Pegar varias veces sigue desplazando las copias.
     useUiStore.getState().setClipboard(
       clipboard.map((i) => ({
@@ -219,35 +230,69 @@ export function pasteItemsFromClipboard(): boolean {
   return true;
 }
 
-export function rotateSelectedItem(degrees: number): boolean {
-  const { level, item } = selectedItem();
-  if (!item) return false;
+/** Gira la selección: un mueble gira en su lugar; varios, alrededor de su centro. */
+export function rotateSelectedItems(degrees: number): boolean {
+  const { level, items } = selectedItems();
+  const [first] = items;
+  if (!first) return false;
+  const key = `rot:${items.map((i) => i.id).join(',')}`;
+  if (items.length === 1) {
+    runCommand(
+      updateItem,
+      { levelId: level.id, itemId: first.id, rotation: first.rotation + degrees },
+      { coalesceKey: key },
+    );
+  } else {
+    runCommand(
+      rotateItems,
+      { levelId: level.id, itemIds: items.map((i) => i.id), degrees },
+      { coalesceKey: key },
+    );
+  }
+  return true;
+}
+
+export function nudgeSelectedItems(dx: number, dy: number): boolean {
+  const { level, items } = selectedItems();
+  if (items.length === 0) return false;
   runCommand(
-    updateItem,
-    { levelId: level.id, itemId: item.id, rotation: item.rotation + degrees },
-    { coalesceKey: `rot:${item.id}` },
+    moveItems,
+    { levelId: level.id, itemIds: items.map((i) => i.id), delta: { x: dx, y: dy } },
+    { coalesceKey: `nudge:${items.map((i) => i.id).join(',')}` },
   );
   return true;
 }
 
-export function nudgeSelectedItem(dx: number, dy: number): boolean {
-  const { level, item } = selectedItem();
-  if (!item) return false;
-  runCommand(
-    updateItem,
-    {
-      levelId: level.id,
-      itemId: item.id,
-      position: { x: item.position.x + dx, y: item.position.y + dy },
-    },
-    { coalesceKey: `nudge:${item.id}` },
-  );
+export function deleteSelectedItems(): boolean {
+  const { level, items } = selectedItems();
+  if (items.length === 0) return false;
+  runCommand(deleteItems, { levelId: level.id, itemIds: items.map((i) => i.id) });
   return true;
 }
 
-export function deleteSelectedItem(): boolean {
-  const { level, item } = selectedItem();
-  if (!item) return false;
-  runCommand(deleteItems, { levelId: level.id, itemIds: [item.id] });
+/** Selecciona todos los muebles visibles del nivel (Ctrl+A). */
+export function selectAllItems(): boolean {
+  const { level } = current();
+  const { hiddenGroups } = useUiStore.getState();
+  const ids = level.items
+    .filter((i) => !hiddenGroups.has(itemGroupOf(resolveItemDefinition(i.def).category)))
+    .map((i) => i.id);
+  if (ids.length === 0) return false;
+  selectItems(ids);
   return true;
+}
+
+/** Muebles visibles cuyo centro cae dentro del recuadro (planta, mm). */
+export function itemsInArea(level: Level, min: Vec2, max: Vec2): string[] {
+  const { hiddenGroups } = useUiStore.getState();
+  return level.items
+    .filter(
+      (i) =>
+        !hiddenGroups.has(itemGroupOf(resolveItemDefinition(i.def).category)) &&
+        i.position.x >= min.x &&
+        i.position.x <= max.x &&
+        i.position.y >= min.y &&
+        i.position.y <= max.y,
+    )
+    .map((i) => i.id);
 }

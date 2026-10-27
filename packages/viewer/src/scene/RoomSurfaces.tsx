@@ -4,8 +4,8 @@ import { memo, useMemo } from 'react';
 import { buildSurfaceMesh } from '../builders/surface-mesh';
 import { toBufferGeometry } from '../builders/to-buffer-geometry';
 import { defaultFinish, finishMaterial } from '../materials/finish-materials';
-import type { InteractionState, ViewerSelection } from '../selection';
-import { CLICK_DRAG_TOLERANCE_PX } from './interaction';
+import type { InteractionState, SelectOptions, ViewerSelection } from '../selection';
+import { CLICK_DRAG_TOLERANCE_PX, isAdditiveClick } from './interaction';
 import { pointsKey, useKeyedGeometry } from './use-keyed-geometry';
 
 interface RoomSurfacesProps {
@@ -15,7 +15,7 @@ interface RoomSurfacesProps {
   readonly floorFinish?: ResolvedMaterial | undefined;
   readonly ceilingFinish?: ResolvedMaterial | undefined;
   readonly state: InteractionState;
-  readonly onSelect: (target: ViewerSelection) => void;
+  readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
   /** Si está definido, arrastrar el piso mueve el recinto. */
   readonly onDragStart?: ((roomId: string, e: ThreeEvent<PointerEvent>) => void) | undefined;
@@ -55,7 +55,7 @@ export const RoomSurfaces = memo(function RoomSurfaces({
         onClick={(e: ThreeEvent<MouseEvent>) => {
           if (e.delta > CLICK_DRAG_TOLERANCE_PX) return;
           e.stopPropagation();
-          onSelect(target);
+          onSelect(target, { additive: isAdditiveClick(e.nativeEvent) });
         }}
         onPointerOver={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation();

@@ -15,6 +15,7 @@ import type {
 } from '@decodeny/viewer';
 import { create } from 'zustand';
 import { useProjectStore } from './project-store';
+import { nextSelection, pruneSelection, selectMany } from './selection-model';
 
 /**
  * Item nuevo que el usuario está ubicando con el puntero. El item existe como vista previa del
@@ -37,7 +38,10 @@ export interface ItemPlacementSession {
 /** Estado de interfaz (no forma parte del documento ni del historial). */
 interface UiState {
   readonly levelId: string | null;
+  /** Selección principal (la del inspector); ver `selection-model.ts`. */
   readonly selection: ViewerSelection | null;
+  /** Otras entidades seleccionadas junto con la principal (selección múltiple de muebles). */
+  readonly selectionGroup: readonly ViewerSelection[];
   readonly createRoomOpen: boolean;
   readonly navigationMode: BuiltInNavigationMode;
   /** El recorrido tiene capturado el mouse (Pointer Lock). */
@@ -71,7 +75,9 @@ interface UiState {
    */
   readonly finishEditors: number;
   readonly placement: ItemPlacementSession | null;
-  readonly select: (selection: ViewerSelection | null) => void;
+  /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
+  readonly select: (selection: ViewerSelection | null, options?: { additive?: boolean }) => void;
+  readonly selectMany: (targets: readonly ViewerSelection[], additive?: boolean) => void;
   readonly setCreateRoomOpen: (open: boolean) => void;
   readonly setNavigationMode: (mode: BuiltInNavigationMode) => void;
   readonly setPointerLocked: (locked: boolean) => void;
@@ -100,6 +106,7 @@ const NONE: readonly ViewerSelection[] = [];
 export const useUiStore = create<UiState>()((set) => ({
   levelId: null,
   selection: null,
+  selectionGroup: [],
   createRoomOpen: false,
   navigationMode: 'edit',
   pointerLocked: false,
@@ -117,7 +124,8 @@ export const useUiStore = create<UiState>()((set) => ({
   planTool: 'select',
   finishEditors: 0,
   placement: null,
-  select: (selection) => set({ selection }),
+  select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
+  selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),
   // Recorrer o volar implica la vista 3D.
   setNavigationMode: (navigationMode) =>
@@ -202,9 +210,10 @@ export function isSelectionValid(level: Level, selection: ViewerSelection | null
 // Limpia la selección cuando su entidad deja de existir (eliminar, deshacer, abrir otro archivo).
 // La ubicación en curso vive en la transacción: si otra acción la cierra, la ubicación termina.
 useProjectStore.subscribe((state) => {
-  const { selection, levelId, placement } = useUiStore.getState();
-  if (!isSelectionValid(activeLevel(state.project, levelId), selection)) {
-    useUiStore.setState({ selection: null });
-  }
+  const ui = useUiStore.getState();
+  const level = activeLevel(state.project, ui.levelId);
+  const pruned = pruneSelection(ui, (target) => isSelectionValid(level, target));
+  if (pruned !== ui) useUiStore.setState(pruned);
+  const { placement } = ui;
   if (placement && !state.transaction) useUiStore.setState({ placement: null });
 });

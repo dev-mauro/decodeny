@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemEnvelope } from '../catalog/item-definition';
-import { addItem, deleteItems, duplicateItems, pasteItems, updateItem } from '../commands/items';
+import {
+  addItem,
+  deleteItems,
+  duplicateItems,
+  moveItems,
+  pasteItems,
+  rotateItems,
+  updateItem,
+} from '../commands/items';
 import { deleteRoom, moveRoom } from '../commands/rooms';
 import { DomainError } from '../errors';
 import { benchWithRoom, type TestBench } from '../test-utils/fixtures';
@@ -101,6 +109,29 @@ describe('comandos de items', () => {
     expect(bench.run(addItem, args).itemId).toBe('item_placing');
     expect(() => bench.run(addItem, args)).toThrow(DomainError);
     expect(() => bench.run(addItem, { ...args, id: '' })).toThrow(DomainError);
+  });
+
+  it('mueve y gira un grupo conservando su disposición', () => {
+    const bench = benchWithRoom();
+    const a = place(bench, 1000, 1000);
+    const b = place(bench, 3000, 1000, 90);
+    bench.run(moveItems, { levelId: bench.levelId, itemIds: [a, b], delta: { x: 100, y: -50 } });
+    const at = (id: string) => level(bench).items.find((i) => i.id === id)!;
+    expect(at(a).position).toMatchObject({ x: 1100, y: 950 });
+    expect(at(b).position).toMatchObject({ x: 3100, y: 950 });
+    // Giro de 90° alrededor del centro (2100, 950): a pasa abajo, b arriba.
+    bench.run(rotateItems, { levelId: bench.levelId, itemIds: [a, b], degrees: 90 });
+    expect(at(a).position).toMatchObject({ x: 2100, y: -50 });
+    expect(at(b).position).toMatchObject({ x: 2100, y: 1950 });
+    expect(at(a).rotation).toBe(90);
+    expect(at(b).rotation).toBe(180);
+    // Un solo item gira en su lugar.
+    bench.run(rotateItems, { levelId: bench.levelId, itemIds: [a], degrees: -90 });
+    expect(at(a).position).toMatchObject({ x: 2100, y: -50 });
+    expect(at(a).rotation).toBe(0);
+    expect(() =>
+      bench.run(moveItems, { levelId: bench.levelId, itemIds: ['x'], delta: { x: 1, y: 1 } }),
+    ).toThrow(DomainError);
   });
 
   it('valida referencias y números', () => {

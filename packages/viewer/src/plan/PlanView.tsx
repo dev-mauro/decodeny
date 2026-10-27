@@ -4,6 +4,7 @@ import {
   distance,
   dot,
   findLevel,
+  FLAT_ITEM_HEIGHT,
   formatArea,
   formatLength,
   interiorPoint,
@@ -45,14 +46,17 @@ import {
 } from 'react';
 import { itemGroupOf, type ItemGroup } from '../scene/item-groups';
 import { clipToSlab } from '../scene/section-geometry';
+import { isAdditiveClick } from '../scene/interaction';
 import type { ViewerApi } from '../scene/ViewerApiBridge';
 import {
   interactionState,
   sameSelection,
+  type AreaSelectEvent,
   type InteractionState,
   type ItemDragEvent,
   type OpeningDragEvent,
   type RoomDragEvent,
+  type SelectOptions,
   type ViewerPlacement,
   type ViewerSelection,
 } from '../selection';
@@ -73,7 +77,11 @@ export interface PlanViewProps {
   readonly project: Project;
   readonly levelId: string;
   readonly selection: ViewerSelection | null;
-  readonly onSelectionChange: (selection: ViewerSelection | null) => void;
+  /** Otras entidades seleccionadas junto con `selection` (mismo contrato que la vista 3D). */
+  readonly selectionGroup?: readonly ViewerSelection[];
+  readonly onSelectionChange: (selection: ViewerSelection | null, options?: SelectOptions) => void;
+  /** Shift + arrastrar sobre el fondo dibuja un recuadro de selección. */
+  readonly onAreaSelect?: (event: AreaSelectEvent) => void;
   readonly highlighted?: readonly ViewerSelection[];
   readonly onHoverChange?: (target: ViewerSelection | null) => void;
   readonly onRoomDrag?: (event: RoomDragEvent) => void;
@@ -136,6 +144,7 @@ interface DrawState {
 }
 
 const NO_DRAW: DrawState = { from: null, cursor: null, typed: '' };
+const NO_GROUP: readonly ViewerSelection[] = [];
 
 const isEditable = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement &&
@@ -173,7 +182,9 @@ export function PlanView({
   project,
   levelId,
   selection,
+  selectionGroup = NO_GROUP,
   onSelectionChange,
+  onAreaSelect,
   highlighted = [],
   onHoverChange,
   onRoomDrag,
@@ -195,6 +206,8 @@ export function PlanView({
   const [view, setView] = useState<ViewState | null>(null);
   const [hovered, setHovered] = useState<ViewerSelection | null>(null);
   const [draw, setDraw] = useState<DrawState>(NO_DRAW);
+  /** Recuadro de selección en curso (esquinas en mm de planta). */
+  const [area, setArea] = useState<{ a: Vec2; b: Vec2 } | null>(null);
   const placing = placement !== null;
   const drawing = tool === 'wall' && !placing;
   // Al dibujar o ubicar, las entidades no capturan el puntero: todo clic es para la herramienta.
@@ -267,27 +280,40 @@ export function PlanView({
         const jambs = [-width / 2, width / 2].map((x) => [local(x, -half), local(x, half)]);
         return [{ opening, fp, strokes, jambs }];
       }),
-      items: level.items.flatMap((item) => {
-        const definition = resolveItemDefinition(item.def);
-        if (hiddenGroups?.has(itemGroupOf(definition.category))) return [];
-        const env = itemEnvelope(item);
-        const footprint = itemFootprint(item, env);
-        const front = lerp(footprint[0]!, footprint[1]!, 0.5);
-        return [
-          {
-            item,
-            footprint,
-            front,
-            name: localize(definition.name, locale),
-            mount: definition.mount,
-          },
-        ];
-      }),
+      // Orden de dibujo por capas: lo plano (alfombras) abajo, lo que se apoya sobre otros
+      // muebles arriba y lo que cuelga del cielo al final; así nada tapa al mueble de debajo.
+      items: level.items
+        .flatMap((item) => {
+          const definition = resolveItemDefinition(item.def);
+          if (hiddenGroups?.has(itemGroupOf(definition.category))) return [];
+          const env = itemEnvelope(item);
+          const layer =
+            env.height <= FLAT_ITEM_HEIGHT
+              ? 0
+              : definition.mount === 'surface'
+                ? 2
+                : definition.mount === 'ceiling'
+                  ? 3
+                  : 1;
+          const footprint = itemFootprint(item, env);
+          const front = lerp(footprint[0]!, footprint[1]!, 0.5);
+          return [
+            {
+              item,
+              footprint,
+              front,
+              name: localize(definition.name, locale),
+              mount: definition.mount,
+              layer,
+            },
+          ];
+        })
+        .sort((a, b) => a.layer - b.layer),
     };
   }, [hiddenGroups, level, locale]);
 
   const stateOf = (target: ViewerSelection): InteractionState =>
-    interactionState(target, selection, hovered, highlighted);
+    interactionState(target, selection, hovered, highlighted, selectionGroup);
   const hover = (target: ViewerSelection | null) => {
     if (sameSelection(hovered, target)) return;
     setHovered(target);
@@ -313,8 +339,10 @@ export function PlanView({
     start: { x: number; y: number };
     startPlan: Vec2;
     moved: boolean;
-    kind: 'pan' | 'room' | 'item' | 'opening' | 'node';
+    kind: 'pan' | 'area' | 'room' | 'item' | 'opening' | 'node';
     id: string;
+    /** Recuadro empezado sobre una entidad: si no hay arrastre, es un clic aditivo sobre ella. */
+    clickTarget?: ViewerSelection;
     dir?: Vec2;
     origin?: Vec2;
     startView: ViewState;
@@ -324,7 +352,7 @@ export function PlanView({
     e: ReactPointerEvent,
     kind: NonNullable<typeof drag.current>['kind'],
     id = '',
-    extra: { dir?: Vec2; origin?: Vec2 } = {},
+    extra: { dir?: Vec2; origin?: Vec2; clickTarget?: ViewerSelection } = {},
   ) => {
     if (e.button !== 0) return;
     e.stopPropagation();
@@ -406,7 +434,9 @@ export function PlanView({
       return;
     }
     d.moved = true;
-    if (d.kind === 'pan') {
+    if (d.kind === 'area') {
+      setArea({ a: d.startPlan, b: toPlan(e.clientX, e.clientY) });
+    } else if (d.kind === 'pan') {
       setView({
         ...d.startView,
         cx: d.startView.cx - (e.clientX - d.start.x) / d.startView.s,
@@ -421,7 +451,26 @@ export function PlanView({
     const d = drag.current;
     if (d?.pointerId !== e.pointerId) return;
     drag.current = null;
+    if (d.kind === 'area') {
+      setArea(null);
+      if (!d.moved) {
+        if (d.clickTarget) onSelectionChange(d.clickTarget, { additive: true });
+        return;
+      }
+      const b = toPlan(e.clientX, e.clientY);
+      const a = d.startPlan;
+      onAreaSelect?.({
+        min: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) },
+        max: { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) },
+        additive: true,
+      });
+      return;
+    }
     if (d.moved && d.kind !== 'pan') emit('end', e);
+    // Clic sin arrastre sobre un mueble de una selección múltiple: queda seleccionado solo él.
+    if (!d.moved && d.kind === 'item' && selectionGroup.length > 0) {
+      onSelectionChange({ kind: 'item', id: d.id });
+    }
     if (!d.moved && d.kind === 'pan') {
       if (placing) {
         placement.onEvent({ phase: 'end', point: toPlan(e.clientX, e.clientY), snap: !e.altKey });
@@ -436,6 +485,7 @@ export function PlanView({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !drag.current?.moved || drag.current.kind === 'pan') return;
       e.stopPropagation();
+      setArea(null);
       emit('cancel', {
         clientX: drag.current.start.x,
         clientY: drag.current.start.y,
@@ -502,7 +552,20 @@ export function PlanView({
     extra: { dir?: Vec2 } = {},
   ) => {
     if (e.button !== 0) return;
-    const selected = sameSelection(target, selection);
+    // Con Shift, Ctrl o Cmd suma o quita de la selección (la aplicación decide).
+    // Desde algo que no es un mueble (los recintos cubren el fondo), arrastrar dibuja un recuadro.
+    if (isAdditiveClick(e)) {
+      if (target.kind !== 'item' && onAreaSelect) {
+        begin(e, 'area', '', { clickTarget: target });
+        return;
+      }
+      e.stopPropagation();
+      onSelectionChange(target, { additive: true });
+      return;
+    }
+    const selected =
+      sameSelection(target, selection) ||
+      (kind === 'item' && selectionGroup.some((g) => sameSelection(target, g)));
     if (selected && kind) {
       begin(e, kind, target.id, extra);
       return;
@@ -603,7 +666,9 @@ export function PlanView({
       data-testid="plan-view"
       viewBox={viewBox}
       style={{ background: COLORS.background, cursor: capturing ? 'crosshair' : undefined }}
-      onPointerDown={(e) => begin(e, 'pan')}
+      onPointerDown={(e) =>
+        begin(e, onAreaSelect && !capturing && isAdditiveClick(e) ? 'area' : 'pan')
+      }
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => {
@@ -643,6 +708,7 @@ export function PlanView({
           return (
             <g
               key={item.id}
+              data-testid={`plan-item-${name}`}
               style={{ cursor: state === 'selected' ? 'move' : 'pointer' }}
               onPointerDown={(e) => pick(target, e, 'item')}
               onPointerEnter={() => hover(target)}
@@ -808,6 +874,23 @@ export function PlanView({
           />
         );
       })}
+
+      {/* Recuadro de selección */}
+      {area && (
+        <rect
+          x={Math.min(area.a.x, area.b.x)}
+          y={-Math.max(area.a.y, area.b.y)}
+          width={Math.abs(area.a.x - area.b.x)}
+          height={Math.abs(area.a.y - area.b.y)}
+          fill={COLORS.dimension}
+          fillOpacity={0.08}
+          stroke={COLORS.dimension}
+          strokeWidth={px(1)}
+          strokeDasharray={`${px(4)} ${px(3)}`}
+          pointerEvents="none"
+          data-testid="plan-area-select"
+        />
+      )}
 
       {/* Herramienta de muros: nodos a los que engancharse, tramo en curso y su largo */}
       {drawing && (

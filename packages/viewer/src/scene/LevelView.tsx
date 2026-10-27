@@ -28,6 +28,7 @@ import {
   type OpeningDragEvent,
   type RoomDragEvent,
   type ViewerSelection,
+  type SelectOptions,
 } from '../selection';
 import { ItemView } from './ItemView';
 import { itemGroupOf, type ItemGroup } from './item-groups';
@@ -45,7 +46,9 @@ import { WallMesh } from './WallMesh';
 interface LevelViewProps {
   readonly level: Level;
   readonly selection: ViewerSelection | null;
-  readonly onSelect: (selection: ViewerSelection | null) => void;
+  /** Otras entidades seleccionadas junto con `selection` (selección múltiple). */
+  readonly selectionGroup?: readonly ViewerSelection[] | undefined;
+  readonly onSelect: (selection: ViewerSelection | null, options?: SelectOptions) => void;
   readonly locale: string;
   /** En modos de recorrido se desactivan selección, hover y cotas. */
   readonly interactive: boolean;
@@ -78,6 +81,7 @@ const NO_CUTS: readonly WallCut[] = [];
 export function LevelView({
   level,
   selection,
+  selectionGroup = NO_HIGHLIGHT,
   onSelect,
   locale,
   interactive,
@@ -148,14 +152,16 @@ export function LevelView({
   }, [interactive, onHoverChange]);
 
   const handleSelect = useCallback(
-    (target: ViewerSelection) => {
-      if (interactive && !measuring) onSelect(target);
+    (target: ViewerSelection, options?: SelectOptions) => {
+      if (interactive && !measuring) onSelect(target, options);
     },
     [interactive, measuring, onSelect],
   );
   const activeHover = interactive ? hovered : null;
   const stateOf = (target: ViewerSelection) =>
-    interactive ? interactionState(target, selection, activeHover, highlighted) : 'normal';
+    interactive
+      ? interactionState(target, selection, activeHover, highlighted, selectionGroup)
+      : 'normal';
   const surfaceStateOf = (target: ViewerSelection) =>
     trueSurfaceColors ? 'normal' : stateOf(target);
 
@@ -163,7 +169,9 @@ export function LevelView({
   const movable = (target: ViewerSelection) =>
     interactive &&
     !measuring &&
-    sameSelection(target, selection) &&
+    (sameSelection(target, selection) ||
+      // Los muebles de una selección múltiple se arrastran juntos desde cualquiera de ellos.
+      (target.kind === 'item' && selectionGroup.some((g) => sameSelection(target, g)))) &&
     (target.kind === 'room'
       ? !!onRoomDrag
       : target.kind === 'opening'

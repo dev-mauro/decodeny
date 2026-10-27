@@ -19,6 +19,7 @@ import type {
   ItemDragEvent,
   OpeningDragEvent,
   RoomDragEvent,
+  SelectOptions,
   ViewerPlacement,
   ViewerSelection,
 } from './selection';
@@ -27,7 +28,13 @@ export interface DecodenyViewerProps {
   readonly project: Project;
   readonly levelId: string;
   readonly selection: ViewerSelection | null;
-  readonly onSelectionChange: (selection: ViewerSelection | null) => void;
+  /**
+   * Otras entidades seleccionadas junto con `selection` (selección múltiple): se dibujan como
+   * seleccionadas y los muebles se arrastran juntos. La aplicación decide qué incluye.
+   */
+  readonly selectionGroup?: readonly ViewerSelection[];
+  /** `options.additive`: el clic fue con Shift, Ctrl o Cmd (sumar o quitar de la selección). */
+  readonly onSelectionChange: (selection: ViewerSelection | null, options?: SelectOptions) => void;
   /** Entidades a resaltar suavemente (p. ej. al pasar el mouse por un panel). */
   readonly highlighted?: readonly ViewerSelection[];
   /** Se invoca cuando cambia lo que está bajo el puntero en la vista. */
@@ -103,6 +110,7 @@ export function DecodenyViewer({
   project,
   levelId,
   selection,
+  selectionGroup,
   onSelectionChange,
   highlighted,
   onHoverChange,
@@ -162,6 +170,7 @@ export function DecodenyViewer({
           <LevelView
             level={level}
             selection={selection}
+            selectionGroup={selectionGroup}
             onSelect={onSelectionChange}
             locale={locale}
             interactive={interactive}

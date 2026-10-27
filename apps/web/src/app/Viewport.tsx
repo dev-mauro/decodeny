@@ -1,4 +1,10 @@
-import { DecodenyViewer, PlanView, type ViewerApi, type ViewerCameraApi } from '@decodeny/viewer';
+import {
+  DecodenyViewer,
+  PlanView,
+  type AreaSelectEvent,
+  type ViewerApi,
+  type ViewerCameraApi,
+} from '@decodeny/viewer';
 import { Maximize, PenLine, Plus, Sparkles, SquareDashed } from 'lucide-react';
 import { useCallback, useMemo, useRef, type RefObject } from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
@@ -9,6 +15,7 @@ import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
 import { useItemDragHandler } from '@/features/furniture/use-item-drag-handler';
 import { handlePlacementEvent } from '@/features/furniture/placement';
+import { itemsInArea } from '@/features/furniture/item-actions';
 import { useOpeningDragHandler } from '@/features/openings/use-opening-drag-handler';
 import { useNodeDragHandler } from '@/features/plan/use-node-drag-handler';
 import { PlanTools, WallDrawHint } from '@/features/plan/PlanTools';
@@ -33,6 +40,16 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const project = useProjectStore((s) => s.project);
   const level = useActiveLevel();
   const selection = useUiStore((s) => s.selection);
+  const selectionGroup = useUiStore((s) => s.selectionGroup);
+  const selectMany = useUiStore((s) => s.selectMany);
+  const onAreaSelect = useCallback(
+    (area: AreaSelectEvent) =>
+      selectMany(
+        itemsInArea(level, area.min, area.max).map((id) => ({ kind: 'item', id }) as const),
+        area.additive,
+      ),
+    [level, selectMany],
+  );
   const select = useUiStore((s) => s.select);
   const openCreate = useUiStore((s) => s.setCreateRoomOpen);
   const navigationMode = useUiStore((s) => s.navigationMode);
@@ -82,7 +99,9 @@ export function Viewport({ cameraRef }: ViewportProps) {
               project={project}
               levelId={level.id}
               selection={selection}
+              selectionGroup={selectionGroup}
               onSelectionChange={select}
+              onAreaSelect={onAreaSelect}
               highlighted={highlighted}
               onHoverChange={setViewportHover}
               onRoomDrag={onRoomDrag}
@@ -103,6 +122,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
               project={project}
               levelId={level.id}
               selection={selection}
+              selectionGroup={selectionGroup}
               onSelectionChange={select}
               highlighted={highlighted}
               onHoverChange={setViewportHover}

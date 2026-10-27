@@ -12,8 +12,8 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { memo, useMemo } from 'react';
 import { planToWorld } from '../coords';
 import { openingMaterial } from '../materials/default-materials';
-import type { InteractionState, ViewerSelection } from '../selection';
-import { CLICK_DRAG_TOLERANCE_PX } from './interaction';
+import type { InteractionState, SelectOptions, ViewerSelection } from '../selection';
+import { CLICK_DRAG_TOLERANCE_PX, isAdditiveClick } from './interaction';
 import { PartMeshes } from './PartMeshes';
 
 interface OpeningViewProps {
@@ -22,7 +22,7 @@ interface OpeningViewProps {
   readonly state: InteractionState;
   /** Símbolos de planta (arcos de apertura): solo en edición. */
   readonly showPlan: boolean;
-  readonly onSelect: (target: ViewerSelection) => void;
+  readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
   readonly onDragStart?:
     | ((openingId: string, footprint: WallFootprint, e: ThreeEvent<PointerEvent>) => void)
@@ -65,7 +65,7 @@ export const OpeningView = memo(function OpeningView({
       onClick={(e: ThreeEvent<MouseEvent>) => {
         if (e.delta > CLICK_DRAG_TOLERANCE_PX) return;
         e.stopPropagation();
-        onSelect(target);
+        onSelect(target, { additive: isAdditiveClick(e.nativeEvent) });
       }}
       onPointerOver={(e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();

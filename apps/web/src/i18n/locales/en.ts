@@ -241,6 +241,11 @@ export const en: Translation<Resources> = {
     duplicate: 'Duplicate',
     delete: 'Delete',
     deleted: '“{{name}}” deleted',
+    deletedMany: '{{count}} items deleted',
+    selectedMany_one: '{{count}} item selected',
+    selectedMany_other: '{{count}} items selected',
+    multiHint:
+      'Shift or Ctrl + click adds or removes items; in the plan, Shift + drag selects an area. Drag them together in the view; arrows nudge them, R rotates them.',
     warningOverlap: 'Overlaps another item.',
     warningWall: 'Goes through a wall.',
     unknown: 'Unknown type ({{def}}): shown as a box and kept when exporting.',

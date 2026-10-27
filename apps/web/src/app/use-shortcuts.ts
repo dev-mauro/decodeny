@@ -3,12 +3,13 @@ import { useEffect } from 'react';
 import { exportCurrentProject, requestOpenFile } from '@/features/io/project-actions';
 import { useProjectStore } from '@/state/project-store';
 import {
-  copySelectedItem,
-  deleteSelectedItem,
-  duplicateSelectedItem,
-  nudgeSelectedItem,
+  copySelectedItems,
+  deleteSelectedItems,
+  duplicateSelectedItems,
+  nudgeSelectedItems,
   pasteItemsFromClipboard,
-  rotateSelectedItem,
+  rotateSelectedItems,
+  selectAllItems,
 } from '@/features/furniture/item-actions';
 import { MODE_ORDER } from '@/features/navigation/mode-order';
 import { deleteSelectedWall } from '@/features/walls/wall-actions';
@@ -70,9 +71,11 @@ export function useShortcuts(): void {
         if (key === 'escape') useUiStore.getState().setNavigationMode('edit');
         else if (!mod && /^[1-9]$/.test(e.key)) switchMode(e.key);
       } else if (mod && key === 'd') {
-        if (duplicateSelectedItem()) e.preventDefault();
+        if (duplicateSelectedItems()) e.preventDefault();
+      } else if (mod && key === 'a') {
+        if (selectAllItems()) e.preventDefault();
       } else if (mod && key === 'c') {
-        copySelectedItem();
+        copySelectedItems();
       } else if (mod && key === 'v') {
         if (pasteItemsFromClipboard()) e.preventDefault();
       } else if (!mod && key === 'p') {
@@ -85,13 +88,13 @@ export function useShortcuts(): void {
         const ui = useUiStore.getState();
         ui.setMeasuring(!ui.measuring);
       } else if (!mod && key === 'r') {
-        rotateSelectedItem(e.shiftKey ? -90 : 90);
+        rotateSelectedItems(e.shiftKey ? -90 : 90);
       } else if (!mod && e.key.startsWith('Arrow')) {
         // Empuja el mueble seleccionado 1 cm (10 cm con Shift); arriba = norte de la planta.
         const step = e.shiftKey ? 100 : 10;
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
         const dy = e.key === 'ArrowDown' ? -step : e.key === 'ArrowUp' ? step : 0;
-        if (nudgeSelectedItem(dx, dy)) e.preventDefault();
+        if (nudgeSelectedItems(dx, dy)) e.preventDefault();
       } else if (key === 'escape') {
         const ui = useUiStore.getState();
         if (ui.measuring) ui.setMeasuring(false);
@@ -110,7 +113,7 @@ export function useShortcuts(): void {
           store.dispatch(deleteOpening, { levelId: level, openingId: selection.id });
         } else if (selection.kind === 'item') {
           e.preventDefault();
-          deleteSelectedItem();
+          deleteSelectedItems();
         } else {
           e.preventDefault();
           deleteSelectedWall();

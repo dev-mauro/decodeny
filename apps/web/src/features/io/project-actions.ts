@@ -25,7 +25,11 @@ import { useIoStore } from './io-store';
 
 function loadIntoEditor(project: Project): void {
   useProjectStore.getState().replace(project);
-  useUiStore.setState({ selection: null, levelId: project.levels[0]?.id ?? null });
+  useUiStore.setState({
+    selection: null,
+    selectionGroup: [],
+    levelId: project.levels[0]?.id ?? null,
+  });
   void ensureAssets(project.assets.map((a) => a.id));
 }
 

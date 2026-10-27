@@ -14,6 +14,21 @@ export type ViewerSelection =
 
 export type InteractionState = 'normal' | 'hover' | 'selected';
 
+/** Cómo se eligió algo: con Shift, Ctrl o Cmd el clic suma o quita de la selección. */
+export interface SelectOptions {
+  readonly additive: boolean;
+}
+
+/** Recuadro de selección en la planta (mm); `additive` si se suma a la selección actual. */
+export interface AreaSelectEvent {
+  readonly min: { readonly x: number; readonly y: number };
+  readonly max: { readonly x: number; readonly y: number };
+  readonly additive: boolean;
+}
+
+const inGroup = (target: ViewerSelection, group: readonly ViewerSelection[]) =>
+  group.some((g) => sameSelection(target, g));
+
 export const sameSelection = (a: ViewerSelection | null, b: ViewerSelection | null): boolean =>
   a?.kind === b?.kind && a?.id === b?.id;
 
@@ -22,9 +37,10 @@ export function interactionState(
   selection: ViewerSelection | null,
   hovered: ViewerSelection | null,
   highlighted: readonly ViewerSelection[] = [],
+  group: readonly ViewerSelection[] = [],
 ): InteractionState {
-  if (sameSelection(target, selection)) return 'selected';
-  if (sameSelection(target, hovered) || highlighted.some((h) => sameSelection(target, h))) {
+  if (sameSelection(target, selection) || inGroup(target, group)) return 'selected';
+  if (sameSelection(target, hovered) || inGroup(target, highlighted)) {
     return 'hover';
   }
   return 'normal';

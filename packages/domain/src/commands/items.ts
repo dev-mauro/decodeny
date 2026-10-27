@@ -166,3 +166,46 @@ export const pasteItems = defineCommand<
   level.items.push(...pasted);
   return { itemIds: pasted.map((i) => i.id) };
 });
+
+/** Traslada varios items juntos (arrastrar o empujar una selección múltiple). */
+export const moveItems = defineCommand<
+  ItemsRef & { readonly delta: { readonly x: number; readonly y: number } }
+>('item.move', (draft, args) => {
+  assertFinite('delta', args.delta.x, args.delta.y);
+  const level = requireLevel(draft, args.levelId);
+  for (const id of new Set(args.itemIds)) {
+    const item = requireItem(level, id);
+    item.position.x = Math.round(item.position.x + args.delta.x);
+    item.position.y = Math.round(item.position.y + args.delta.y);
+  }
+});
+
+/**
+ * Gira varios items juntos `degrees` (antihorario) alrededor de `pivot`, o del centro de sus
+ * posiciones si no se indica: la disposición del grupo se conserva. Un solo item gira en su lugar.
+ */
+export const rotateItems = defineCommand<
+  ItemsRef & {
+    readonly degrees: number;
+    readonly pivot?: { readonly x: number; readonly y: number };
+  }
+>('item.rotate', (draft, args) => {
+  assertFinite('degrees', args.degrees, args.pivot?.x, args.pivot?.y);
+  const level = requireLevel(draft, args.levelId);
+  const items = [...new Set(args.itemIds)].map((id) => requireItem(level, id));
+  if (items.length === 0) return;
+  const pivot = args.pivot ?? {
+    x: items.reduce((s, i) => s + i.position.x, 0) / items.length,
+    y: items.reduce((s, i) => s + i.position.y, 0) / items.length,
+  };
+  const rad = (args.degrees * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  for (const item of items) {
+    const dx = item.position.x - pivot.x;
+    const dy = item.position.y - pivot.y;
+    item.position.x = Math.round(pivot.x + dx * cos - dy * sin);
+    item.position.y = Math.round(pivot.y + dx * sin + dy * cos);
+    item.rotation = normalizeRotation(item.rotation + args.degrees);
+  }
+});

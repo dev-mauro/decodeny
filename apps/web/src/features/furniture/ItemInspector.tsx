@@ -27,7 +27,7 @@ import { useProjectStore } from '@/state/project-store';
 import { useUiStore } from '@/state/ui-store';
 import { useCommand } from '@/state/use-command';
 import { setItemImage } from '@/features/assets/image-actions';
-import { duplicateSelectedItem } from './item-actions';
+import { duplicateSelectedItems } from './item-actions';
 
 interface ItemInspectorProps {
   readonly level: Level;
@@ -261,7 +261,7 @@ export function ItemInspector({ level, item }: ItemInspectorProps) {
       <div className="grid grid-cols-2 gap-2">
         <Button
           icon={<Copy className="size-4" />}
-          onClick={duplicateSelectedItem}
+          onClick={duplicateSelectedItems}
           data-testid="duplicate-item"
         >
           {t('furniture.duplicate')}

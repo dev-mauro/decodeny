@@ -5,9 +5,9 @@ import { buildWallMesh, WALL_SLOTS, type WallCut } from '../builders/wall-mesh';
 import { toBufferGeometry } from '../builders/to-buffer-geometry';
 import { surfaceMaterial } from '../materials/default-materials';
 import { defaultFinish, finishMaterial } from '../materials/finish-materials';
-import type { InteractionState, ViewerSelection } from '../selection';
+import type { InteractionState, SelectOptions, ViewerSelection } from '../selection';
 import { pointsKey, useKeyedGeometry } from './use-keyed-geometry';
-import { CLICK_DRAG_TOLERANCE_PX } from './interaction';
+import { CLICK_DRAG_TOLERANCE_PX, isAdditiveClick } from './interaction';
 
 interface WallMeshProps {
   readonly wall: Wall;
@@ -17,7 +17,7 @@ interface WallMeshProps {
   readonly leftFinish?: ResolvedMaterial | undefined;
   readonly rightFinish?: ResolvedMaterial | undefined;
   readonly state: InteractionState;
-  readonly onSelect: (target: ViewerSelection) => void;
+  readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
 }
 
@@ -65,7 +65,7 @@ export const WallMesh = memo(function WallMesh({
       onClick={(e: ThreeEvent<MouseEvent>) => {
         if (e.delta > CLICK_DRAG_TOLERANCE_PX) return;
         e.stopPropagation();
-        onSelect(faceOf(e));
+        onSelect(faceOf(e), { additive: isAdditiveClick(e.nativeEvent) });
       }}
       onPointerOver={(e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation();

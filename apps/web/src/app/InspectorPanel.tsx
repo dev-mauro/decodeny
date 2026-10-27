@@ -2,6 +2,8 @@ import { resolveItemDefinition, resolveOpeningDefinition } from '@decodeny/catal
 import { localize } from '@decodeny/domain';
 import { useTranslation } from 'react-i18next';
 import { ItemInspector } from '@/features/furniture/ItemInspector';
+import { MultiItemInspector } from '@/features/furniture/MultiItemInspector';
+import { selectedTargets } from '@/state/selection-model';
 import { OpeningInspector } from '@/features/openings/OpeningInspector';
 import { RoomInspector } from '@/features/rooms/RoomInspector';
 import { contextRoomOfWall, wallDisplayName } from '@/features/walls/wall-context';
@@ -13,6 +15,16 @@ export function InspectorPanel() {
   const { t, i18n } = useTranslation();
   const level = useActiveLevel();
   const selection = useUiStore((s) => s.selection);
+  const selectionGroup = useUiStore((s) => s.selectionGroup);
+  // Varios muebles seleccionados: inspector del grupo.
+  const groupItems =
+    selectionGroup.length > 0
+      ? selectedTargets({ selection, selectionGroup }).flatMap((target) => {
+          const found = level.items.find((i) => i.id === target.id);
+          return target.kind === 'item' && found ? [found] : [];
+        })
+      : [];
+  const multi = groupItems.length > 1;
 
   const room =
     selection?.kind === 'room' ? level.rooms.find((r) => r.id === selection.id) : undefined;
@@ -23,15 +35,17 @@ export function InspectorPanel() {
   const item =
     selection?.kind === 'item' ? level.items.find((i) => i.id === selection.id) : undefined;
   const contextRoom = wall && selection ? contextRoomOfWall(level, selection) : undefined;
-  const title = room
-    ? t('inspector.room')
-    : wall
-      ? wallDisplayName(t, level, wall, contextRoom)
-      : opening
-        ? localize(resolveOpeningDefinition(opening.def).name, i18n.language)
-        : item
-          ? localize(resolveItemDefinition(item.def).name, i18n.language)
-          : null;
+  const title = multi
+    ? t('furniture.selectedMany', { count: groupItems.length })
+    : room
+      ? t('inspector.room')
+      : wall
+        ? wallDisplayName(t, level, wall, contextRoom)
+        : opening
+          ? localize(resolveOpeningDefinition(opening.def).name, i18n.language)
+          : item
+            ? localize(resolveItemDefinition(item.def).name, i18n.language)
+            : null;
 
   return (
     <section aria-labelledby="inspector-title" className="flex min-h-0 flex-1 flex-col">
@@ -48,7 +62,8 @@ export function InspectorPanel() {
           <WallInspector key={wall.id} level={level} wall={wall} contextRoom={contextRoom} />
         )}
         {opening && <OpeningInspector key={opening.id} level={level} opening={opening} />}
-        {item && <ItemInspector key={item.id} level={level} item={item} />}
+        {multi && <MultiItemInspector items={groupItems} />}
+        {item && !multi && <ItemInspector key={item.id} level={level} item={item} />}
         {!room && !wall && !opening && !item && (
           <p className="text-sm text-slate-500">{t('inspector.empty')}</p>
         )}

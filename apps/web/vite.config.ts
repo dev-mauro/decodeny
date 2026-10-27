@@ -53,13 +53,34 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    // Three.js es grande por naturaleza; la división fina de bundles llega en I8.
+    // Three.js y Rapier son grandes por naturaleza; ambos se cargan bajo demanda.
     chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
-        manualChunks: {
-          three: ['three'],
-          r3f: ['@react-three/fiber', '@react-three/drei'],
+        // Por ruta de módulo (no por paquete): la forma de objeto arrastra también las
+        // dependencias (React terminaba en el chunk de r3f y obligaba a cargar todo al inicio).
+        // Rapier (física del recorrido) queda fuera: va en el chunk del modo persona.
+        manualChunks(id) {
+          const path = id.replace(/\\/g, '/');
+          // El helper de precarga de Vite (lo usa todo `import()`) tampoco debe caer en r3f.
+          if (path.includes('vite/preload-helper')) return 'vendor';
+          if (!path.includes('/node_modules/')) return undefined;
+          // Lo que comparten la app y r3f (React, sus helpers) va aparte; si no, Rollup lo ubica
+          // en r3f y la carga inicial terminaría trayendo también r3f y Three.js.
+          if (
+            /\/node_modules\/(react|react-dom|scheduler|zustand|use-sync-external-store|@babel\/runtime)\//.test(
+              path,
+            )
+          ) {
+            return 'vendor';
+          }
+          if (path.includes('/node_modules/three/')) return 'three';
+          if (
+            /\/node_modules\/(@react-three\/(fiber|drei)|three-stdlib|camera-controls)\//.test(path)
+          ) {
+            return 'r3f';
+          }
+          return undefined;
         },
       },
     },

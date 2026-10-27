@@ -8,6 +8,9 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
   reporter: isCI ? 'github' : 'list',
+  // WebGL por software (SwiftShader) y la vista 3D cargada bajo demanda: con varios workers el
+  // primer render puede tardar más que los 5 s por defecto.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',

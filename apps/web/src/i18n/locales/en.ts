@@ -24,6 +24,7 @@ export const en: Translation<Resources> = {
   },
   viewport: {
     fit: 'Fit to view',
+    loading3d: 'Loading 3D view…',
     top: 'Top view',
     label: 'Project 3D view',
     modes: 'View mode',

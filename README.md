@@ -24,20 +24,20 @@ Visualizador web de departamentos y casas en 3D a partir de sus medidas. Pensado
 
 ## Comandos
 
-| Comando              | Descripción                                               |
-| -------------------- | --------------------------------------------------------- |
-| `pnpm install`       | Instala dependencias del monorepo                         |
-| `pnpm dev`           | Servidor de desarrollo en http://localhost:5173           |
-| `pnpm build`         | Typecheck + build de producción                           |
-| `pnpm preview`       | Sirve el build en http://localhost:4173                   |
-| `pnpm test`          | Tests unitarios (Vitest) de todos los paquetes            |
-| `pnpm test:coverage` | Tests con cobertura (umbral 90 % en `domain`)             |
-| `pnpm e2e`           | Tests end-to-end (Playwright)                             |
-| `pnpm lint`          | ESLint (typescript-eslint estricto con tipos)             |
-| `pnpm depcruise`     | Verifica los límites entre capas                          |
-| `pnpm check`         | Formato + lint + tipos + capas + tests (lo mismo que CI)  |
-| `pnpm size`          | Presupuesto de tamaño del build (gzip, tras `pnpm build`) |
-| `pnpm build:pages`   | Build para GitHub Pages (bajo `/decodeny/`)               |
+| Comando              | Descripción                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm install`       | Instala dependencias del monorepo                                                    |
+| `pnpm dev`           | Servidor de desarrollo en http://localhost:5173                                      |
+| `pnpm build`         | Typecheck + build de producción                                                      |
+| `pnpm preview`       | Sirve el build en http://localhost:4173                                              |
+| `pnpm test`          | Tests unitarios (Vitest) de todos los paquetes                                       |
+| `pnpm test:coverage` | Tests con cobertura (umbral 90 % en `domain`)                                        |
+| `pnpm e2e`           | Tests end-to-end (Playwright)                                                        |
+| `pnpm lint`          | ESLint (typescript-eslint estricto con tipos)                                        |
+| `pnpm depcruise`     | Verifica los límites entre capas                                                     |
+| `pnpm check`         | Formato + lint + tipos + capas + tests (lo mismo que CI)                             |
+| `pnpm size`          | Presupuestos del build (gzip, tras `pnpm build`): por chunk y carga inicial < 400 kB |
+| `pnpm build:pages`   | Build para GitHub Pages (bajo `/decodeny/`)                                          |
 
 ## Publicación
 

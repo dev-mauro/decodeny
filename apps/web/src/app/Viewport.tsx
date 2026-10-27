@@ -1,12 +1,11 @@
 import {
-  DecodenyViewer,
   PlanView,
   type AreaSelectEvent,
   type ViewerApi,
   type ViewerCameraApi,
 } from '@decodeny/viewer';
 import { Maximize, PenLine, Plus, Sparkles, SquareDashed } from 'lucide-react';
-import { useCallback, useMemo, useRef, type RefObject } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, type RefObject } from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
 import { useTranslation } from 'react-i18next';
 import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
@@ -31,6 +30,23 @@ import { ToolHint } from '@/shared/ui/ToolHint';
 import { notify } from '@/state/notifications-store';
 import { MeasurePanel, ViewportTools } from './ViewportTools';
 import { ViewportError } from './ViewportError';
+
+// La vista 3D (Three.js, ~330 kB gzip) llega en su propio chunk: la interfaz aparece antes.
+const DecodenyViewer = lazy(() =>
+  import('@decodeny/viewer/canvas').then((m) => ({ default: m.DecodenyViewer })),
+);
+
+function ViewerLoading() {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="flex size-full items-center justify-center bg-slate-50 text-sm text-slate-500"
+      data-testid="viewer-loading"
+    >
+      {t('viewport.loading3d')}
+    </div>
+  );
+}
 
 interface ViewportProps {
   readonly cameraRef: RefObject<ViewerCameraApi | null>;
@@ -129,34 +145,36 @@ export function Viewport({ cameraRef }: ViewportProps) {
               locale={i18n.language}
             />
           ) : (
-            <DecodenyViewer
-              project={project}
-              levelId={level.id}
-              selection={selection}
-              selectionGroup={selectionGroup}
-              onSelectionChange={select}
-              highlighted={highlighted}
-              onHoverChange={setViewportHover}
-              onRoomDrag={onRoomDrag}
-              onOpeningDrag={onOpeningDrag}
-              onItemDrag={onItemDrag}
-              placement={placement}
-              lighting={lighting}
-              assetUrl={assetUrl}
-              apiRef={viewerRef}
-              hiddenGroups={hiddenGroups}
-              sectionHeight={sectionHeight}
-              measurePoints={measurePoints}
-              trueSurfaceColors={editingFinish}
-              {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}
-              onGraphicsRestored={onGraphicsRestored}
-              cameraRef={cameraRef}
-              navigationMode={navigationMode}
-              onPointerLockChange={setPointerLocked}
-              walkStart={walkStart}
-              headBob={headBob}
-              locale={i18n.language}
-            />
+            <Suspense fallback={<ViewerLoading />}>
+              <DecodenyViewer
+                project={project}
+                levelId={level.id}
+                selection={selection}
+                selectionGroup={selectionGroup}
+                onSelectionChange={select}
+                highlighted={highlighted}
+                onHoverChange={setViewportHover}
+                onRoomDrag={onRoomDrag}
+                onOpeningDrag={onOpeningDrag}
+                onItemDrag={onItemDrag}
+                placement={placement}
+                lighting={lighting}
+                assetUrl={assetUrl}
+                apiRef={viewerRef}
+                hiddenGroups={hiddenGroups}
+                sectionHeight={sectionHeight}
+                measurePoints={measurePoints}
+                trueSurfaceColors={editingFinish}
+                {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}
+                onGraphicsRestored={onGraphicsRestored}
+                cameraRef={cameraRef}
+                navigationMode={navigationMode}
+                onPointerLockChange={setPointerLocked}
+                walkStart={walkStart}
+                headBob={headBob}
+                locale={i18n.language}
+              />
+            </Suspense>
           )}
         </ErrorBoundary>
       </div>

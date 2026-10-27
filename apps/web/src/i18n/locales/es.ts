@@ -19,6 +19,7 @@ export const es = {
   },
   viewport: {
     fit: 'Encuadrar',
+    loading3d: 'Cargando vista 3D…',
     top: 'Vista superior',
     label: 'Vista 3D del proyecto',
     modes: 'Modo de vista',

@@ -14,7 +14,8 @@ export async function loadAutosave(): Promise<string | null> {
   try {
     const value: unknown = await (await database()).get(STORE, KEY);
     return typeof value === 'string' ? value : null;
-  } catch {
+  } catch (error) {
+    console.warn('No se pudo leer el guardado automático', error);
     return null;
   }
 }

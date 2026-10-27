@@ -6,7 +6,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./canvas": "./src/canvas.ts",
+    "./thumbnails": "./src/thumbnails/item-thumbnails.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

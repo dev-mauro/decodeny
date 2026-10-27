@@ -1,5 +1,4 @@
 import type { AnyItemDefinition } from '@decodeny/domain';
-import { itemThumbnail, THUMBNAIL_SIZE } from '@decodeny/viewer';
 import { createElement, useEffect, useState } from 'react';
 import { itemIcon } from './item-icons';
 
@@ -8,9 +7,12 @@ export function ItemThumb({ definition }: { readonly definition: AnyItemDefiniti
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    void itemThumbnail(definition).then((next) => {
-      if (active) setUrl(next);
-    });
+    // Bajo demanda: las miniaturas usan WebGL y no deben pesar en la carga inicial.
+    void import('@decodeny/viewer/thumbnails')
+      .then(({ itemThumbnail }) => itemThumbnail(definition))
+      .then((next) => {
+        if (active) setUrl(next);
+      });
     return () => {
       active = false;
     };
@@ -21,8 +23,8 @@ export function ItemThumb({ definition }: { readonly definition: AnyItemDefiniti
       <img
         src={url}
         alt=""
-        width={THUMBNAIL_SIZE}
-        height={THUMBNAIL_SIZE}
+        width={40}
+        height={40}
         className="size-10 shrink-0 rounded-md bg-slate-50 object-contain"
         data-testid={`catalog-thumb-${definition.id}`}
       />

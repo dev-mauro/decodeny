@@ -123,6 +123,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 
 - **Límites de error:** la vista (3D o planta) está aislada; si falla, se ofrece reintentar o pasar a la planta 2D, y el documento sigue intacto. Un límite general ofrece exportar el proyecto y recargar.
 - **Contexto WebGL:** si el navegador lo descarta, se pide restaurarlo (`ContextLossGuard`) y se avisa al recuperarse.
+- **Carga inicial:** la app (UI, dominio, catálogo, planta) y `vendor` (React) son lo único que se descarga al abrir (~225 kB gzip). La vista 3D (`@decodeny/viewer/canvas`), las miniaturas (`@decodeny/viewer/thumbnails`) y la física del recorrido se importan bajo demanda; `manualChunks` asigna por ruta de módulo para que React y el helper de precarga no caigan en el chunk de r3f. `scripts/check-bundle-size.mjs` lo verifica en CI.
 - **Sin conexión (PWA):** un plugin del build genera `sw.js` con la lista de archivos del build (sin dependencias); el service worker los precarga, sirve el documento con red primero y el resto desde la caché. Si se instala una versión nueva, se ofrece actualizar.
 - **Accesibilidad:** con `prefers-reduced-motion`, la cámara no anima transiciones.
 - **Idiomas:** `es` (base, tipa las claves) y `en` (TypeScript exige cada traducción). El idioma elegido se recuerda; el formato de medidas (coma o punto decimal), los mensajes de validación y el catálogo siguen al idioma.

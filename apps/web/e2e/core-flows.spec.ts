@@ -115,13 +115,21 @@ test('restaura el proyecto guardado automáticamente al recargar', async ({ page
         open.onerror = () => resolve(false);
         open.onsuccess = () => {
           const db = open.result;
+          // Cada sondeo cierra su conexión: dejarlas abiertas interfiere con la base de la app.
           if (!db.objectStoreNames.contains('autosave')) {
+            db.close();
             resolve(false);
             return;
           }
           const get = db.transaction('autosave').objectStore('autosave').get('current');
-          get.onsuccess = () => resolve(String(get.result ?? '').includes('Depto. ejemplo 2D1B'));
-          get.onerror = () => resolve(false);
+          get.onsuccess = () => {
+            db.close();
+            resolve(String(get.result ?? '').includes('Depto. ejemplo 2D1B'));
+          };
+          get.onerror = () => {
+            db.close();
+            resolve(false);
+          };
         };
       }),
     undefined,

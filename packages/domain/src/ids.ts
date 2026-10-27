@@ -19,3 +19,32 @@ export function sequentialIds(): IdFactory {
     return `${prefix}_${next}`;
   };
 }
+
+/** Fábrica que además anota cada id generado (para poder reproducir la ejecución). */
+export function recordingIds(base: IdFactory = createId): { ids: IdFactory; recorded: string[] } {
+  const recorded: string[] = [];
+  return {
+    recorded,
+    ids: (prefix) => {
+      const id = base(prefix);
+      recorded.push(id);
+      return id;
+    },
+  };
+}
+
+/**
+ * Reproduce ids anotados, en orden: ejecutar el mismo comando con los mismos argumentos y estos
+ * ids da el mismo resultado en otro equipo. Si se agotan (o no coincide el prefijo), usa `fallback`.
+ */
+export function replayIds(recorded: readonly string[], fallback: IdFactory = createId): IdFactory {
+  let next = 0;
+  return (prefix) => {
+    const id = recorded[next];
+    if (id?.startsWith(`${prefix}_`)) {
+      next++;
+      return id;
+    }
+    return fallback(prefix);
+  };
+}

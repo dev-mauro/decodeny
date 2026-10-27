@@ -45,6 +45,11 @@ export function executeCommand<Args, Result>(
   return { project: next, patches, inverse, result };
 }
 
+/** Aplica parches (p. ej. recibidos de otro participante) de forma inmutable. */
+export function applyProjectPatches(project: Project, patches: readonly Patch[]): Project {
+  return patches.length === 0 ? project : applyPatches(project, patches as Patch[]);
+}
+
 export function recordEntry(
   history: HistoryState,
   entry: HistoryEntry,

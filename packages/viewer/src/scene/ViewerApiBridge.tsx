@@ -1,5 +1,5 @@
 import { useThree } from '@react-three/fiber';
-import { useImperativeHandle, type Ref } from 'react';
+import { useImperativeHandle, type Ref, type RefObject } from 'react';
 
 /** API imperativa del visor para la UI (independiente del modo de navegación). */
 export interface ViewerApi {
@@ -15,6 +15,8 @@ export interface ViewerApi {
    * Devuelve `false` si no hay un tramo en curso.
    */
   drawSegment?(direction: { readonly x: number; readonly y: number }, lengthMm: number): boolean;
+  /** Recorrido o vuelo: abre o cierra la puerta al alcance. Devuelve si había una. */
+  toggleDoor?(): boolean;
 }
 
 export interface RenderStats {
@@ -25,7 +27,13 @@ export interface RenderStats {
 }
 
 /** Expone `ViewerApi` desde dentro del `<Canvas>` (necesita el renderer, la escena y la cámara). */
-export function ViewerApiBridge({ apiRef }: { readonly apiRef: Ref<ViewerApi> | undefined }) {
+export function ViewerApiBridge({
+  apiRef,
+  toggleDoorRef,
+}: {
+  readonly apiRef: Ref<ViewerApi> | undefined;
+  readonly toggleDoorRef?: RefObject<(() => boolean) | null>;
+}) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -46,6 +54,7 @@ export function ViewerApiBridge({ apiRef }: { readonly apiRef: Ref<ViewerApi> | 
           .then((r) => r.blob())
           .then(resolve, () => resolve(null));
       }),
+    toggleDoor: () => toggleDoorRef?.current?.() ?? false,
     renderStats: () => {
       gl.render(scene, camera);
       const { render, memory } = gl.info;

@@ -1,6 +1,7 @@
 import type { ViewerCameraApi } from '@decodeny/viewer';
 import { useRef } from 'react';
 import { useDesktopLayout } from '@/shared/lib/use-media-query';
+import { useUiStore } from '@/state/ui-store';
 import { CollabDialog } from '@/features/collab/CollabDialog';
 import { IoDialogs } from '@/features/io/IoDialogs';
 import { MaquetasDialog } from '@/features/maquetas/MaquetasDialog';
@@ -24,13 +25,19 @@ import { Viewport } from './Viewport';
 export function App() {
   const cameraRef = useRef<ViewerCameraApi>(null);
   const desktop = useDesktopLayout();
+  const presenting = useUiStore((s) => s.presenting);
   useShortcuts();
 
   return (
     <ErrorBoundary fallback={(error) => <AppCrash error={error} />}>
       <div className="flex h-full flex-col">
-        <TopBar />
-        {desktop ? (
+        {!presenting && <TopBar />}
+        {presenting ? (
+          // Presentación: solo la vista, a pantalla completa.
+          <main className="flex min-h-0 flex-1" data-testid="presentation">
+            <Viewport cameraRef={cameraRef} />
+          </main>
+        ) : desktop ? (
           <main className="flex min-h-0 flex-1 flex-row overflow-hidden">
             <aside className="flex min-h-0 w-72 shrink-0 flex-col border-r border-slate-200 bg-white">
               <LeftPanel />

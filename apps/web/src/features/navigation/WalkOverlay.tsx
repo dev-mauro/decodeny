@@ -60,6 +60,10 @@ export function WalkOverlay() {
           [t('navigation.keysSpeed'), t('navigation.controlsSpeed')],
         ] as [string, string][])
       : []),
+    [
+      t(mode === 'ghost' ? 'navigation.keysDoorFly' : 'navigation.keysDoorWalk'),
+      t('navigation.controlsDoor'),
+    ],
     [t('navigation.keysPause'), t('navigation.controlsPause')],
   ];
 

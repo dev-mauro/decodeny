@@ -6,6 +6,8 @@ import {
   DefinitionRefSchema,
   defaultParams,
   executeCommand,
+  isDesignedClosed,
+  operableParams,
   openingEnvelope,
   resolveParams,
   roomSides,
@@ -93,6 +95,24 @@ describe.each(definitions.map((d) => [d.id, d] as const))('%s', (_, def) => {
         }
       }
     }
+  });
+
+  it('si se abre en el recorrido, su parámetro existe y cerrada genera piezas válidas', () => {
+    if (!def.operable) return;
+    const spec = def.params[def.operable.param];
+    expect(spec?.kind).toBe('number');
+    if (spec?.kind !== 'number') return;
+    expect(def.operable.closed).toBeGreaterThanOrEqual(spec.min);
+    expect(def.operable.closed).toBeLessThanOrEqual(spec.max);
+    for (const t of [0, 0.5, 1]) {
+      const params = operableParams(def, {}, t);
+      checkParts(def.build(params, { wallThickness: 150 }), params);
+    }
+    // Cerrada en el documento: abierta toma el valor por defecto.
+    expect(isDesignedClosed(def, { [def.operable.param]: def.operable.closed })).toBe(true);
+    expect(
+      operableParams(def, { [def.operable.param]: def.operable.closed }, 1)[def.operable.param],
+    ).toBe(spec.default);
   });
 
   it('genera piezas válidas con parámetros extremos y espesores de muro distintos', () => {

@@ -35,6 +35,7 @@ export const doorSingle = defineOpening({
   name: { es: 'Puerta batiente', en: 'Hinged door' },
   description: { es: 'Una hoja con bisagras', en: 'Single hinged leaf' },
   passable: true,
+  operable: { param: 'openAngle', closed: 0 },
   params: {
     width: widthParam(800, 400, 1600),
     height: heightParam(2000, 600, 4000),

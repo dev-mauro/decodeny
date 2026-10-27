@@ -2,6 +2,7 @@ import { resolveOpeningDefinition } from '@decodeny/catalog';
 import {
   add,
   angleOf,
+  operableParams,
   resolveParams,
   scale,
   type Opening,
@@ -15,6 +16,7 @@ import { openingMaterial } from '../materials/default-materials';
 import type { InteractionState, SelectOptions, ViewerSelection } from '../selection';
 import { CLICK_DRAG_TOLERANCE_PX, isAdditiveClick } from './interaction';
 import { PartMeshes } from './PartMeshes';
+import { useDoorOpenness } from '../navigation/door-context';
 
 interface OpeningViewProps {
   readonly opening: Opening;
@@ -49,11 +51,16 @@ export const OpeningView = memo(function OpeningView({
   onDragStart,
 }: OpeningViewProps) {
   const definition = resolveOpeningDefinition(opening.def);
+  // En el recorrido, las puertas se dibujan a su apertura del momento (no la del documento).
+  const openness = useDoorOpenness(opening);
   const { parts, strokes } = useMemo(() => {
-    const params = resolveParams(definition.params, opening.params);
+    const params =
+      openness === undefined
+        ? resolveParams(definition.params, opening.params)
+        : operableParams(definition, opening.params, openness);
     const ctx = { wallThickness: footprint.thickness };
     return { parts: definition.build(params, ctx), strokes: definition.plan?.(params, ctx) ?? [] };
-  }, [definition, footprint.thickness, opening.params]);
+  }, [definition, footprint.thickness, opening.params, openness]);
   const center = planToWorld(add(footprint.start, scale(footprint.dir, opening.offset)));
   const target = useMemo<ViewerSelection>(
     () => ({ kind: 'opening', id: opening.id }),

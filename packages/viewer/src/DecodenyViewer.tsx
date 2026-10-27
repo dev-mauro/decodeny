@@ -2,6 +2,9 @@ import { findLevel, mmToMeters, type Project, type Vec2 } from '@decodeny/domain
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, useState, type Ref, type RefObject } from 'react';
 import { PerspectiveCamera } from 'three';
+import { DoorControls, type NearbyDoor } from './navigation/DoorControls';
+import { DoorStoreContext } from './navigation/door-context';
+import { createDoorStore } from './navigation/doors';
 import { DEFAULT_PERSON, type PersonProfile } from './navigation/person-profile';
 import { navigationModes } from './navigation/registry';
 import { TouchControls, type TouchControlsLabels } from './navigation/TouchControls';
@@ -112,6 +115,11 @@ export interface DecodenyViewerProps {
   readonly peers?: ViewerPeers | null;
   /** Pose de la cámara cuando cambia (~12 por segundo como máximo), p. ej. para compartirla. */
   readonly onCameraPose?: (pose: ViewerCameraPose) => void;
+  /**
+   * Recorrido y vuelo: la puerta al alcance (para indicar cómo abrirla) o `null`. Se abre o
+   * cierra con E (recorrido) o F, con un clic con el puntero capturado o con `ViewerApi.toggleDoor`.
+   */
+  readonly onNearbyDoor?: (door: NearbyDoor | null) => void;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -146,6 +154,10 @@ function CameraFov({ fov }: { readonly fov: number }) {
  * Visor 3D: proyección de solo lectura del documento. Nunca modifica el proyecto;
  * comunica intenciones (selección) mediante callbacks (ver ADR-003).
  */
+/** E también sube en el vuelo: ahí las puertas se abren con F. */
+const WALK_DOOR_KEYS = ['KeyE', 'KeyF'] as const;
+const FLY_DOOR_KEYS = ['KeyF'] as const;
+
 export function DecodenyViewer({
   project,
   levelId,
@@ -178,6 +190,7 @@ export function DecodenyViewer({
   grid = null,
   peers = null,
   onCameraPose,
+  onNearbyDoor,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -195,6 +208,10 @@ export function DecodenyViewer({
   const [virtualInput] = useState(createVirtualInput);
   const interactive = mode.interactive && !placing;
   const [sectionCut, setSectionCut] = useState<readonly string[] | null>(null);
+  // Puertas del recorrido: un estado nuevo (el del documento) cada vez que se entra a un modo.
+  const doorSession = mode.interactive ? null : mode.id;
+  const doorStore = useMemo(() => (doorSession ? createDoorStore() : null), [doorSession]);
+  const toggleDoorRef = useRef<(() => boolean) | null>(null);
 
   return (
     <div
@@ -219,63 +236,75 @@ export function DecodenyViewer({
         }}
         style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
       >
-        <SceneEnvironment
-          bounds={bounds}
-          lighting={lighting}
-          gridStep={grid?.step ?? null}
-          gridElevation={level?.elevation ?? 0}
-        />
-        <FirstFrame onFrame={() => setReady(true)} />
-        <ViewerApiBridge apiRef={apiRef} />
-        <ContextLossGuard onRestored={onGraphicsRestored} />
-        <CameraFov fov={mode.fov} />
-        {level && (
-          <LevelView
-            level={level}
-            selection={selection}
-            selectionGroup={selectionGroup}
-            onSelect={onSelectionChange}
-            locale={locale}
-            interactive={interactive}
-            highlighted={highlighted}
-            onHoverChange={onHoverChange}
-            onRoomDrag={onRoomDrag}
-            onOpeningDrag={onOpeningDrag}
-            onItemDrag={onItemDrag}
-            finishes={finishes}
-            assetUrl={assetUrl}
-            hiddenGroups={hiddenGroups}
-            sectionHeight={mode.interactive ? sectionHeight : null}
-            sectionMode={sectionMode}
-            onSectionCutChange={setSectionCut}
-            onMeasurePoint={onMeasurePoint}
-            measurePoints={measurePoints}
-            trueSurfaceColors={trueSurfaceColors}
-            lampShadows={lighting === 'night'}
+        <DoorStoreContext.Provider value={doorStore}>
+          <SceneEnvironment
+            bounds={bounds}
+            lighting={lighting}
+            gridStep={grid?.step ?? null}
+            gridElevation={level?.elevation ?? 0}
           />
-        )}
-        {placing && <PlacementPointer placement={placement} />}
-        {level && peers && peers.list.length > 0 && (
-          <PeerAvatars peers={peers} floorY={mmToMeters(level.elevation)} />
-        )}
-        {onCameraPose && <CameraPoseReporter onPose={onCameraPose} />}
-        {level && (
-          <Suspense fallback={null}>
-            <Mode
-              key={mode.id}
+          <FirstFrame onFrame={() => setReady(true)} />
+          <ViewerApiBridge apiRef={apiRef} toggleDoorRef={toggleDoorRef} />
+          <ContextLossGuard onRestored={onGraphicsRestored} />
+          <CameraFov fov={mode.fov} />
+          {level && (
+            <LevelView
               level={level}
-              bounds={bounds}
               selection={selection}
-              profile={personProfile}
-              cameraApiRef={cameraRef}
-              autoFitted={autoFitted}
-              onPointerLockChange={onPointerLockChange}
-              walkStart={walkStart}
-              headBob={headBob && !prefersReducedMotion()}
-              virtualInput={virtualInput}
+              selectionGroup={selectionGroup}
+              onSelect={onSelectionChange}
+              locale={locale}
+              interactive={interactive}
+              highlighted={highlighted}
+              onHoverChange={onHoverChange}
+              onRoomDrag={onRoomDrag}
+              onOpeningDrag={onOpeningDrag}
+              onItemDrag={onItemDrag}
+              finishes={finishes}
+              assetUrl={assetUrl}
+              hiddenGroups={hiddenGroups}
+              sectionHeight={mode.interactive ? sectionHeight : null}
+              sectionMode={sectionMode}
+              onSectionCutChange={setSectionCut}
+              onMeasurePoint={onMeasurePoint}
+              measurePoints={measurePoints}
+              trueSurfaceColors={trueSurfaceColors}
+              lampShadows={lighting === 'night'}
             />
-          </Suspense>
-        )}
+          )}
+          {placing && <PlacementPointer placement={placement} />}
+          {level && peers && peers.list.length > 0 && (
+            <PeerAvatars peers={peers} floorY={mmToMeters(level.elevation)} />
+          )}
+          {onCameraPose && <CameraPoseReporter onPose={onCameraPose} />}
+          {level && (
+            <Suspense fallback={null}>
+              <Mode
+                key={mode.id}
+                level={level}
+                bounds={bounds}
+                selection={selection}
+                profile={personProfile}
+                cameraApiRef={cameraRef}
+                autoFitted={autoFitted}
+                onPointerLockChange={onPointerLockChange}
+                walkStart={walkStart}
+                headBob={headBob && !prefersReducedMotion()}
+                virtualInput={virtualInput}
+              />
+            </Suspense>
+          )}
+          {level && doorStore && (
+            <DoorControls
+              level={level}
+              store={doorStore}
+              keys={mode.id === 'person' ? WALK_DOOR_KEYS : FLY_DOOR_KEYS}
+              radiusMm={personProfile.radiusMm}
+              onNearbyDoor={onNearbyDoor}
+              toggleRef={toggleDoorRef}
+            />
+          )}
+        </DoorStoreContext.Provider>
       </Canvas>
       {touchControls && !mode.interactive && (
         <TouchControls input={virtualInput} flying={mode.id === 'ghost'} labels={touchControls} />

@@ -35,6 +35,7 @@ export const doorDouble = defineOpening({
   name: { es: 'Puerta doble', en: 'Double door' },
   description: { es: 'Dos hojas batientes', en: 'Two hinged leaves' },
   passable: true,
+  operable: { param: 'openAngle', closed: 0 },
   params: {
     width: widthParam(1400, 600, 3600),
     height: heightParam(2000, 600, 4000),

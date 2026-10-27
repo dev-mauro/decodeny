@@ -197,3 +197,39 @@ export function chooseSpawn(
   if (room) return spawnInRoom(level, room, yaw);
   return { feet: [0, level.elevation / 1000, 0], yaw };
 }
+
+/**
+ * Hojas cerradas de las puertas operables: una caja que tapa el vano (el muro ya deja libre
+ * su paso, ver `wallChunks`). Abiertas o en movimiento no tienen colisión.
+ */
+export function closedDoorColliders(level: Level, closedIds: readonly string[]): BoxCollider[] {
+  if (closedIds.length === 0) return [];
+  const nodes = new Map(level.nodes.map((n) => [n.id, n]));
+  const walls = new Map(level.walls.map((w) => [w.id, w]));
+  const closed = new Set(closedIds);
+  const boxes: BoxCollider[] = [];
+  for (const opening of level.openings) {
+    if (!closed.has(opening.id)) continue;
+    const wall = walls.get(opening.wallId);
+    const a = wall && nodes.get(wall.start);
+    const b = wall && nodes.get(wall.end);
+    if (!wall || !a || !b) continue;
+    const length = distance(a, b);
+    if (length === 0) continue;
+    const dir = scale(sub(b, a), 1 / length);
+    const env = openingEnvelope(opening);
+    boxes.push({
+      position: planToWorld(
+        add(a, scale(dir, opening.offset)),
+        level.elevation + env.sill + env.height / 2,
+      ),
+      halfExtents: [
+        mmToMeters(env.width) / 2,
+        mmToMeters(env.height) / 2,
+        mmToMeters(wall.thickness) / 2,
+      ],
+      rotationY: angleOf(dir),
+    });
+  }
+  return boxes;
+}

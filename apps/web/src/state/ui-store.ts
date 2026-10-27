@@ -10,6 +10,7 @@ import type {
   BuiltInNavigationMode,
   ItemGroup,
   MeasurePoint,
+  NearbyDoor,
   PlanTool,
   SectionMode,
   ViewerSelection,
@@ -101,6 +102,10 @@ interface UiState {
   readonly mobilePanel: MobilePanel;
   /** Cuadrícula sobre el suelo: se ve en 3D y en el plano, y fija el paso de los ajustes. */
   readonly grid: GridSettings;
+  /** Modo presentación: solo la vista, sin herramientas de edición (y en solo lectura). */
+  readonly presenting: boolean;
+  /** Recorrido y vuelo: la puerta al alcance (para indicar cómo abrirla). */
+  readonly nearbyDoor: NearbyDoor | null;
   /** Corte de muros: toda la envolvente o solo los muros que tapan el interior (se recuerda). */
   readonly sectionMode: SectionMode;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
@@ -131,6 +136,7 @@ interface UiState {
   readonly setMobilePanel: (panel: MobilePanel) => void;
   readonly setGrid: (grid: Partial<GridSettings>) => void;
   readonly setSectionMode: (mode: SectionMode) => void;
+  readonly setNearbyDoor: (door: NearbyDoor | null) => void;
 }
 
 const HEAD_BOB_KEY = 'decodeny.headBob';
@@ -198,6 +204,9 @@ export const useUiStore = create<UiState>()((set) => ({
   mobilePanel: null,
   grid: readGrid(),
   sectionMode: readSectionMode(),
+  nearbyDoor: null,
+  presenting: false,
+  setNearbyDoor: (nearbyDoor) => set({ nearbyDoor }),
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),

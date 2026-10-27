@@ -928,6 +928,8 @@ export function PlanView({
           return (
             <g
               key={opening.id}
+              data-testid="plan-opening"
+              data-def={opening.def}
               style={{ cursor: state === 'selected' ? 'ew-resize' : 'pointer' }}
               onPointerDown={(e) => pick(target, e, 'opening', { dir: fp.dir })}
               onPointerEnter={() => hover(target)}

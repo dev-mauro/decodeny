@@ -79,7 +79,8 @@ interface ProjectState {
    * otro proyecto sí se permite. Se recuerda en el navegador.
    */
   readonly readOnly: boolean;
-  readonly setReadOnly: (readOnly: boolean) => void;
+  /** `remember: false`: solo por ahora (p. ej. la presentación), sin tocar la preferencia guardada. */
+  readonly setReadOnly: (readOnly: boolean, options?: { readonly remember?: boolean }) => void;
   readonly history: HistoryState;
   readonly transaction: Transaction | null;
   readonly dispatch: <A, R>(
@@ -203,9 +204,10 @@ export function createProjectStore(initial: Project = newProject()) {
       sync: null,
       sharedHistory: null,
 
-      setReadOnly: (readOnly) => {
+      setReadOnly: (readOnly, options) => {
         try {
-          localStorage.setItem(READ_ONLY_KEY, readOnly ? '1' : '0');
+          if (options?.remember !== false)
+            localStorage.setItem(READ_ONLY_KEY, readOnly ? '1' : '0');
         } catch {
           // Preferencia no persistida: vale para esta sesión.
         }

@@ -12,7 +12,14 @@ import {
 } from '@react-three/rapier';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Euler } from 'three';
-import { chooseSpawn, groundCollider, itemColliders, wallColliders } from './colliders';
+import {
+  chooseSpawn,
+  closedDoorColliders,
+  groundCollider,
+  itemColliders,
+  wallColliders,
+} from './colliders';
+import { useClosedDoors } from './door-context';
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
 import { stepPerson, type PersonMotionState } from './person-step';
@@ -37,6 +44,7 @@ export default function PersonMode(props: NavigationModeProps) {
   return (
     <Physics gravity={[0, 0, 0]} timeStep={1 / 60}>
       <LevelColliders level={props.level} />
+      <DoorColliders level={props.level} />
       <PersonController {...props} />
     </Physics>
   );
@@ -60,6 +68,25 @@ const LevelColliders = memo(function LevelColliders({ level }: { readonly level:
     </RigidBody>
   );
 });
+
+/** Las puertas cerradas tapan su vano; abiertas o moviéndose, se atraviesan. */
+function DoorColliders({ level }: { readonly level: Level }) {
+  const closed = useClosedDoors(level);
+  const boxes = useMemo(() => closedDoorColliders(level, closed), [closed, level]);
+  if (boxes.length === 0) return null;
+  return (
+    <RigidBody key={closed.join(' ')} type="fixed" colliders={false}>
+      {boxes.map((box, i) => (
+        <CuboidCollider
+          key={i}
+          args={box.halfExtents}
+          position={box.position}
+          rotation={[0, box.rotationY, 0]}
+        />
+      ))}
+    </RigidBody>
+  );
+}
 
 function PersonController({
   level,

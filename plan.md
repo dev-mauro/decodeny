@@ -796,7 +796,7 @@ El documento ya tiene `levels[]` con `elevation`, todos los comandos reciben `le
 
 ### I14 — Presentación (M) — PENDIENTE / OPCIONAL
 
-Adelantado (mínimo, para mostrar): modo presentación (UI mínima, pantalla completa, solo lectura) y puertas operables en el recorrido (solo bloquean el paso cerradas). Lo demás queda pendiente.
+Adelantado (mínimo, para mostrar) ✅: modo presentación (UI mínima, pantalla completa, solo lectura temporal, `?presentar=1`) y puertas operables en el recorrido (E o clic; F en el vuelo; botón en táctil). La puerta solo bloquea el paso **cerrada**: abierta o moviéndose se atraviesa. Su estado es del recorrido, no del documento (funciona en solo lectura y como invitado). Lo demás (vistas guardadas, recorrido guiado) queda pendiente.
 
 - **Vistas guardadas:** pose de cámara + modo, en el documento.
 - **Recorrido guiado:** interpolación entre las vistas guardadas.

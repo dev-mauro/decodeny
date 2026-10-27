@@ -33,6 +33,7 @@ export const doorSliding = defineOpening({
     en: 'Leaf sliding along the wall',
   },
   passable: true,
+  operable: { param: 'open', closed: 0 },
   params: {
     width: widthParam(800, 400, 3000),
     height: heightParam(2000, 600, 4000),

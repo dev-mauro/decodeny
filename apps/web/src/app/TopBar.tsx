@@ -6,6 +6,7 @@ import {
   FolderOpen,
   LayoutGrid,
   Lock,
+  MonitorPlay,
   Redo2,
   Undo2,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { exportCurrentProject, requestOpenFile } from '@/features/io/project-act
 import { useIoStore } from '@/features/io/io-store';
 import { openMaquetas } from '@/features/maquetas/maquetas-ui';
 import { ShareButton, VisitBadge } from '@/features/maquetas/ShareDialog';
+import { startPresentation } from '@/features/presentation/presentation';
 import { Button, IconButton } from '@/shared/ui/Button';
 import { TextField } from '@/shared/ui/TextField';
 import { useCanRedo, useCanUndo, useProjectStore, useReadOnly } from '@/state/project-store';
@@ -105,6 +107,15 @@ export function TopBar() {
           <span className="mx-1 h-6 w-px bg-slate-200" aria-hidden />
         </div>
         <MoreMenu onNew={() => confirm('new')} />
+        <IconButton
+          label={t('presentation.start')}
+          title={t('presentation.startHint')}
+          onClick={() => startPresentation()}
+          className="hidden sm:inline-flex"
+          data-testid="presentation-start"
+        >
+          <MonitorPlay className="size-4" />
+        </IconButton>
         <ShareButton />
         <CollabButton />
         <OptionsMenu />
@@ -153,6 +164,12 @@ function MoreMenu({ onNew }: { readonly onNew: () => void }) {
               id: 'menu-maquetas',
             },
             { icon: FilePlus2, label: t('topbar.new'), run: onNew, id: 'menu-new' },
+            {
+              icon: MonitorPlay,
+              label: t('presentation.start'),
+              run: () => startPresentation(),
+              id: 'menu-present',
+            },
             { icon: FolderOpen, label: t('topbar.open'), run: requestOpenFile, id: 'menu-open' },
             {
               icon: Download,

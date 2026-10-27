@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
 import { PROJECT_TEMPLATES } from '@/features/samples/templates';
 import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch';
+import { DoorHint } from '@/features/navigation/DoorHint';
+import { PresentationBar } from '@/features/presentation/PresentationBar';
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
 import { useItemDragHandler } from '@/features/furniture/use-item-drag-handler';
 import {
@@ -102,6 +104,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const onItemDrag = readOnly ? undefined : itemDrag;
   const onNodeDrag = readOnly ? undefined : nodeDrag;
   const view = useUiStore((s) => s.view);
+  const presenting = useUiStore((s) => s.presenting);
   const planTool = useUiStore((s) => s.planTool);
   const setPlanTool = useUiStore((s) => s.setPlanTool);
   const exitPlanTool = useCallback(() => setPlanTool('select'), [setPlanTool]);
@@ -109,6 +112,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const hiddenGroups = useUiStore((s) => s.hiddenGroups);
   const sectionHeight = useUiStore((s) => s.sectionHeight);
   const sectionMode = useUiStore((s) => s.sectionMode);
+  const setNearbyDoor = useUiStore((s) => s.setNearbyDoor);
   const measuring = useUiStore((s) => s.measuring);
   const measurePoints = useUiStore((s) => s.measurePoints);
   const editingFinish = useUiStore((s) => s.finishEditors > 0);
@@ -229,6 +233,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 cameraRef={cameraRef}
                 navigationMode={navigationMode}
                 onPointerLockChange={setPointerLocked}
+                onNearbyDoor={setNearbyDoor}
                 walkStart={walkStart}
                 headBob={headBob}
                 touchControls={touchControls}
@@ -243,12 +248,14 @@ export function Viewport({ cameraRef }: ViewportProps) {
       </div>
 
       <WalkOverlay />
+      <DoorHint viewerRef={viewerRef} />
 
       <div className="absolute top-3 left-3 flex flex-wrap gap-2">
         <ViewSwitch />
         {view === '3d' && <NavigationModeSwitch />}
-        {view === 'plan' && <PlanTools />}
+        {view === 'plan' && !presenting && <PlanTools />}
       </div>
+      {presenting && <PresentationBar />}
 
       <WallDrawHint viewerRef={viewerRef} chainActive={drawChain} />
       {pointerHeight !== null && (
@@ -288,10 +295,10 @@ export function Viewport({ cameraRef }: ViewportProps) {
         />
       )}
 
-      <ViewportTools viewerRef={viewerRef} />
-      <MeasurePanel />
+      {!presenting && <ViewportTools viewerRef={viewerRef} />}
+      {!presenting && <MeasurePanel />}
 
-      {navigationMode === 'edit' && view === '3d' && (
+      {navigationMode === 'edit' && view === '3d' && !presenting && (
         <div className="absolute top-3 right-3 flex flex-col gap-1 rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm backdrop-blur">
           <IconButton label={t('viewport.fit')} onClick={() => cameraRef.current?.fitToContent()}>
             <Maximize className="size-4" />

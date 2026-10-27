@@ -162,6 +162,11 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Firestore:** `houses/{id}` (proyecto comprimido en `Bytes` sin índice, `assets`, `rev`, `lastVisitAt`) y `assets/{id}` + `chunks/{n}` (inmutables, verificados por `sha256`). Reglas, índices y emuladores en `firebase/`; `cleanup.yml` borra lo que no tuvo visitas en 30 días; `firebase-rules.yml` despliega las reglas.
 - **Colaboración:** el invitado instala la sesión antes de recibir el documento del anfitrión, así nunca lo guarda sobre una maqueta propia.
 
+## Presentación y puertas en el recorrido (adelanto de I14)
+
+- **Presentación** (`features/presentation`): solo la vista (sin barra, paneles ni herramientas de edición), a pantalla completa y en solo lectura **temporal** (`setReadOnly(true, { remember: false })`: al salir vuelve la preferencia). `?presentar=1` la abre directo (la pantalla completa la pide un clic).
+- **Puertas operables:** una definición declara `operable: { param, closed }` (`openAngle` en las batientes, `open` en las correderas); `operableParams` interpola entre cerrada y abierta (la del documento o, si allí está cerrada, la por defecto). En recorrido y vuelo, el visor tiene un `DoorStore` propio (no toca el documento): empieza como el documento, anima la hoja (0,7 s) y `DoorControls` encuentra la puerta al alcance (de frente o al lado) y la abre o cierra con E/F, un clic con el puntero capturado o `ViewerApi.toggleDoor`. Solo una puerta **cerrada** tiene colisión (`closedDoorColliders`); no se cierra con la persona en el vano. La app indica la acción (`onNearbyDoor` → `DoorHint`).
+
 ## Muros compartidos
 
 Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer.

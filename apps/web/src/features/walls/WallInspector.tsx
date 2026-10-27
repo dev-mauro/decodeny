@@ -2,6 +2,7 @@ import {
   distance,
   formatLength,
   MIN_ROOM_SIDE,
+  moveNode,
   nodePositions,
   renameWall,
   roomSides,
@@ -136,6 +137,44 @@ export function WallInspector({ level, wall, contextRoom }: WallInspectorProps) 
           {formatLength(info.axis, i18n.language)}
         </dd>
       </dl>
+
+      {/* Extremos del eje: coordenadas editables (mueven el nodo y lo que lo comparte). */}
+      <fieldset className="flex flex-col gap-2" data-testid="wall-ends">
+        <legend className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+          {t('inspector.wallEnds')}
+        </legend>
+        {(['start', 'end'] as const).map((end) => {
+          const node = level.nodes.find((n) => n.id === wall[end]);
+          if (!node) return null;
+          const move = (x: number, y: number) =>
+            run(
+              moveNode,
+              { levelId: level.id, nodeId: node.id, x, y },
+              { coalesceKey: `node:${node.id}` },
+            );
+          return (
+            <div key={end} className="grid grid-cols-[auto_1fr_1fr] items-end gap-2">
+              <span className="pb-2 text-xs text-slate-500">
+                {t(end === 'start' ? 'inspector.wallStart' : 'inspector.wallEnd')}
+              </span>
+              <LengthField
+                label={t('inspector.positionX')}
+                value={node.x}
+                step={10}
+                onCommit={(x) => move(x, node.y)}
+                testId={`wall-${end}-x`}
+              />
+              <LengthField
+                label={t('inspector.positionY')}
+                value={node.y}
+                step={10}
+                onCommit={(y) => move(node.x, y)}
+                testId={`wall-${end}-y`}
+              />
+            </div>
+          );
+        })}
+      </fieldset>
 
       <div className="grid grid-cols-2 gap-2">
         <LengthField

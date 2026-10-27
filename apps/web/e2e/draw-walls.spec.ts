@@ -58,3 +58,22 @@ test('dibuja muros en la planta, cierra un recinto, lo divide y une', async ({ p
   await expect(page.getByTestId('rooms-list')).not.toContainText('Recinto 2');
   await expect(page.getByTestId('rooms-list')).toContainText('Recinto 1');
 });
+
+test('los extremos de un muro se editan por coordenadas', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('empty-draw-walls').click();
+  await clickPlan(page, 0, 0);
+  await movePlan(page, 1500, 0);
+  await page.keyboard.type('2');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+
+  await clickPlan(page, 1000, 0);
+  await expect(page.getByTestId('wall-inspector')).toBeVisible();
+  await expect(page.getByTestId('wall-ends')).toBeVisible();
+  const endX = page.getByTestId('wall-end-x');
+  await endX.fill('3');
+  await endX.press('Enter');
+  await expect(page.getByTestId('wall-inspector')).toContainText('3,00 m');
+});

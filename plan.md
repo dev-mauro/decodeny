@@ -390,7 +390,7 @@ Formato de cada iteración: **objetivo → alcance → tareas técnicas → crit
 
 1. **Crear recinto rectangular** por formulario: ancho × largo × alto de muros, grosor de muro.
 2. **Crear recinto poligonal por indicaciones** tipo "tortuga": secuencia de tramos `longitud + giro` (ej. `4,20 m → 90° → 3,10 m → 90° → …`), con cierre automático y aviso si no cierra.
-3. Lista de muros editables: largo, alto, grosor; edición numérica de coordenadas de nodos.
+3. Lista de muros editables: largo, alto, grosor; edición numérica de coordenadas de nodos ✅ (extremos del muro en su inspector).
 4. Varios recintos en el mismo nivel; los adosados comparten tabique (adelantado de I7, ADR-0007).
 5. Render 3D: muros con esquinas en inglete correctas, piso y cielo poligonales (cielo ocultable), colores planos por defecto.
 6. Cámara de edición: órbita + vista superior; encuadre automático del proyecto.

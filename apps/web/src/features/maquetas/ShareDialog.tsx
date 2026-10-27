@@ -22,6 +22,7 @@ export function ShareButton() {
   const { t } = useTranslation();
   const status = useMaquetas((s) => s.cloud);
   const shared = useMaquetas((s) => s.houseId !== null && s.binding.kind === 'maqueta');
+  const rev = useMaquetas((s) => s.rev);
   if (!maquetas.cloudEnabled) return null;
   const Icon = shared ? STATUS_ICON[status] : Share2;
   return (
@@ -42,6 +43,7 @@ export function ShareButton() {
       onClick={() => useMaquetasUi.setState({ shareOpen: true })}
       data-testid="share-open"
       data-cloud-status={shared ? status : undefined}
+      data-cloud-rev={shared ? (rev ?? undefined) : undefined}
     >
       <span className="hidden lg:inline">{t('share.button')}</span>
     </Button>

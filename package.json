@@ -24,7 +24,7 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm depcruise && pnpm test",
     "prepare": "husky",
     "size": "node scripts/check-bundle-size.mjs",
-    "test:cloud": "firebase emulators:exec --config firebase/firebase.json --only firestore --project demo-decodeny \"vitest run --root firebase\"",
+    "test:cloud": "firebase emulators:exec --config firebase/firebase.json --only firestore --project demo-decodeny \"vitest run --root firebase --no-file-parallelism\"",
     "e2e:cloud": "node scripts/cloud/with-emulators.mjs pnpm e2e"
   },
   "lint-staged": {

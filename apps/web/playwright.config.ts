@@ -13,7 +13,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  reporter: isCI ? 'github' : 'list',
+  // En CI, además del resumen, el reporte HTML (con trazas de los reintentos) como artefacto.
+  reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   // WebGL por software (SwiftShader) y la vista 3D cargada bajo demanda: con varios workers el
   // primer render puede tardar más que los 5 s por defecto.
   expect: { timeout: 10_000 },

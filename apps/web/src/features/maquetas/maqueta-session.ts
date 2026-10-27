@@ -49,6 +49,8 @@ export interface MaquetaState {
   readonly cloud: CloudStatus;
   /** Maqueta compartida de la abierta, si lo está. */
   readonly houseId: string | null;
+  /** Revisión de la nube que tiene esta pestaña (sube con cada guardado en la nube). */
+  readonly rev: number | null;
 }
 
 export type MaquetaNotice =
@@ -119,6 +121,7 @@ export class MaquetaSession {
       maquetas: [],
       cloud: 'local',
       houseId: null,
+      rev: null,
     }));
   }
 
@@ -292,7 +295,7 @@ export class MaquetaSession {
         this.#revs.set(id, 1);
         return created;
       });
-      this.state.setState({ cloud: 'saved', houseId });
+      this.state.setState({ cloud: 'saved', houseId, rev: this.#revs.get(id) ?? 1 });
       this.#deps.location?.(houseId);
       await this.refresh();
       return houseId;
@@ -317,7 +320,10 @@ export class MaquetaSession {
     }
     this.#bind({ kind: 'maqueta', id: record.id }, record.cloud?.houseId ?? null);
     this.#saved = parsed.project;
-    if (record.cloud) this.#revs.set(record.id, record.cloud.rev);
+    if (record.cloud) {
+      this.#revs.set(record.id, record.cloud.rev);
+      this.state.setState({ rev: record.cloud.rev });
+    }
     if (record.cloud?.dirty) this.state.setState({ cloud: 'saving' });
     this.#replace(parsed.project);
     this.#deps.location?.(record.cloud?.houseId ?? null);
@@ -338,6 +344,7 @@ export class MaquetaSession {
       binding,
       houseId,
       cloud: houseId && binding.kind === 'maqueta' ? 'saved' : 'local',
+      rev: null,
     });
     if (binding.kind !== 'maqueta') this.#saved = null;
   }
@@ -448,6 +455,7 @@ export class MaquetaSession {
     const base = this.#revs.get(id) ?? record.cloud.rev;
     const rev = await backend.houses.update(owner, record.cloud.houseId, base, content);
     this.#revs.set(id, rev);
+    if (this.#stillOn(id)) this.state.setState({ rev });
     // Lo que se editó mientras se subía queda pendiente para la próxima.
     const latest = (await this.#deps.repo.get(id)) ?? record;
     const dirty = latest.project !== record.project;

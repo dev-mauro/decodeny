@@ -7,15 +7,24 @@ import { expect, test, type Page } from '@playwright/test';
 test.skip(!process.env.E2E_CLOUD, 'Requiere los emuladores de Firebase (pnpm e2e:cloud).');
 
 async function rename(page: Page, name: string) {
-  await page.getByTestId('project-name').fill(name);
-  await page.getByTestId('project-name').press('Enter');
+  const field = page.getByTestId('project-name');
+  await field.fill(name);
+  await field.press('Enter');
+  await expect(field).toHaveValue(name);
 }
 
-/** Tras un cambio en una maqueta compartida: primero queda pendiente y después en la nube. */
-async function synced(page: Page) {
+/** Hace un cambio en una maqueta compartida y espera a que la nube tenga la revisión nueva. */
+async function renameSynced(page: Page, name: string) {
   const button = page.getByTestId('share-open');
-  await expect(button).toHaveAttribute('data-cloud-status', 'saving');
-  await expect(button).toHaveAttribute('data-cloud-status', 'saved', { timeout: 20_000 });
+  await expect(button).toHaveAttribute('data-cloud-rev', /^\d+$/);
+  const rev = Number(await button.getAttribute('data-cloud-rev'));
+  await rename(page, name);
+  await expect(button, 'la revisión de la nube sube con el cambio').toHaveAttribute(
+    'data-cloud-rev',
+    String(rev + 1),
+    { timeout: 20_000 },
+  );
+  await expect(button).toHaveAttribute('data-cloud-status', 'saved');
 }
 
 async function shareCurrent(page: Page): Promise<string> {
@@ -25,6 +34,7 @@ async function shareCurrent(page: Page): Promise<string> {
   await expect(link).toHaveValue(/\?maqueta=/, { timeout: 20_000 });
   const url = await link.inputValue();
   await page.keyboard.press('Escape');
+  await expect(page.getByTestId('share-dialog')).toBeHidden();
   return url.replace(/^https?:\/\/[^/]+/, '');
 }
 
@@ -46,8 +56,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await expect(ana.getByTestId('share-open')).toHaveAttribute('data-cloud-status', 'saved');
 
   // Sus cambios se suben solos.
-  await rename(ana, 'Depto de Ana v2');
-  await synced(ana);
+  await renameSynced(ana, 'Depto de Ana v2');
 
   // Beto abre el enlace: la ve tal cual, como maqueta de otra persona.
   await beto.goto(link);
@@ -75,8 +84,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await ana.goto(link);
   await expect(ana.getByTestId('project-name')).toHaveValue('Depto de Ana v2');
   await expect(ana.getByTestId('visit-badge')).toBeHidden();
-  await rename(ana, 'Depto de Ana final');
-  await synced(ana);
+  await renameSynced(ana, 'Depto de Ana final');
   await carla.reload();
   await expect(carla.getByTestId('project-name')).toHaveValue('Depto de Ana final', {
     timeout: 20_000,

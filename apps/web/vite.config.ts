@@ -75,8 +75,16 @@ export default defineConfig({
             return 'vendor';
           }
           if (path.includes('/node_modules/three/')) return 'three';
-          // Firebase (nube): solo al compartir o abrir un enlace.
-          if (/\/node_modules\/(firebase|@firebase)\//.test(path)) return 'cloud';
+          // Firebase (nube), solo al compartir, abrir un enlace o colaborar. La base común (app,
+          // identidad) va en `cloud`; cada Firestore queda con quien lo usa: el *lite* con el
+          // guardado de maquetas y el completo (con escuchas) con las salas de colaboración.
+          if (
+            /\/node_modules\/(@firebase\/(app|auth|component|logger|util)|firebase\/(app|auth))\//.test(
+              path,
+            )
+          ) {
+            return 'cloud';
+          }
           if (
             /\/node_modules\/(@react-three\/(fiber|drei)|three-stdlib|camera-controls)\//.test(path)
           ) {

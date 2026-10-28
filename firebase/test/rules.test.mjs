@@ -161,3 +161,81 @@ describe('assets', () => {
     await assertFails(setDoc(doc(anon(), 'assets', 'a2'), meta('ana')));
   });
 });
+
+describe('rooms', () => {
+  const roomDoc = (hostUid, overrides = {}) => ({
+    hostUid,
+    hostName: 'Ana',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 3600_000),
+    ...overrides,
+  });
+  const requestDoc = (guestUid, overrides = {}) => ({
+    guestUid,
+    name: 'Beto',
+    offer: 'v=0 oferta',
+    createdAt: serverTimestamp(),
+    ...overrides,
+  });
+  const carla = () => env.authenticatedContext('carla').firestore();
+
+  async function openRoom(code = 'K7Q4MD') {
+    await assertSucceeds(setDoc(doc(ana(), 'rooms', code), roomDoc('ana')));
+    return code;
+  }
+
+  it('solo se crea con un código válido, a nombre propio y con vencimiento corto', async () => {
+    await openRoom();
+    await assertFails(setDoc(doc(ana(), 'rooms', 'k7q4md'), roomDoc('ana')));
+    await assertFails(setDoc(doc(ana(), 'rooms', 'ABC10O'), roomDoc('ana')));
+    await assertFails(setDoc(doc(beto(), 'rooms', 'BBBBBB'), roomDoc('ana')));
+    await assertFails(setDoc(doc(anon(), 'rooms', 'CCCCCC'), roomDoc('ana')));
+    await assertFails(
+      setDoc(
+        doc(ana(), 'rooms', 'DDDDDD'),
+        roomDoc('ana', { expiresAt: Timestamp.fromMillis(Date.now() + 48 * 3600_000) }),
+      ),
+    );
+    // No se puede pisar una sala existente.
+    await assertFails(setDoc(doc(beto(), 'rooms', 'K7Q4MD'), roomDoc('beto')));
+  });
+
+  it('se lee con el código, pero no se listan salas', async () => {
+    await openRoom();
+    await assertSucceeds(getDoc(doc(beto(), 'rooms', 'K7Q4MD')));
+    await assertFails(getDocs(collection(beto(), 'rooms')));
+  });
+
+  it('la solicitud la ven solo el invitado y el anfitrión, que contesta una vez', async () => {
+    const code = await openRoom();
+    const ref = (db) => doc(db, 'rooms', code, 'requests', 'r1');
+    await assertSucceeds(setDoc(ref(beto()), requestDoc('beto')));
+    await assertFails(setDoc(doc(carla(), 'rooms', code, 'requests', 'r2'), requestDoc('beto')));
+    await assertSucceeds(getDoc(ref(beto())));
+    await assertSucceeds(getDoc(ref(ana())));
+    await assertFails(getDoc(ref(carla())));
+    await assertSucceeds(getDocs(collection(ana(), 'rooms', code, 'requests')));
+    await assertFails(getDocs(collection(beto(), 'rooms', code, 'requests')));
+    // Solo el anfitrión responde, una sola vez y sin tocar la oferta.
+    await assertFails(updateDoc(ref(beto()), { answer: 'falsa' }));
+    await assertFails(updateDoc(ref(ana()), { answer: 'a', offer: 'otra' }));
+    await assertSucceeds(updateDoc(ref(ana()), { answer: 'v=0 respuesta' }));
+    await assertFails(updateDoc(ref(ana()), { answer: 'otra vez' }));
+    await assertSucceeds(deleteDoc(ref(beto())));
+  });
+
+  it('sin sala (o vencida) no se puede pedir entrar; solo el anfitrión la cierra', async () => {
+    await assertFails(setDoc(doc(beto(), 'rooms', 'NNNNNN', 'requests', 'r1'), requestDoc('beto')));
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'rooms', 'PPPPPP'), {
+        ...roomDoc('ana'),
+        createdAt: Timestamp.fromMillis(Date.now() - 2 * 3600_000),
+        expiresAt: Timestamp.fromMillis(Date.now() - 3600_000),
+      });
+    });
+    await assertFails(setDoc(doc(beto(), 'rooms', 'PPPPPP', 'requests', 'r1'), requestDoc('beto')));
+    const code = await openRoom('HHHHHH');
+    await assertFails(deleteDoc(doc(beto(), 'rooms', code)));
+    await assertSucceeds(deleteDoc(doc(ana(), 'rooms', code)));
+  });
+});

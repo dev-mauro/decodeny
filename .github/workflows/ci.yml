@@ -70,7 +70,7 @@ jobs:
       # software); después, los de la nube con los emuladores (proyecto demo, sin red real).
       - run: pnpm e2e
       - name: E2E de la nube (emuladores)
-        run: node scripts/cloud/with-emulators.mjs pnpm e2e cloud.spec.ts
+        run: node scripts/cloud/with-emulators.mjs pnpm e2e cloud.spec.ts rooms.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

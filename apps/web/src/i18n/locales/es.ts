@@ -413,8 +413,7 @@ export const es = {
   collab: {
     button: 'Colaborar',
     title: 'Colaborar en tiempo real',
-    description:
-      'Editen y recorran el mismo proyecto a la vez. La conexión es directa entre los navegadores: no pasa por ningún servidor.',
+    description: 'Editen y recorran el mismo proyecto a la vez, cada uno desde su navegador.',
     yourName: 'Tu nombre',
     namePlaceholder: 'Cómo te verán los demás',
     host: 'Crear una sesión',
@@ -445,8 +444,7 @@ export const es = {
     leave: 'Salir de la sesión',
     end: 'Terminar la sesión',
     sessionHint: 'Los demás te ven en 3D. En el plano no se muestran cuerpos.',
-    limitations:
-      'Sin servidor intermedio algunas redes (corporativas o con NAT estricto) no permiten conectar.',
+    limitations: 'Algunas redes (por ejemplo, las de empresas) no permiten conectar.',
     answerInvalid: 'Ese no es un código de respuesta válido.',
     answerUnknown: 'Esa respuesta no corresponde a ninguna invitación abierta.',
     inviteInvalid: 'Ese no es un enlace de invitación válido.',
@@ -459,6 +457,23 @@ export const es = {
     leftByReplace: 'Saliste de la sesión al abrir otro proyecto.',
     rejected: 'Otro participante cambió lo que estabas editando: se descartó tu cambio.',
     inSession: '{{count}} en la sesión',
+    roomCreate: 'Crear una sala',
+    roomCreateHint:
+      'Comparte el proyecto actual con un código corto: quien lo escriba se une. Mantén esta página abierta.',
+    roomCode: 'Código de la sala',
+    roomLink: 'Enlace de la sala',
+    roomHint: 'Comparte el código o el enlace: se pueden unir varias personas.',
+    roomOpening: 'Abriendo la sala…',
+    roomFailed: 'No se pudo abrir la sala. Revisa tu conexión o conéctate a mano.',
+    roomJoin: 'Unirse a una sala',
+    roomCodePlaceholder: 'Ej.: K7Q-4MD',
+    roomJoining: 'Sala de {{name}}',
+    roomWaiting: 'Conectando con {{name}}…',
+    roomInvalid: 'Ese código no es válido: son 6 letras y números.',
+    roomNotFound: 'No hay una sala abierta con ese código.',
+    manual: 'Conectar a mano',
+    manualHint: 'Sin código: se copia un enlace de invitación y se devuelve una respuesta.',
+    useRoom: 'Usar un código de sala',
   },
   presentation: {
     start: 'Presentar',

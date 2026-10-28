@@ -17,7 +17,9 @@ const BUDGETS = {
   three: 220, // Three.js (bajo demanda)
   r3f: 100, // React Three Fiber + drei (bajo demanda)
   PersonMode: 900, // recorrido: Rapier (WASM) se carga solo al entrar
-  cloud: 120, // Firebase: Auth anónima + Firestore lite (al compartir o abrir un enlace)
+  cloud: 60, // Firebase: app + Auth anónima (al compartir, abrir un enlace o colaborar)
+  'firebase-backend': 60, // + Firestore lite (guardado de maquetas)
+  rooms: 150, // + Firestore con escuchas (salas de colaboración, solo al colaborar)
 };
 
 /** JS que el navegador descarga antes de mostrar la app (script + modulepreload). */
@@ -27,7 +29,10 @@ const gzipKb = (file) => gzipSync(readFileSync(join(DIST, file))).length / 1024;
 let failed = false;
 
 for (const file of readdirSync(DIST).filter((f) => f.endsWith('.js'))) {
-  const prefix = Object.keys(BUDGETS).find((p) => file.startsWith(`${p}-`));
+  // El prefijo más largo que coincida (`firebase-backend` antes que otro más corto).
+  const prefix = Object.keys(BUDGETS)
+    .sort((x, y) => y.length - x.length)
+    .find((p) => file.startsWith(`${p}-`));
   if (!prefix) continue;
   const kb = gzipKb(file);
   const limit = BUDGETS[prefix];

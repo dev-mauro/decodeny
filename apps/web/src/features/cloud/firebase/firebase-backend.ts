@@ -1,12 +1,5 @@
-import { FirebaseError, initializeApp } from 'firebase/app';
-import {
-  connectAuthEmulator,
-  indexedDBLocalPersistence,
-  initializeAuth,
-  signInAnonymously,
-  type Auth,
-  type User,
-} from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
 import {
   Bytes,
   collection,
@@ -23,6 +16,7 @@ import {
 } from 'firebase/firestore/lite';
 import { deflateText, inflateText } from '@/shared/lib/compression';
 import { EMULATOR_PORTS, type CloudConfig } from '../cloud-config';
+import { currentIdentity, ensureIdentity, firebaseApp } from './app';
 import {
   CloudError,
   type CloudBackend,
@@ -77,35 +71,17 @@ class FirebaseBackend implements CloudBackend {
   readonly #db: Firestore;
 
   constructor(config: CloudConfig) {
-    const app = initializeApp({
-      apiKey: config.apiKey,
-      authDomain: config.authDomain,
-      projectId: config.projectId,
-      appId: config.appId,
-    });
-    // Sin resolutor de popups/redirecciones: hoy solo hay identidad anónima (bundle menor).
-    this.#auth = initializeAuth(app, { persistence: indexedDBLocalPersistence });
+    const { app, auth } = firebaseApp(config);
+    this.#auth = auth;
     this.#db = getFirestore(app);
     if (config.emulatorHost) {
-      connectAuthEmulator(this.#auth, `http://${config.emulatorHost}:${EMULATOR_PORTS.auth}`, {
-        disableWarnings: true,
-      });
       connectFirestoreEmulator(this.#db, config.emulatorHost, EMULATOR_PORTS.firestore);
     }
   }
 
   readonly identity = {
-    current: async (): Promise<CloudIdentity | null> => {
-      await this.#auth.authStateReady();
-      const user = this.#auth.currentUser;
-      return user ? identityOf(user) : null;
-    },
-    ensure: () =>
-      guarded(async () => {
-        const current = await this.identity.current();
-        if (current) return current;
-        return identityOf((await signInAnonymously(this.#auth)).user);
-      }),
+    current: (): Promise<CloudIdentity | null> => currentIdentity(this.#auth),
+    ensure: () => guarded(() => ensureIdentity(this.#auth)),
   };
 
   readonly houses = {
@@ -239,11 +215,6 @@ class FirebaseBackend implements CloudBackend {
     };
   }
 }
-
-const identityOf = (user: User): CloudIdentity => ({
-  uid: user.uid,
-  kind: user.isAnonymous ? 'anonymous' : 'account',
-});
 
 export function createFirebaseBackend(config: CloudConfig): CloudBackend {
   return new FirebaseBackend(config);

@@ -1,4 +1,4 @@
-import { LogOut, UserPlus, Users, X } from 'lucide-react';
+import { DoorOpen, Hand, LogOut, UserPlus, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/cn';
@@ -7,14 +7,19 @@ import { CopyBox as SharedCopyBox, Field, inputClass } from '@/shared/ui/CopyBox
 import { Dialog } from '@/shared/ui/Dialog';
 import { useCollabStore, type Invite } from './collab-store';
 import { HOST_ID } from './protocol';
+import { formatRoomCode } from './room-signaling';
+import { roomsAvailable } from './rooms';
 import {
   acceptAnswer,
   cancelInvite,
   createInvite,
   dismissJoin,
+  joinRoom,
   leaveSession,
+  openRoom,
   prepareJoin,
   readInviteFromUrl,
+  roomLink,
   startHosting,
   type CollabErrorKey,
 } from './session';
@@ -109,9 +114,64 @@ function InviteRow({ invite }: { readonly invite: Invite }) {
   );
 }
 
+/** La sala del anfitrión: el código grande y el enlace para compartir. */
+function RoomBox() {
+  const { t } = useTranslation();
+  const room = useCollabStore((s) => s.room);
+  if (!room) return null;
+  if (room.status === 'opening') {
+    return <p className="text-sm text-slate-500">{t('collab.roomOpening')}</p>;
+  }
+  if (room.status === 'failed' || !room.code) {
+    return (
+      <p className="text-sm text-red-600" role="alert" data-testid="collab-room-error">
+        {t('collab.roomFailed')}
+      </p>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50 p-3">
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-xs font-medium text-slate-500">{t('collab.roomCode')}</span>
+        <span
+          className="font-mono text-3xl font-bold tracking-[0.2em] text-brand-900"
+          data-testid="collab-room-code"
+          data-code={room.code}
+        >
+          {formatRoomCode(room.code)}
+        </span>
+      </div>
+      <CopyBox label={t('collab.roomLink')} value={roomLink(room.code)} testId="collab-room-link" />
+      <p className="text-xs text-slate-500">{t('collab.roomHint')}</p>
+    </section>
+  );
+}
+
+/** Botón para pasar a la conexión a mano (o volver a la sala). */
+function ManualToggle() {
+  const { t } = useTranslation();
+  const manual = useCollabStore((s) => s.manual);
+  const setManual = useCollabStore((s) => s.setManual);
+  if (!roomsAvailable) return null;
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1.5 self-start text-xs font-medium text-slate-500 hover:text-slate-800"
+      onClick={() => setManual(!manual)}
+      data-testid="collab-manual"
+    >
+      <Hand className="size-3.5" aria-hidden />
+      {manual ? t('collab.useRoom') : t('collab.manual')}
+    </button>
+  );
+}
+
 function HostPanel() {
   const { t } = useTranslation();
+  const room = useCollabStore((s) => s.room);
+  const manual = useCollabStore((s) => s.manual);
   const invites = useCollabStore((s) => s.invites);
+  const showManual = !roomsAvailable || manual || invites.length > 0;
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState<CollabErrorKey | null>(null);
   const waiting = invites.some((i) => i.status === 'waiting');
@@ -122,15 +182,26 @@ function HostPanel() {
   };
   return (
     <div className="flex flex-col gap-4">
+      <RoomBox />
+      {roomsAvailable && !room && (
+        <Button
+          variant="primary"
+          icon={<DoorOpen className="size-4" />}
+          onClick={() => void openRoom()}
+          data-testid="collab-room-create"
+        >
+          {t('collab.roomCreate')}
+        </Button>
+      )}
       <Participants />
-      {invites.length > 0 && (
+      {showManual && invites.length > 0 && (
         <ul className="flex flex-col gap-2">
           {invites.map((invite) => (
             <InviteRow key={invite.peerId} invite={invite} />
           ))}
         </ul>
       )}
-      {waiting && (
+      {showManual && waiting && (
         <div className="flex flex-col gap-2">
           <Field label={t('collab.answerField')}>
             {(id) => (
@@ -155,13 +226,16 @@ function HostPanel() {
           </Button>
         </div>
       )}
-      <Button
-        icon={<UserPlus className="size-4" />}
-        onClick={() => void createInvite()}
-        data-testid="collab-invite-create"
-      >
-        {t('collab.invite')}
-      </Button>
+      {showManual && (
+        <Button
+          icon={<UserPlus className="size-4" />}
+          onClick={() => void createInvite()}
+          data-testid="collab-invite-create"
+        >
+          {t('collab.invite')}
+        </Button>
+      )}
+      <ManualToggle />
       <p className="text-xs text-slate-400">{t('collab.sessionHint')}</p>
     </div>
   );
@@ -171,6 +245,27 @@ function JoinPanel() {
   const { t } = useTranslation();
   const join = useCollabStore((s) => s.join);
   if (!join) return null;
+  if (join.via === 'room') {
+    return (
+      <div className="flex flex-col gap-3" data-testid="collab-room-joining">
+        <p className="text-sm font-medium text-slate-800">
+          {t('collab.roomJoining', { name: join.hostName })}
+        </p>
+        {join.status === 'failed' ? (
+          <>
+            <ErrorText error="collab.connectFailed" />
+            <p className="text-xs text-slate-500">{t('collab.limitations')}</p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">
+            {join.status === 'preparing'
+              ? t('collab.preparing')
+              : t('collab.roomWaiting', { name: join.hostName })}
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-slate-800">
@@ -200,9 +295,76 @@ function JoinPanel() {
   );
 }
 
+/** Inicio con salas: crear una (con código) o unirse escribiendo el código. */
+function RoomStart({ name, ready }: { readonly name: string; readonly ready: boolean }) {
+  const { t } = useTranslation();
+  const prefilled = useCollabStore((s) => s.roomCode);
+  const [code, setCode] = useState(prefilled ?? '');
+  const [error, setError] = useState<CollabErrorKey | null>(null);
+  const join = async () => {
+    rememberName(name);
+    setError(await joinRoom(code, name));
+  };
+  return (
+    <>
+      {!prefilled && (
+        <section className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+          <h3 className="text-sm font-semibold text-slate-800">{t('collab.roomCreate')}</h3>
+          <p className="text-xs text-slate-500">{t('collab.roomCreateHint')}</p>
+          <Button
+            variant="primary"
+            disabled={!ready}
+            icon={<DoorOpen className="size-4" />}
+            onClick={() => {
+              rememberName(name);
+              startHosting(name);
+              void openRoom();
+            }}
+            data-testid="collab-room-host"
+          >
+            {t('collab.roomCreate')}
+          </Button>
+        </section>
+      )}
+      <section className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+        <h3 className="text-sm font-semibold text-slate-800">{t('collab.roomJoin')}</h3>
+        <Field label={t('collab.roomCode')}>
+          {(id) => (
+            <input
+              id={id}
+              value={code}
+              maxLength={12}
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={t('collab.roomCodePlaceholder')}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && ready && code.trim()) void join();
+              }}
+              className={cn(inputClass, 'h-10 text-center font-mono text-lg tracking-widest')}
+              data-testid="collab-room-input"
+            />
+          )}
+        </Field>
+        <ErrorText error={error} />
+        <Button
+          variant={prefilled ? 'primary' : 'secondary'}
+          disabled={!ready || code.trim() === ''}
+          onClick={() => void join()}
+          data-testid="collab-room-join"
+        >
+          {t('collab.joinAction')}
+        </Button>
+      </section>
+    </>
+  );
+}
+
 function StartPanel() {
   const { t } = useTranslation();
   const joinCode = useCollabStore((s) => s.joinCode);
+  const manual = useCollabStore((s) => s.manual);
   const [name, setName] = useState(storedName);
   const [invite, setInvite] = useState('');
   const [error, setError] = useState<CollabErrorKey | null>(null);
@@ -227,7 +389,9 @@ function StartPanel() {
           />
         )}
       </Field>
-      {joinCode ? (
+      {roomsAvailable && !manual && !joinCode ? (
+        <RoomStart name={name} ready={ready} />
+      ) : joinCode ? (
         <section className="flex flex-col gap-2">
           <p className="text-sm text-slate-600">{t('collab.joiningHint')}</p>
           <ErrorText error={error} />
@@ -284,6 +448,7 @@ function StartPanel() {
           </section>
         </>
       )}
+      {!joinCode && <ManualToggle />}
       <p className="text-xs text-slate-400">{t('collab.limitations')}</p>
     </div>
   );

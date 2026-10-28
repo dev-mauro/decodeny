@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { assetBlob, assetMessage } from './asset-transfer';
 import { Deframer, frame } from './framing';
+import { formatRoomCode, parseRoomCode, randomRoomCode } from './room-signaling';
 import { answerCodeFrom, decodeSignal, encodeSignal, inviteCodeFrom } from './signal-codec';
 
 const SDP = [
@@ -69,5 +70,21 @@ describe('imágenes de la sesión', () => {
     const back = assetBlob(JSON.parse(JSON.stringify(message)) as typeof message);
     expect(back.type).toBe('image/png');
     expect(new Uint8Array(await back.arrayBuffer())).toEqual(bytes);
+  });
+});
+
+describe('códigos de sala', () => {
+  it('se generan con el alfabeto sin ambiguos y se leen como los escribe la gente', () => {
+    const code = randomRoomCode();
+    expect(code).toMatch(/^[A-HJKMNP-Z2-9]{6}$/);
+    expect(parseRoomCode(' k7q-4md ')).toBe('K7Q4MD');
+    expect(parseRoomCode('K7Q 4MD')).toBe('K7Q4MD');
+    expect(formatRoomCode('K7Q4MD')).toBe('K7Q-4MD');
+  });
+
+  it('rechaza lo que no es un código (largo o letras ambiguas)', () => {
+    expect(parseRoomCode('K7Q4M')).toBeNull();
+    expect(parseRoomCode('K7Q4MDX')).toBeNull();
+    expect(parseRoomCode('O0I1L5')).toBeNull();
   });
 });

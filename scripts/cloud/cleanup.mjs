@@ -1,6 +1,7 @@
 /* eslint-disable no-console -- script de CLI: su salida es el informe del job. */
 // Limpieza de la nube (ADR-0012): borra las maquetas compartidas sin visitas en los últimos
-// `MAX_IDLE_DAYS` días y después los assets que ya ninguna maqueta usa. Lo ejecuta la GitHub
+// `MAX_IDLE_DAYS` días, después los assets que ya ninguna maqueta usa y las salas de colaboración
+// vencidas (ADR-0014). Lo ejecuta la GitHub
 // Action `cleanup.yml` con una cuenta de servicio (Admin SDK: no pasa por las reglas).
 //
 //   FIREBASE_SERVICE_ACCOUNT='{…json…}' node scripts/cloud/cleanup.mjs [--dry-run]
@@ -56,8 +57,19 @@ export async function cleanup(db, options = {}) {
     if (!dryRun) await db.recursiveDelete(ref);
   }
   log(`Assets sin uso: ${orphans}`);
+
+  // Salas vencidas (con sus solicitudes); también las que el anfitrión cerró y dejaron solicitudes.
+  let rooms = 0;
+  for (const ref of await db.collection('rooms').listDocuments()) {
+    const room = await ref.get();
+    const expiresAt = room.exists ? (room.get('expiresAt')?.toMillis?.() ?? 0) : 0;
+    if (room.exists && expiresAt > now) continue;
+    rooms += 1;
+    if (!dryRun) await db.recursiveDelete(ref);
+  }
+  log(`Salas vencidas: ${rooms}`);
   log(dryRun ? 'Simulación: no se borró nada.' : 'Listo.');
-  return { houses: stale.size, assets: orphans };
+  return { houses: stale.size, assets: orphans, rooms };
 }
 
 function connect() {

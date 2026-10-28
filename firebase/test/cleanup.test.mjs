@@ -13,7 +13,7 @@ const quiet = () => undefined;
 afterAll(() => deleteApp(app));
 
 async function clear() {
-  for (const name of ['houses', 'assets']) {
+  for (const name of ['houses', 'assets', 'rooms']) {
     for (const ref of await db.collection(name).listDocuments()) await db.recursiveDelete(ref);
   }
 }
@@ -61,11 +61,23 @@ describe('cleanup', () => {
     expect((await db.collection('assets/solo-de-la-vieja/chunks').get()).empty).toBe(true);
   });
 
+  it('borra las salas vencidas y las cerradas que dejaron solicitudes', async () => {
+    await db.doc('rooms/VIEJAS').set({ expiresAt: Timestamp.fromMillis(NOW - DAY) });
+    await db.doc('rooms/VIEJAS/requests/r1').set({ offer: 'x' });
+    await db.doc('rooms/ABIERT').set({ expiresAt: Timestamp.fromMillis(NOW + DAY) });
+    await db.doc('rooms/CERRAD/requests/r1').set({ offer: 'x' });
+    const result = await cleanup(db, { now: NOW, log: quiet });
+    expect(result.rooms).toBe(2);
+    expect((await db.doc('rooms/ABIERT').get()).exists).toBe(true);
+    expect((await db.collection('rooms/VIEJAS/requests').get()).empty).toBe(true);
+    expect((await db.collection('rooms/CERRAD/requests').get()).empty).toBe(true);
+  });
+
   it('en simulación no borra nada', async () => {
     await house('vieja', 31);
     await asset('suelto', 10);
     const result = await cleanup(db, { now: NOW, dryRun: true, log: quiet });
-    expect(result).toEqual({ houses: 1, assets: 1 });
+    expect(result).toEqual({ houses: 1, assets: 1, rooms: 0 });
     expect((await db.doc('houses/vieja').get()).exists).toBe(true);
     expect((await db.doc('assets/suelto').get()).exists).toBe(true);
   });

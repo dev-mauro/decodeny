@@ -24,6 +24,13 @@ import {
   type PeerPose,
 } from './protocol';
 import {
+  parseRoomCode,
+  type RoomJoin,
+  type RoomRequest,
+  type RoomSignaling,
+} from './room-signaling';
+import { loadRooms } from './rooms';
+import {
   answerCodeFrom,
   decodeSignal,
   encodeSignal,
@@ -37,8 +44,12 @@ import {
  * `useCollabStore` y llama a estas funciones.
  */
 
-/** Tiempo para conectar después de pegar la respuesta. */
+/** Tiempo para conectar después de pegar la respuesta (o de recibir una solicitud por sala). */
 const CONNECT_TIMEOUT_MS = 30_000;
+/** Cuánto espera el invitado a que el anfitrión conteste su solicitud en la sala. */
+const ROOM_ANSWER_TIMEOUT_MS = 60_000;
+/** Parámetro de la dirección con el código de una sala: `…/?sala=K7Q4MD`. */
+export const ROOM_PARAM = 'sala';
 /** La pose propia se reenvía aunque no cambie: llega a quien entra y repone lo perdido. */
 const HEARTBEAT_MS = 1000;
 const MAX_NAME = 40;
@@ -48,7 +59,12 @@ const get = useCollabStore.getState;
 
 /** Errores que la interfaz muestra al invitar o al unirse. */
 export type CollabErrorKey =
-  'collab.answerInvalid' | 'collab.answerUnknown' | 'collab.inviteInvalid' | 'collab.connectFailed';
+  | 'collab.answerInvalid'
+  | 'collab.answerUnknown'
+  | 'collab.inviteInvalid'
+  | 'collab.connectFailed'
+  | 'collab.roomInvalid'
+  | 'collab.roomNotFound';
 
 interface HostSession {
   readonly sync: HostSync;
@@ -58,12 +74,20 @@ interface HostSession {
   readonly pending: Map<string, PeerLink>;
   readonly names: Map<string, string>;
   joined: number;
+  /** Sala con código abierta (se cierra al terminar). */
+  room: {
+    readonly code: string;
+    readonly signaling: RoomSignaling;
+    readonly stop: () => void;
+  } | null;
   readonly stop: () => void;
 }
 
 interface GuestSession {
   readonly link: PeerLink;
   sync: GuestSync | null;
+  /** Solicitud en una sala, mientras espera la respuesta. */
+  roomJoin?: RoomJoin;
   stop: () => void;
 }
 
@@ -219,12 +243,78 @@ export function startHosting(name: string): void {
     pending: new Map(),
     names: new Map(),
     joined: 0,
+    room: null,
     stop: () => {
       stopAssets();
       stopPresence();
       sync.stop();
     },
   };
+}
+
+/**
+ * Anfitrión: abre una sala con código. Cada solicitud que llega se contesta sola; la sala queda
+ * abierta para más personas hasta terminar la sesión.
+ */
+export async function openRoom(): Promise<void> {
+  const session = host;
+  const me = get().me;
+  if (!session || !me || session.room) return;
+  set({ room: { code: null, status: 'opening' } });
+  try {
+    const signaling = await loadRooms();
+    const code = await signaling.openRoom(me.name);
+    if (host !== session) {
+      void signaling.closeRoom(code).catch(() => undefined);
+      return;
+    }
+    const stopListening = signaling.onRequest(code, (request) => {
+      void hostAcceptRequest(session, signaling, code, request);
+    });
+    session.room = { code, signaling, stop: stopListening };
+    set({ room: { code, status: 'open' } });
+  } catch (error) {
+    console.warn('No se pudo abrir la sala', error);
+    if (host === session) set({ room: { code: null, status: 'failed' } });
+  }
+}
+
+/** Anfitrión: contesta una solicitud de la sala con su respuesta WebRTC. */
+async function hostAcceptRequest(
+  session: HostSession,
+  signaling: RoomSignaling,
+  code: string,
+  request: RoomRequest,
+): Promise<void> {
+  const peerId = `r${request.id}`;
+  if (session.pending.has(peerId) || session.links.has(peerId)) return;
+  const link = new PeerLink();
+  session.pending.set(peerId, link);
+  session.names.set(peerId, cleanName(request.name));
+  // Conectados (o fracasado el intento), la solicitud ya no hace falta: lleva direcciones IP.
+  const forget = () => void signaling.removeRequest(code, request.id).catch(() => undefined);
+  link.listen({
+    onOpen: () => {
+      hostGuestJoined(peerId);
+      forget();
+    },
+    onClose: (reason) => {
+      hostLinkClosed(peerId, reason);
+      forget();
+    },
+    onMessage: (channel, message) => hostReceive(peerId, channel, message),
+  });
+  try {
+    const sdp = await link.acceptOffer(request.offer);
+    await signaling.answer(code, request.id, sdp);
+  } catch (error) {
+    console.warn('No se pudo contestar la solicitud', error);
+    link.close();
+    return;
+  }
+  setTimeout(() => {
+    if (!link.open && session.pending.has(peerId)) link.close();
+  }, CONNECT_TIMEOUT_MS);
 }
 
 /** Prepara una invitación (un enlace por persona). */
@@ -373,7 +463,10 @@ export async function prepareJoin(text: string, name: string): Promise<CollabErr
   const link = new PeerLink();
   const session: GuestSession = { link, sync: null, stop: () => undefined };
   guest = session;
-  set({ join: { hostName: offer.name, answer: null, status: 'preparing' }, joinCode: null });
+  set({
+    join: { via: 'manual', hostName: offer.name, answer: null, status: 'preparing' },
+    joinCode: null,
+  });
   link.listen({
     onOpen: () => {
       const join = get().join;
@@ -390,12 +483,81 @@ export async function prepareJoin(text: string, name: string): Promise<CollabErr
       peerId: offer.peerId,
       name: cleanName(name),
     });
-    if (guest === session) set({ join: { hostName: offer.name, answer, status: 'answer' } });
+    if (guest === session) {
+      set({ join: { via: 'manual', hostName: offer.name, answer, status: 'answer' } });
+    }
     return null;
   } catch (error) {
     console.warn('No se pudo preparar la respuesta', error);
-    if (guest === session) set({ join: { hostName: offer.name, answer: null, status: 'failed' } });
+    if (guest === session) {
+      set({ join: { via: 'manual', hostName: offer.name, answer: null, status: 'failed' } });
+    }
     return 'collab.connectFailed';
+  }
+}
+
+/**
+ * Invitado: se une a una sala con su código. Deja su oferta en la sala y, cuando el anfitrión
+ * contesta, se conectan. Devuelve la clave del error para mostrar, o `null`.
+ */
+export async function joinRoom(text: string, name: string): Promise<CollabErrorKey | null> {
+  if (get().role || guest) return null;
+  const code = parseRoomCode(text);
+  if (!code) return 'collab.roomInvalid';
+  let signaling: RoomSignaling;
+  let room: { readonly hostName: string } | null;
+  try {
+    signaling = await loadRooms();
+    room = await signaling.findRoom(code);
+  } catch (error) {
+    console.warn('No se pudo buscar la sala', error);
+    return 'collab.connectFailed';
+  }
+  if (!room) return 'collab.roomNotFound';
+  const hostName = room.hostName;
+  const link = new PeerLink();
+  const session: GuestSession = { link, sync: null, stop: () => undefined };
+  guest = session;
+  set({ join: { via: 'room', hostName, answer: null, status: 'preparing' }, roomCode: null });
+  link.listen({
+    onOpen: () => {
+      const join = get().join;
+      if (join) set({ join: { ...join, status: 'connected' } });
+    },
+    onClose: () => guestClosed(session),
+    onMessage: (_channel, message) => guestReceive(session, message),
+  });
+  const failed = () => {
+    session.roomJoin?.cancel();
+    if (guest === session) set({ join: { via: 'room', hostName, answer: null, status: 'failed' } });
+  };
+  try {
+    const offer = await link.createOffer();
+    const roomJoin = await signaling.request(code, cleanName(name), offer);
+    session.roomJoin = roomJoin;
+    if (guest !== session) {
+      roomJoin.cancel();
+      return null;
+    }
+    set({ join: { via: 'room', hostName, answer: null, status: 'waiting' } });
+    const answer = await Promise.race([
+      roomJoin.answer,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => {
+          reject(new Error('room-timeout'));
+        }, ROOM_ANSWER_TIMEOUT_MS),
+      ),
+    ]);
+    if (guest !== session) return null;
+    await link.acceptAnswer(answer);
+    setTimeout(() => {
+      if (guest === session && !link.open) failed();
+    }, CONNECT_TIMEOUT_MS);
+    return null;
+  } catch (error) {
+    console.warn('No se pudo unir a la sala', error);
+    failed();
+    return null;
   }
 }
 
@@ -469,6 +631,7 @@ function guestReceive(session: GuestSession, message: unknown): void {
 function endGuest(session: GuestSession): void {
   if (guest !== session) return;
   guest = null;
+  session.roomJoin?.cancel();
   session.stop();
   session.link.close();
   resetSession();
@@ -493,6 +656,10 @@ export function leaveSession(): void {
     host = null;
     for (const link of session.links.values()) link.send({ t: 'end' });
     session.stop();
+    if (session.room) {
+      session.room.stop();
+      void session.room.signaling.closeRoom(session.room.code).catch(() => undefined);
+    }
     // Se da un momento para que salga el aviso de fin antes de cerrar.
     const links = [...session.links.values(), ...session.pending.values()];
     setTimeout(() => {
@@ -505,18 +672,38 @@ export function leaveSession(): void {
   else resetSession();
 }
 
-/** Abre el diálogo si la app se abrió con un enlace de invitación (`#join=…`). */
+/**
+ * Abre el diálogo si la app se abrió con un enlace de sala (`?sala=…`) o de invitación a mano
+ * (`#join=…`).
+ */
 export function readInviteFromUrl(): void {
+  const url = new URL(window.location.href);
+  const room = url.searchParams.get(ROOM_PARAM);
+  if (room !== null) {
+    // Recargar no vuelve a unirse.
+    url.searchParams.delete(ROOM_PARAM);
+    window.history.replaceState(null, '', url);
+    const code = parseRoomCode(room);
+    if (code) set({ roomCode: code, dialogOpen: true, manual: false });
+    return;
+  }
   const hash = window.location.hash;
   if (!hash.includes('join=')) return;
   const code = inviteCodeFrom(hash);
   // El código no queda en la barra de direcciones (recargar no vuelve a unirse).
   window.history.replaceState(null, '', appUrl());
-  if (code) set({ joinCode: code, dialogOpen: true });
+  if (code) set({ joinCode: code, dialogOpen: true, manual: true });
 }
 
 /** Invitado: abandona una unión que no llegó a conectarse (vuelve al inicio del diálogo). */
 export function dismissJoin(): void {
   if (guest && get().role !== 'guest') endGuest(guest);
-  set({ join: null, joinCode: null });
+  set({ join: null, joinCode: null, roomCode: null });
+}
+
+/** Enlace para invitar a la sala: `…/?sala=K7Q4MD`. */
+export function roomLink(code: string): string {
+  const url = new URL(import.meta.env.BASE_URL, window.location.origin);
+  url.searchParams.set(ROOM_PARAM, code);
+  return url.href;
 }

@@ -1,6 +1,6 @@
 # ADR-0014: Salas de colaboración con código corto (señalización por Firestore)
 
-- Estado: propuesta
+- Estado: aceptada (implementada en I10c)
 - Fecha: 2026-10-28
 
 ## Contexto
@@ -11,7 +11,7 @@ La colaboración (ADR-0011) conecta los navegadores por WebRTC, pero la señaliz
 
 ### Flujo (iniciado por el invitado: un solo ida y vuelta)
 
-1. **Abrir sala (anfitrión):** crea `rooms/{codigo}` con un código corto y fácil de dictar (6 letras sin ambiguas, p. ej. `K7Q-4MD`; ~880 millones de combinaciones). Se crea solo si no existe (si choca, otro código). Escucha la subcolección `requests` en tiempo real.
+1. **Abrir sala (anfitrión):** crea `rooms/{codigo}` (la sala **no** se borra cuando alguien se une: queda abierta para más personas hasta terminar la sesión o vencer) con un código corto y fácil de dictar (6 letras sin ambiguas, p. ej. `K7Q-4MD`; ~880 millones de combinaciones). Se crea solo si no existe (si choca, otro código). Escucha la subcolección `requests` en tiempo real.
 2. **Unirse (invitado):** escribe el código en Colaborar → Unirse a una sesión (o abre `?sala=K7Q4MD`). La app lee la sala, crea su `RTCPeerConnection` y escribe `rooms/{codigo}/requests/{id}` con su nombre y su **oferta** (SDP completo, ICE no incremental, como hoy). Escucha ese documento.
 3. **Anfitrión:** al llegar la solicitud, acepta la oferta, escribe la **respuesta** en el mismo documento y espera la conexión.
 4. **Invitado:** aplica la respuesta y el canal se abre (los dos canales negociados de siempre). Conectados, se borra la solicitud.

@@ -761,7 +761,9 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
 - `perf-budget.spec.ts` sin más draw calls.
 - En el recorrido, los mapas de sombra no se redibujan con la escena quieta (se mide con `renderStats`).
 
-### I10c — Salas de colaboración con código corto (M) — ADR-0014
+### I10c — Salas de colaboración con código corto (M) — ADR-0014 ✅
+
+**Notas de implementación:** la sala queda abierta para varios invitados (cada solicitud se borra al conectar, porque lleva direcciones IP). Sin la nube configurada, o con «Conectar a mano», el flujo es el de siempre (copiar y pegar). El SDK de Firestore con escuchas va en su propio chunk (`rooms`, ~133 kB gzip) y solo se descarga al colaborar.
 
 - **Anfitrión:** crea una sala con un código de 6 letras y comparte el código o el enlace `?sala=…`.
 - **Invitado:** escribe el código. Su oferta WebRTC y la respuesta del anfitrión viajan por Firestore, sin copiar ni pegar.

@@ -6,6 +6,11 @@ import { waitForScene } from './helpers';
 async function openCollab(page: Page) {
   await page.getByTestId('collab-open').click();
   await expect(page.getByTestId('collab-dialog')).toBeVisible();
+  // Con la nube configurada, lo primero son las salas: este test usa la conexión a mano.
+  const manual = page.getByTestId('collab-manual');
+  if ((await manual.isVisible()) && (await manual.textContent())?.includes('a mano')) {
+    await manual.click();
+  }
 }
 
 test('dos personas editan el mismo proyecto y se ven en 3D', async ({ browser }) => {

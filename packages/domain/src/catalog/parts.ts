@@ -14,6 +14,11 @@ export interface BoxPart {
   readonly at: Vec3Mm;
   /** Giro alrededor del eje vertical (radianes, antihorario visto desde arriba). */
   readonly rotationY?: number;
+  /**
+   * Inclinación alrededor del eje x local, antes del giro vertical (radianes): positiva levanta
+   * el extremo −z. Pasamanos y rampas; ver `bar`.
+   */
+  readonly pitch?: number;
   /** Color propio (`#rrggbb`) que reemplaza al del slot, p. ej. el elegido para una alfombra. */
   readonly color?: string;
 }
@@ -57,6 +62,46 @@ export interface PartBounds {
   readonly max: Vec3Mm;
 }
 
+/**
+ * Medio tamaño, en los ejes del marco, de una caja girada (inclinación y luego giro vertical,
+ * como en `BoxPart`).
+ */
+export function boxHalfExtents(
+  p: Pick<BoxPart, 'size' | 'rotationY' | 'pitch'>,
+): [number, number, number] {
+  const [hx, hy, hz] = [p.size[0] / 2, p.size[1] / 2, p.size[2] / 2];
+  const C = Math.cos(p.rotationY ?? 0);
+  const S = Math.sin(p.rotationY ?? 0);
+  const c = Math.cos(p.pitch ?? 0);
+  const s = Math.sin(p.pitch ?? 0);
+  // Filas de la rotación Ry · Rx en valor absoluto, aplicadas al medio tamaño.
+  return [
+    Math.abs(C) * hx + Math.abs(S * s) * hy + Math.abs(S * c) * hz,
+    Math.abs(c) * hy + Math.abs(s) * hz,
+    Math.abs(S) * hx + Math.abs(C * s) * hy + Math.abs(C * c) * hz,
+  ];
+}
+
+/**
+ * Barra recta de sección cuadrada `section` cuyo eje va de `from` a `to` (pasamanos, largueros).
+ * Una barra vertical se arma con `box`.
+ */
+export function bar(slot: string, from: Vec3Mm, to: Vec3Mm, section: number): BoxPart {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const dz = to[2] - from[2];
+  const horizontal = Math.hypot(dx, dz);
+  return {
+    kind: 'box',
+    slot,
+    size: [section, section, Math.hypot(horizontal, dy)],
+    at: [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2],
+    // El extremo −z de la caja apunta hacia `to`.
+    rotationY: Math.atan2(-dx, -dz),
+    pitch: Math.atan2(dy, horizontal),
+  };
+}
+
 /** Caja envolvente (en el marco local) de un conjunto de piezas. */
 export function partsBounds(parts: readonly Part[]): PartBounds {
   const min = [Infinity, Infinity, Infinity];
@@ -71,14 +116,9 @@ export function partsBounds(parts: readonly Part[]): PartBounds {
   };
   for (const p of parts) {
     if (p.kind === 'box') {
-      const [sx, sy, sz] = p.size;
-      const r = p.rotationY ?? 0;
-      const c = Math.abs(Math.cos(r));
-      const s = Math.abs(Math.sin(r));
-      const hx = (sx * c + sz * s) / 2;
-      const hz = (sx * s + sz * c) / 2;
-      extend(p.at[0] - hx, p.at[1] - sy / 2, p.at[2] - hz);
-      extend(p.at[0] + hx, p.at[1] + sy / 2, p.at[2] + hz);
+      const [hx, hy, hz] = boxHalfExtents(p);
+      extend(p.at[0] - hx, p.at[1] - hy, p.at[2] - hz);
+      extend(p.at[0] + hx, p.at[1] + hy, p.at[2] + hz);
     } else {
       const r = Math.max(p.radius, p.radiusTop ?? 0);
       const rz = r * ((p.radiusZ ?? p.radius) / p.radius);
@@ -95,10 +135,6 @@ export interface PlanStroke {
   readonly dashed?: boolean;
 }
 
-/**
- * Escala y desplaza las piezas para que su caja envolvente quede en `[-w/2, w/2] × [0, h] ×
- * [-d/2, d/2]`. Solo para cajas sin giro y cilindros (como los muebles).
- */
 /** Transformación que lleva la caja envolvente de unas piezas a `w × h × d` (centrada, sobre el piso). */
 export interface FitTransform {
   readonly scale: Vec3Mm;

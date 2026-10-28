@@ -42,6 +42,8 @@ import type { MeasurePoint } from './measure';
 import { MeasureOverlay } from './MeasureOverlay';
 import { facingCutWalls, sameWallSet, wallAt, type SectionMode } from './section-cutaway';
 import { SectionClipping, WallSectionCaps } from './WallSection';
+import { SlabEdges } from './SlabEdges';
+import type { LevelSlab } from './slabs';
 import { OpeningView } from './OpeningView';
 import { RoomDimensions } from './RoomDimensions';
 import { RoomSurfaces } from './RoomSurfaces';
@@ -86,6 +88,8 @@ interface LevelViewProps {
    * sin corte de muros ni luminarias propias (el presupuesto de luces es de la planta activa).
    */
   readonly context?: boolean | undefined;
+  /** Huecos de escalera en el piso y el cielo, y la losa sobre la que está (ver `levelSlab`). */
+  readonly slab?: LevelSlab | undefined;
 }
 
 const NO_FINISHES: ReadonlyMap<string, ResolvedMaterial> = new Map();
@@ -117,6 +121,7 @@ export function LevelView({
   trueSurfaceColors = false,
   lampShadows = false,
   context = false,
+  slab,
 }: LevelViewProps) {
   const measuring = interactive && onMeasurePoint !== undefined;
   const groupRef = useRef<Group>(null);
@@ -342,6 +347,8 @@ export function LevelView({
           room={room}
           interior={interior}
           ceilingHeight={ceilingHeight}
+          floorVoids={slab?.floorVoids}
+          ceilingVoids={slab?.ceilingVoids}
           floorFinish={room.floor ? finishes.get(room.floor) : undefined}
           ceilingFinish={room.ceiling ? finishes.get(room.ceiling) : undefined}
           state={surfaceStateOf({ kind: 'room', id: room.id })}
@@ -351,6 +358,7 @@ export function LevelView({
           onDragStart={movable({ kind: 'room', id: room.id }) ? startRoomDrag : undefined}
         />
       ))}
+      {slab?.below && <SlabEdges slab={slab.below} />}
       {level.openings.map((opening) => {
         const footprint = footprints.get(opening.wallId);
         if (!footprint) return null;

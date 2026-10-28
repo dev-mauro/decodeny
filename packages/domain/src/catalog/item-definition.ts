@@ -1,6 +1,6 @@
 import type { Item, Params } from '../model/types';
 import type { LocalizedText, ParamSpecs, ParamValues, ResolvedParams } from './params';
-import { fitParts, fitTransform, type Part, type Vec3Mm } from './parts';
+import { fitParts, fitTransform, type Part, type PlanStroke, type Vec3Mm } from './parts';
 
 /**
  * Marco local de un item: origen en el centro de su huella, a la altura del piso.
@@ -43,7 +43,22 @@ export type ItemCategory =
   | 'storage'
   | 'kitchen'
   | 'lighting'
-  | 'decor';
+  | 'decor'
+  | 'stairs';
+
+/**
+ * Caja de colisión del recorrido en el marco local (mm), con el mismo giro e inclinación que una
+ * `BoxPart`: una caja inclinada es una rampa (así se suben las escaleras sin saltos).
+ */
+export interface CollisionBox {
+  readonly size: Vec3Mm;
+  readonly at: Vec3Mm;
+  readonly rotationY?: number;
+  readonly pitch?: number;
+}
+
+/** Polígono en el plano x–z del marco local (mm). */
+export type LocalPolygon = readonly (readonly [number, number])[];
 
 /**
  * Fuente de luz de un item (luminaria). `at` en el marco local; el flujo luminoso en lúmenes y
@@ -89,14 +104,41 @@ export interface ItemDefinition<P extends ParamSpecs = ParamSpecs> {
   readonly affordances?: (params: ParamValues<P>) => readonly Affordance[];
   /** Luces que emite (si está encendido); ver `LightEmitter`. */
   readonly emitters?: (params: ParamValues<P>) => readonly LightEmitter[];
+  /** Colisión en el recorrido; por defecto, la caja envolvente (si es `solid`). */
+  readonly colliders?: (params: ParamValues<P>) => readonly CollisionBox[];
+  /**
+   * Hueco que abre en la losa de arriba (escaleras, ductos, dobles alturas): se descuenta del
+   * cielo de su planta y del piso de la planta de arriba.
+   */
+  readonly floorOpening?: (params: ParamValues<P>) => LocalPolygon;
+  /** Contorno en el plano (por defecto, el rectángulo de su envolvente). */
+  readonly planOutline?: (params: ParamValues<P>) => LocalPolygon;
+  /** Símbolo en el plano (peldaños, sentido de subida), en el marco local. */
+  readonly planSymbol?: (params: ParamValues<P>) => readonly PlanStroke[];
+  /**
+   * Su parámetro `height` es la altura de piso a piso: al ubicarlo toma la de su planta, y se
+   * avisa si no llega a la planta de arriba.
+   */
+  readonly fillsStorey?: boolean;
 }
 
+type DerivedFields =
+  | 'envelope'
+  | 'build'
+  | 'affordances'
+  | 'emitters'
+  | 'colliders'
+  | 'floorOpening'
+  | 'planOutline'
+  | 'planSymbol';
+
 /** Definición con los tipos de parámetros borrados, para guardarla en un registro. */
-export interface AnyItemDefinition extends Omit<
-  ItemDefinition,
-  'envelope' | 'build' | 'affordances' | 'emitters'
-> {
+export interface AnyItemDefinition extends Omit<ItemDefinition, DerivedFields> {
   readonly emitters?: (params: ResolvedParams) => readonly LightEmitter[];
+  readonly colliders?: (params: ResolvedParams) => readonly CollisionBox[];
+  readonly floorOpening?: (params: ResolvedParams) => LocalPolygon;
+  readonly planOutline?: (params: ResolvedParams) => LocalPolygon;
+  readonly planSymbol?: (params: ResolvedParams) => readonly PlanStroke[];
   readonly envelope?: (params: ResolvedParams) => ItemEnvelope;
   readonly build: (params: ResolvedParams) => readonly Part[];
   readonly affordances?: (params: ResolvedParams) => readonly Affordance[];

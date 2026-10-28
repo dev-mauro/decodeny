@@ -244,6 +244,7 @@ export const es = {
       bath: 'Baño',
       lighting: 'Iluminación',
       decor: 'Decoración',
+      stairs: 'Escaleras',
     },
   },
   furniture: {
@@ -275,6 +276,8 @@ export const es = {
     multiHintTouch: 'Arrástralos juntos en la vista; usa los botones para girarlos o eliminarlos.',
     warningOverlap: 'Se superpone con otro mueble.',
     warningWall: 'Atraviesa un muro.',
+    storeyMismatch: 'No llega al piso de arriba: de piso a piso hay {{height}}.',
+    fitStorey: 'Ajustar',
     unknown: 'Tipo desconocido ({{def}}): se muestra como caja y se conserva al exportar.',
   },
   finishes: {

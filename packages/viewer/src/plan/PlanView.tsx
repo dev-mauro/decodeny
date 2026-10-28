@@ -1,4 +1,10 @@
-import { itemEnvelope, resolveItemDefinition, resolveOpeningDefinition } from '@decodeny/catalog';
+import {
+  itemEnvelope,
+  itemPlanOutline,
+  levelFloorOpenings,
+  resolveItemDefinition,
+  resolveOpeningDefinition,
+} from '@decodeny/catalog';
 import {
   add,
   distance,
@@ -9,7 +15,7 @@ import {
   formatLength,
   interiorPoint,
   isCounterClockwise,
-  itemFootprint,
+  itemLocalToPlan,
   levelBounds,
   levelBelow,
   levelWallFootprints,
@@ -225,10 +231,14 @@ export function PlanView({
   locale = 'es',
 }: PlanViewProps) {
   const level = findLevel(project, levelId);
-  // La planta de abajo, en tenue, para alinear los muros de esta.
-  const underlay = useMemo(() => {
+  // La planta de abajo, en tenue, para alinear los muros de esta, y los huecos que sus escaleras
+  // abren en el piso de esta.
+  const { underlay, voids } = useMemo(() => {
     const below = levelBelow(project, levelId);
-    return below ? [...levelWallFootprints(below).values()].map((f) => f.polygon) : [];
+    return {
+      underlay: below ? [...levelWallFootprints(below).values()].map((f) => f.polygon) : [],
+      voids: below ? levelFloorOpenings(below) : [],
+    };
   }, [levelId, project]);
   const svgRef = useRef<SVGSVGElement>(null);
   usePreventBrowserZoom(svgRef);
@@ -342,13 +352,21 @@ export function PlanView({
                 : definition.mount === 'ceiling'
                   ? 3
                   : 1;
-          const footprint = itemFootprint(item, env);
-          const front = lerp(footprint[0]!, footprint[1]!, 0.5);
+          const footprint = itemPlanOutline(item);
+          // Un símbolo propio (peldaños y flecha de subida) reemplaza al punto del frente.
+          const symbol = definition
+            .planSymbol?.(resolveParams(definition.params, item.params))
+            .map((stroke) => ({
+              dashed: stroke.dashed ?? false,
+              points: stroke.points.map(([x, z]) => itemLocalToPlan(item, x, z)),
+            }));
+          const front = symbol ? null : lerp(footprint[0]!, footprint[1]!, 0.5);
           return [
             {
               item,
               footprint,
               front,
+              symbol,
               name: localize(definition.name, locale),
               mount: definition.mount,
               layer,
@@ -879,8 +897,24 @@ export function PlanView({
           </g>
         )}
 
+        {voids.length > 0 && (
+          <g pointerEvents="none" data-testid="plan-void">
+            {voids.map((polygon, i) => (
+              <polygon
+                key={i}
+                points={pts(polygon)}
+                fill="#ffffff"
+                fillOpacity={0.7}
+                stroke="#64748b"
+                strokeWidth={px(1)}
+                strokeDasharray={`${px(5)} ${px(3)}`}
+              />
+            ))}
+          </g>
+        )}
+
         {/* Muebles */}
-        {data.items.map(({ item, footprint, front, name, mount }) => {
+        {data.items.map(({ item, footprint, front, symbol, name, mount }) => {
           const target = { kind: 'item', id: item.id } as const;
           const state = stateOf(target);
           return (
@@ -901,7 +935,19 @@ export function PlanView({
                 strokeWidth={px(state === 'normal' ? 1 : 2)}
                 strokeDasharray={mount === 'ceiling' ? `${px(4)} ${px(3)}` : undefined}
               />
-              <circle cx={front.x} cy={-front.y} r={px(2)} fill={COLORS.itemStroke[state]} />
+              {front && (
+                <circle cx={front.x} cy={-front.y} r={px(2)} fill={COLORS.itemStroke[state]} />
+              )}
+              {symbol?.map((stroke, i) => (
+                <polyline
+                  key={i}
+                  points={pts(stroke.points)}
+                  stroke={COLORS.itemStroke[state]}
+                  strokeWidth={px(1)}
+                  strokeDasharray={stroke.dashed ? `${px(4)} ${px(3)}` : undefined}
+                  fill="none"
+                />
+              ))}
             </g>
           );
         })}

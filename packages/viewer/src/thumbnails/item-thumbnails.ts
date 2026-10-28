@@ -74,7 +74,7 @@ function itemScene(definition: AnyItemDefinition): {
       part.slot === 'picture' ? PICTURE : itemMaterial(part.slot, 'normal', part.color);
     const mesh = new Mesh(geometry, material);
     mesh.position.set(...g.position);
-    if (g.kind === 'box') mesh.rotation.y = g.rotationY;
+    if (g.kind === 'box') mesh.rotation.set(g.pitch, g.rotationY, 0, 'YXZ');
     else mesh.scale.z = g.scaleZ;
     group.add(mesh);
   }

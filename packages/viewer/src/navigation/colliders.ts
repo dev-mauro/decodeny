@@ -6,6 +6,8 @@ import {
 } from '@decodeny/catalog';
 import {
   add,
+  itemLocalToPlan,
+  resolveParams,
   angleOf,
   distance,
   interiorPoint,
@@ -23,7 +25,9 @@ import {
   type Vec2,
   type Wall,
 } from '@decodeny/domain';
+import earcut from 'earcut';
 import { planToWorld, type Vec3Tuple } from '../coords';
+import type { SlabBelow } from '../scene/slabs';
 import type { ViewerSelection } from '../selection';
 
 /** Caja de colisión orientada (metros, mundo). */
@@ -32,6 +36,8 @@ export interface BoxCollider {
   readonly halfExtents: Vec3Tuple;
   /** Rotación alrededor de Y (radianes). */
   readonly rotationY: number;
+  /** Inclinación (rotación en x antes de la de Y): las rampas de las escaleras. */
+  readonly pitch?: number;
 }
 
 /** Tramo de muro (mm a lo largo del eje desde `start`) entre dos alturas. */
@@ -106,7 +112,10 @@ export function wallColliders(level: Level): BoxCollider[] {
 const GROUND_MARGIN_MM = 20_000;
 const GROUND_THICKNESS = 0.1;
 
-/** Suelo continuo bajo todo el nivel (y alrededor) para que la persona nunca caiga. */
+/**
+ * Suelo continuo bajo todo el nivel (y alrededor) para que la persona nunca caiga. Va bajo la
+ * planta más baja; las de arriba se apoyan en su losa (`slabCollider`).
+ */
 export function groundCollider(level: Level): BoxCollider {
   const b = levelBounds(level) ?? { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
   const center = { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2 };
@@ -143,25 +152,86 @@ export function spawnInRoom(level: Level, room: Room, yaw = 0): SpawnPoint {
   return { feet: planToWorld(p, level.elevation), yaw };
 }
 
-/** Colisionadores de muebles: su caja envolvente, girada como el mueble. */
+/**
+ * Colisionadores de muebles: su caja envolvente, girada como el mueble, o las cajas que declara
+ * su definición (las rampas y barandas de una escalera).
+ */
 export function itemColliders(level: Level): BoxCollider[] {
   return level.items
     .filter((item) => resolveItemDefinition(item.def).solid !== false)
-    .map((item) => {
+    .flatMap((item): BoxCollider[] => {
+      const definition = resolveItemDefinition(item.def);
+      const rotation = (item.rotation * Math.PI) / 180;
+      if (definition.colliders) {
+        const base = level.elevation + itemBase(level, item);
+        return definition.colliders(resolveParams(definition.params, item.params)).map((c) => ({
+          position: planToWorld(itemLocalToPlan(item, c.at[0], c.at[2]), base + c.at[1]),
+          halfExtents: [
+            mmToMeters(c.size[0]) / 2,
+            mmToMeters(c.size[1]) / 2,
+            mmToMeters(c.size[2]) / 2,
+          ],
+          rotationY: rotation + (c.rotationY ?? 0),
+          ...(c.pitch ? { pitch: c.pitch } : {}),
+        }));
+      }
       const env = itemEnvelope(item);
-      return {
-        position: planToWorld(
-          item.position,
-          level.elevation + itemBase(level, item) + env.height / 2,
-        ),
-        halfExtents: [
-          mmToMeters(env.width) / 2,
-          mmToMeters(env.height) / 2,
-          mmToMeters(env.depth) / 2,
-        ],
-        rotationY: (item.rotation * Math.PI) / 180,
-      };
+      return [
+        {
+          position: planToWorld(
+            item.position,
+            level.elevation + itemBase(level, item) + env.height / 2,
+          ),
+          halfExtents: [
+            mmToMeters(env.width) / 2,
+            mmToMeters(env.height) / 2,
+            mmToMeters(env.depth) / 2,
+          ],
+          rotationY: rotation,
+        },
+      ];
     });
+}
+
+/** Margen (mm) para dar por llegada una planta: los pies a esta distancia de su piso. */
+const LEVEL_ARRIVAL_MM = 100;
+
+/** Planta en la que está la persona: la más alta cuyo piso alcanzan sus pies (mm). */
+export function levelAtFeet(levels: readonly Level[], feetMm: number): Level | undefined {
+  return levels.findLast((l) => l.elevation - LEVEL_ARRIVAL_MM <= feetMm) ?? levels[0];
+}
+
+/** Malla de colisión (m, mundo): vértices xyz y triángulos. */
+export interface TrimeshCollider {
+  readonly vertices: Float32Array;
+  readonly indices: Uint32Array;
+}
+
+/**
+ * Piso de una planta que no es la más baja: la cara de arriba de su losa (recintos y muros, sin
+ * los huecos de escalera), para pararse en ella y caer por los huecos.
+ */
+export function slabCollider(level: Level, slab: SlabBelow): TrimeshCollider | null {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const y = mmToMeters(level.elevation);
+  for (const region of slab.regions) {
+    const rings = [region.outline, ...region.holes];
+    const flat = rings.flatMap((ring) => ring.flatMap((p) => [p.x, p.y]));
+    const holes: number[] = [];
+    let count = region.outline.length;
+    for (const hole of region.holes) {
+      holes.push(count);
+      count += hole.length;
+    }
+    const base = vertices.length / 3;
+    for (let i = 0; i < flat.length; i += 2) {
+      vertices.push(mmToMeters(flat[i]!), y, -mmToMeters(flat[i + 1]!));
+    }
+    for (const index of earcut(flat, holes, 2)) indices.push(base + index);
+  }
+  if (indices.length === 0) return null;
+  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices) };
 }
 
 /** Convierte una posición de mundo (m) a planta (mm). */

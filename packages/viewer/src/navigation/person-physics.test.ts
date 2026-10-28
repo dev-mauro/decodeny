@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { groundCollider, itemColliders, spawnInRoom, wallColliders } from './colliders';
 import { NO_MOVEMENT, type MovementIntent } from './input';
 import { capsuleDimensions, DEFAULT_PERSON } from './person-profile';
-import { stepPerson, type PersonMotionState } from './person-step';
+import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
 
 /**
  * Integración con el motor de física real (Rapier en WASM, sin navegador): verifica el
@@ -111,9 +111,7 @@ function simulate(level: Level, intent: MovementIntent, yaw: number, seconds: nu
     body,
   );
   const controller = world.createCharacterController(0.02);
-  controller.enableAutostep(DEFAULT_PERSON.maxStepMm / 1000, dims.radius, false);
-  controller.enableSnapToGround(0.3);
-  controller.setSlideEnabled(true);
+  configurePersonController(controller, DEFAULT_PERSON);
   world.step();
 
   const state: PersonMotionState = { verticalSpeed: 0 };

@@ -247,6 +247,7 @@ export const en: Translation<Resources> = {
       bath: 'Bathroom',
       lighting: 'Lighting',
       decor: 'Decoration',
+      stairs: 'Stairs',
     },
   },
   furniture: {
@@ -278,6 +279,8 @@ export const en: Translation<Resources> = {
     multiHintTouch: 'Drag them together in the view; use the buttons to rotate or delete them.',
     warningOverlap: 'Overlaps another item.',
     warningWall: 'Goes through a wall.',
+    storeyMismatch: 'Does not reach the floor above: it is {{height}} floor to floor.',
+    fitStorey: 'Fit',
     unknown: 'Unknown type ({{def}}): shown as a box and kept when exporting.',
   },
   finishes: {

@@ -40,6 +40,18 @@ export function levelBelow(project: Project, levelId: string): Level | undefined
   return index > 0 ? project.levels[index - 1] : undefined;
 }
 
+/**
+ * Altura de piso a piso desde una planta (lo que sube una escalera): hasta la planta de arriba o,
+ * si no hay, la de la propia planta.
+ */
+export function storeyRise(project: Project, levelId: string): number {
+  const level = requireLevel(project, levelId);
+  const above = levelAbove(project, levelId);
+  return above
+    ? above.elevation - level.elevation
+    : levelStoreyHeight(level, project.settings.defaultWallHeight);
+}
+
 function sortLevels(project: Project): void {
   project.levels.sort((a, b) => a.elevation - b.elevation);
 }

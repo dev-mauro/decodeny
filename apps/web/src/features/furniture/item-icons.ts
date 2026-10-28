@@ -14,6 +14,7 @@ import {
   Bath,
   BedDouble,
   CookingPot,
+  DoorStairwell,
   LampDesk,
   Library,
   Refrigerator,
@@ -35,6 +36,7 @@ export const CATEGORY_ICONS: Record<ItemCategory, LucideIcon> = {
   bath: Bath,
   lighting: Lamp,
   decor: Sprout,
+  stairs: DoorStairwell,
 };
 
 const ITEM_ICONS: Partial<Record<string, LucideIcon>> = {

@@ -1,5 +1,5 @@
 import type { Part } from '@decodeny/domain';
-import { BoxGeometry, CylinderGeometry, Matrix4, type BufferGeometry } from 'three';
+import { BoxGeometry, CylinderGeometry, Euler, Matrix4, type BufferGeometry } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { partGeometry } from './part-geometry';
 
@@ -16,7 +16,7 @@ function placedGeometry(part: Part, zSign: 1 | -1): BufferGeometry {
   const g = partGeometry(part, zSign);
   const geometry = g.kind === 'box' ? new BoxGeometry(...g.args) : new CylinderGeometry(...g.args);
   const m = new Matrix4();
-  if (g.kind === 'box') m.makeRotationY(g.rotationY);
+  if (g.kind === 'box') m.makeRotationFromEuler(new Euler(g.pitch, g.rotationY, 0, 'YXZ'));
   else m.makeScale(1, 1, g.scaleZ);
   m.setPosition(...g.position);
   geometry.applyMatrix4(m);

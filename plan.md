@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10 ✅ · I10b iluminación ✅ · I10c salas de colaboración ✅ (ADR-0014) · I12 🟡 (etapa 1, plantas ✅; etapa 2, escaleras, y etapa 3, ascensor y «vacío», pendientes) · I11 planificada · I13–I14 pendientes/opcionales (de I14, adelantados: presentación y puertas en el recorrido).
+> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10 ✅ · I10b iluminación ✅ · I10c salas de colaboración ✅ (ADR-0014) · I12 🟡 (plantas ✅, escaleras ✅ (ADR-0016); ascensor y «vacío» pendientes) · I11 planificada · I13–I14 pendientes/opcionales (de I14, adelantados: presentación y puertas en el recorrido).
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -802,7 +802,7 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
 
 El documento ya tiene `levels[]` con `elevation`, todos los comandos reciben `levelId` y la presencia de la colaboración ya informa el nivel.
 
-Se entrega en tres etapas: **1. plantas** ✅ (comandos, selector, `PgUp`/`PgDn`, las otras plantas en 3D y la de abajo en tenue en el plano), **2. escaleras** (catálogo, vanos de losa, colisión y cambio de planta al caminar) y **3. ascensor y «vacío»**.
+Se entrega en tres etapas: **1. plantas** ✅ (comandos, selector, `PgUp`/`PgDn`, las otras plantas en 3D y la de abajo en tenue en el plano), **2. escaleras** ✅ (recta, en L, en U y caracol; huecos de losa derivados, colisión por rampas y cambio de planta al caminar; ADR-0016) y **3. ascensor y «vacío»**.
 
 1. **Dominio:**
    - Comandos `addLevel` (sobre el último, con la elevación sugerida = elevación + alto de muros + losa; opción de copiar el contorno del de abajo), `removeLevel`, `renameLevel`, `duplicateLevel` y `setLevelElevation`.

@@ -180,6 +180,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Visor:** además de la planta activa, dibuja las demás como **contexto** (`LevelView` con `context`: sin selección, corte de muros ni luminarias propias). En edición solo las de abajo (las de arriba se ocultan, como casa de muñecas); en recorrido y vuelo, todas. El encuadre y las sombras usan la unión de las plantas visibles.
 - **Plano:** la planta de abajo se ve en tenue (`plan-underlay`) para alinear los muros.
 - **Interfaz** (`features/levels`): `LevelSwitcher` arriba de «Espacios» (también en móvil) elige la planta activa, agrega otra arriba y ajusta nombre y altura del piso; `PgUp`/`PgDn` suben y bajan.
+- **Escaleras** (ADR-0016): items de la categoría `stairs` (`catalog/items/stairs.ts`) que declaran `floorOpening`, `colliders` (rampas), `planOutline`, `planSymbol` y `fillsStorey`. El visor deriva la losa de cada planta (`scene/slabs.ts`: huecos del piso y del cielo, canto de la losa) y en el recorrido colisiona con todas las plantas (las de arriba se apoyan en su losa, `slabCollider`); `onLevelChange` informa la planta en la que quedan los pies.
 
 ## Presentación y puertas en el recorrido (adelanto de I14)
 

@@ -2,6 +2,7 @@ import {
   box,
   ceilingHeightAt,
   itemFootprint,
+  itemLocalToPlan,
   pointInPolygon,
   defineItem,
   definitionEnvelope,
@@ -13,6 +14,7 @@ import {
   type ItemCategory,
   type ItemEnvelope,
   type Level,
+  type LocalPolygon,
   type Vec2,
 } from '@decodeny/domain';
 import { bathtub, shower, sinkPedestal, toilet, vanity } from './bath';
@@ -29,6 +31,7 @@ import {
   wallLight,
 } from './lighting';
 import { armchair, chairDining, chairOffice, sofaL, sofaStraight } from './seating';
+import { stairL, stairSpiral, stairStraight, stairU } from './stairs';
 import { dresser, shelf, wardrobe } from './storage';
 import { tableCoffee, tableRect, tableRound } from './tables';
 
@@ -71,6 +74,10 @@ export const itemCatalog = new Registry<AnyItemDefinition>('item').register(
   curtain,
   wallShelf,
   picture,
+  stairStraight,
+  stairL,
+  stairU,
+  stairSpiral,
 );
 
 /** Orden de las categorías en el panel de catálogo. */
@@ -85,6 +92,7 @@ export const ITEM_CATEGORIES: readonly ItemCategory[] = [
   'bath',
   'lighting',
   'decor',
+  'stairs',
 ];
 
 /** Reemplazo para items de un tipo que esta versión no conoce: una caja con sus medidas. */
@@ -132,7 +140,40 @@ export function surfaceElevationAt(level: Level, point: Vec2, exceptId?: string)
   return top;
 }
 
+/** Un polígono del marco local de un item llevado a la planta (mm). */
+export function localPolygonToPlan(
+  item: Pick<Item, 'position' | 'rotation'>,
+  polygon: LocalPolygon,
+): Vec2[] {
+  return polygon.map(([x, z]) => itemLocalToPlan(item, x, z));
+}
+
+/** Contorno de un item en la planta: el propio de su definición o el de su envolvente. */
+export function itemPlanOutline(item: Item): Vec2[] {
+  const definition = resolveItemDefinition(item.def);
+  if (!definition.planOutline) return itemFootprint(item, itemEnvelope(item));
+  return localPolygonToPlan(
+    item,
+    definition.planOutline(resolveParams(definition.params, item.params)),
+  );
+}
+
+/**
+ * Huecos que los items de una planta abren en la losa de arriba (escaleras, ductos): polígonos
+ * en planta (mm). Se descuentan del cielo de esa planta y del piso de la de arriba.
+ */
+export function levelFloorOpenings(level: Level): Vec2[][] {
+  return level.items.flatMap((item) => {
+    const definition = resolveItemDefinition(item.def);
+    if (!definition.floorOpening) return [];
+    const polygon = definition.floorOpening(resolveParams(definition.params, item.params));
+    return polygon.length >= 3 ? [localPolygonToPlan(item, polygon)] : [];
+  });
+}
+
 export { curtain, mirror, picture, plant, rug, wallShelf };
+
+export { spiralWalkRadius, stairL, stairSpiral, stairStraight, stairSteps, stairU } from './stairs';
 
 export { ceilingLight, floorLamp, pendantLight, recessedLight, tableLamp, wallLight };
 

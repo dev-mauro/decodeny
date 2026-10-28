@@ -12,6 +12,8 @@ export type PartGeometry =
       readonly kind: 'box';
       readonly position: readonly [number, number, number];
       readonly rotationY: number;
+      /** Inclinación (rotación en x, antes del giro en y: orden `YXZ`). */
+      readonly pitch: number;
       /** Ancho, alto y profundidad. */
       readonly args: readonly [number, number, number];
     }
@@ -32,6 +34,8 @@ export function partGeometry(part: Part, zSign: 1 | -1 = 1): PartGeometry {
       kind: 'box',
       position,
       rotationY: part.rotationY ?? 0,
+      // Invertir z invierte también el sentido de la inclinación.
+      pitch: zSign * (part.pitch ?? 0),
       args: [part.size[0] / 1000, part.size[1] / 1000, part.size[2] / 1000],
     };
   }

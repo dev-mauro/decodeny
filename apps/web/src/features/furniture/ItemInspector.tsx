@@ -7,10 +7,12 @@ import {
 } from '@decodeny/catalog';
 import {
   deleteItems,
+  formatLength,
   itemWarnings,
   localize,
   resolveParams,
   roomOfItem,
+  storeyRise,
   updateItem,
   type Item,
   type Level,
@@ -58,6 +60,12 @@ export function ItemInspector({ level, item }: ItemInspectorProps) {
     [item, level],
   );
 
+  // Una escalera debe llegar a la planta de arriba (su alto es de piso a piso).
+  const rise = useProjectStore((s) =>
+    definition.fillsStorey ? storeyRise(s.project, level.id) : null,
+  );
+  const storeyMismatch = rise !== null && Math.abs(Number(params.height) - rise) > 1;
+
   const commitParam = (key: string, value: number | string | boolean) =>
     run(updateItem, { ...ref, params: { [key]: value } }, { coalesceKey: `ip:${item.id}:${key}` });
   const rotate = (rotation: number) =>
@@ -90,6 +98,25 @@ export function ItemInspector({ level, item }: ItemInspectorProps) {
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {t(warning === 'wall' ? 'furniture.warningWall' : 'furniture.warningOverlap')}
         </p>
+      )}
+      {storeyMismatch && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800"
+          data-testid="item-storey-warning"
+        >
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span className="flex-1">
+            {t('furniture.storeyMismatch', { height: formatLength(rise, i18n.language) })}
+          </span>
+          <Button
+            size="sm"
+            onClick={() => commitParam('height', rise)}
+            data-testid="item-fit-storey"
+          >
+            {t('furniture.fitStorey')}
+          </Button>
+        </div>
       )}
 
       {known && sameCategory.length > 1 && (

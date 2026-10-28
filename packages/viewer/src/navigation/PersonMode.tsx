@@ -5,24 +5,29 @@ import {
   CuboidCollider,
   Physics,
   RigidBody,
+  TrimeshCollider,
   useBeforePhysicsStep,
   useRapier,
   type RapierCollider,
   type RapierRigidBody,
 } from '@react-three/rapier';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Euler } from 'three';
+import { Euler, Quaternion } from 'three';
+import type { LevelSlab } from '../scene/slabs';
 import {
   chooseSpawn,
   closedDoorColliders,
   groundCollider,
   itemColliders,
+  levelAtFeet,
+  slabCollider,
   wallColliders,
+  type BoxCollider,
 } from './colliders';
 import { useClosedDoors } from './door-context';
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
-import { stepPerson, type PersonMotionState } from './person-step';
+import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
 import type { NavigationModeProps } from './types';
 import { usePointerLook } from './use-pointer-look';
 import { useMovementIntent } from './virtual-input';
@@ -41,30 +46,69 @@ type KinematicCharacterController = ReturnType<
  * Este módulo se carga bajo demanda (Rapier es WASM) — ver `registry.ts`.
  */
 export default function PersonMode(props: NavigationModeProps) {
+  // Todas las plantas colisionan: se sube y se baja por las escaleras.
+  const lowest = props.levels[0]?.id;
   return (
     <Physics gravity={[0, 0, 0]} timeStep={1 / 60}>
-      <LevelColliders level={props.level} />
-      <DoorColliders level={props.level} />
+      {props.levels.map((level) => (
+        <LevelColliders
+          key={level.id}
+          level={level}
+          slab={props.slabs.get(level.id)}
+          lowest={level.id === lowest}
+        />
+      ))}
+      {props.levels.map((level) => (
+        <DoorColliders key={level.id} level={level} />
+      ))}
       <PersonController {...props} />
     </Physics>
   );
 }
 
-const LevelColliders = memo(function LevelColliders({ level }: { readonly level: Level }) {
+/** Orientación de una caja: inclinación y luego giro (orden `YXZ`, como las piezas). */
+const boxQuaternion = (box: BoxCollider): [number, number, number, number] => {
+  const q = new Quaternion().setFromEuler(new Euler(box.pitch ?? 0, box.rotationY, 0, 'YXZ'));
+  return [q.x, q.y, q.z, q.w];
+};
+
+function Boxes({ boxes }: { readonly boxes: readonly BoxCollider[] }) {
+  return boxes.map((box, i) => (
+    <CuboidCollider
+      key={i}
+      args={box.halfExtents}
+      position={box.position}
+      quaternion={boxQuaternion(box)}
+    />
+  ));
+}
+
+const LevelColliders = memo(function LevelColliders({
+  level,
+  slab,
+  lowest,
+}: {
+  readonly level: Level;
+  readonly slab: LevelSlab | undefined;
+  /** La más baja se apoya en un suelo continuo; las demás, en su losa. */
+  readonly lowest: boolean;
+}) {
   const boxes = useMemo(
-    () => [...wallColliders(level), ...itemColliders(level), groundCollider(level)],
-    [level],
+    () => [
+      ...wallColliders(level),
+      ...itemColliders(level),
+      ...(lowest ? [groundCollider(level)] : []),
+    ],
+    [level, lowest],
+  );
+  const floor = useMemo(
+    () => (!lowest && slab?.below ? slabCollider(level, slab.below) : null),
+    [level, lowest, slab],
   );
   return (
     <RigidBody type="fixed" colliders={false}>
-      {boxes.map((box, i) => (
-        <CuboidCollider
-          key={i}
-          args={box.halfExtents}
-          position={box.position}
-          rotation={[0, box.rotationY, 0]}
-        />
-      ))}
+      <Boxes boxes={boxes} />
+      {floor && <TrimeshCollider args={[floor.vertices, floor.indices]} />}
     </RigidBody>
   );
 });
@@ -76,20 +120,15 @@ function DoorColliders({ level }: { readonly level: Level }) {
   if (boxes.length === 0) return null;
   return (
     <RigidBody key={closed.join(' ')} type="fixed" colliders={false}>
-      {boxes.map((box, i) => (
-        <CuboidCollider
-          key={i}
-          args={box.halfExtents}
-          position={box.position}
-          rotation={[0, box.rotationY, 0]}
-        />
-      ))}
+      <Boxes boxes={boxes} />
     </RigidBody>
   );
 }
 
 function PersonController({
   level,
+  levels,
+  onLevelChange,
   selection,
   profile,
   onPointerLockChange,
@@ -134,15 +173,13 @@ function PersonController({
   const controller = useRef<KinematicCharacterController | null>(null);
   useEffect(() => {
     const c = world.createCharacterController(CONTROLLER_OFFSET);
-    c.enableAutostep(profile.maxStepMm / 1000, dims.radius, false);
-    c.enableSnapToGround(0.3);
-    c.setSlideEnabled(true);
+    configurePersonController(c, profile);
     controller.current = c;
     return () => {
       controller.current = null;
       world.removeCharacterController(c);
     };
-  }, [world, profile.maxStepMm, dims.radius]);
+  }, [world, profile]);
 
   useBeforePhysicsStep((stepWorld) => {
     const b = body.current;
@@ -169,6 +206,12 @@ function PersonController({
     b.setNextKinematicTranslation(next);
   });
 
+  // Planta informada; la activa puede cambiar también desde afuera (el selector).
+  const reportedLevel = useRef(level.id);
+  useEffect(() => {
+    reportedLevel.current = level.id;
+  }, [level.id]);
+
   // Balanceo de cabeza opcional, según la velocidad horizontal real (no la intención).
   const bob = useRef(createHeadBob());
   const last = useRef<{ x: number; z: number } | null>(null);
@@ -182,6 +225,12 @@ function PersonController({
     }
     last.current = { x: t.x, z: t.z };
     camera.position.set(t.x, t.y + dims.eyeOffset + offset, t.z);
+    // La planta en la que está la persona: la más alta cuyo piso alcanzan los pies.
+    const here = levelAtFeet(levels, (t.y - dims.centerY) * 1000);
+    if (here && here.id !== reportedLevel.current) {
+      reportedLevel.current = here.id;
+      onLevelChange?.(here.id);
+    }
   });
 
   return (

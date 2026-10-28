@@ -53,3 +53,40 @@ test('renombrar y eliminar una planta', async ({ page }) => {
   await expect(select.locator('option')).toHaveCount(1);
   await expect(page.getByRole('button', { name: /Cocina/ })).toBeVisible();
 });
+
+test('una escalera en U entre dos plantas: hueco arriba y aviso si no llega', async ({ page }) => {
+  const select = page.getByTestId('level-select');
+  await page.getByTestId('level-add').click();
+  await page.getByTestId('level-add-outline').click();
+  await expect(select.locator('option:checked')).toHaveText('Piso 2');
+  await page.keyboard.press('PageDown');
+  await expect(select.locator('option:checked')).toHaveText(/Piso 1|Planta/);
+
+  // Se ubica desde el catálogo, con la altura de piso a piso ya ajustada.
+  await page.getByRole('button', { name: /Living-comedor/ }).click();
+  await page.getByTestId('tab-catalog').click();
+  await page.getByTestId('catalog-search').fill('escalera en u');
+  await page.getByTestId('catalog-stairs.u@1').click();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('inspector-title')).toHaveText('Escalera en U');
+  await expect(page.getByTestId('item-storey-warning')).toHaveCount(0);
+
+  // Arriba, el plano muestra el hueco que abre la escalera.
+  await page.getByTestId('view-plan').click();
+  await expect(page.getByTestId('plan-item-Escalera en U')).toBeVisible();
+  await page.keyboard.press('PageUp');
+  await expect(page.getByTestId('plan-void')).toBeAttached();
+
+  // Si la planta de arriba sube, la escalera ya no llega: se avisa y se ajusta.
+  await page.getByTestId('tab-rooms').click();
+  await page.getByTestId('level-settings').click();
+  await page.getByTestId('level-elevation').fill('3,5');
+  await page.getByTestId('level-elevation').press('Enter');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('PageDown');
+  await page.getByTestId('plan-item-Escalera en U').click();
+  await expect(page.getByTestId('item-storey-warning')).toBeVisible();
+  await page.getByTestId('item-fit-storey').click();
+  await expect(page.getByTestId('item-storey-warning')).toHaveCount(0);
+  await expect(page.getByTestId('param-height')).toHaveValue('3,50');
+});

@@ -19,7 +19,8 @@
   "dependencies": {
     "@decodeny/catalog": "workspace:^",
     "@decodeny/domain": "workspace:^",
-    "earcut": "^3.0.0"
+    "earcut": "^3.0.0",
+    "polygon-clipping": "0.15.7"
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.19.2",

@@ -1,5 +1,5 @@
 import { horizontalDirection, type MovementIntent } from './input';
-import type { PersonProfile } from './person-profile';
+import { capsuleDimensions, type PersonProfile } from './person-profile';
 
 export const GRAVITY = 9.81;
 export const MAX_FALL_SPEED = 20;
@@ -47,4 +47,28 @@ export function stepPerson<TCollider>(
   if (controller.computedGrounded()) state.verticalSpeed = 0;
   const move = controller.computedMovement();
   return { x: position.x + move.x, y: position.y + move.y, z: position.z + move.z };
+}
+
+/** Pendiente máxima que se sube caminando (rampas, escaleras caracol): 50°. */
+export const MAX_SLOPE_CLIMB = (50 * Math.PI) / 180;
+
+/** Ajustes del controlador cinemático de Rapier que usa el recorrido. */
+export interface ConfigurableController {
+  enableAutostep(maxHeight: number, minWidth: number, includeDynamicBodies: boolean): void;
+  enableSnapToGround(distance: number): void;
+  setSlideEnabled(enabled: boolean): void;
+  setMaxSlopeClimbAngle(angle: number): void;
+  setMinSlopeSlideAngle(angle: number): void;
+}
+
+/**
+ * Configura el controlador como la persona del perfil: sube escalones hasta `maxStepMm`, se
+ * pega al piso al bajar, se desliza por los muros y sube pendientes de hasta 50° sin resbalar.
+ */
+export function configurePersonController(c: ConfigurableController, profile: PersonProfile): void {
+  c.enableAutostep(profile.maxStepMm / 1000, capsuleDimensions(profile).radius, false);
+  c.enableSnapToGround(0.3);
+  c.setSlideEnabled(true);
+  c.setMaxSlopeClimbAngle(MAX_SLOPE_CLIMB);
+  c.setMinSlopeSlideAngle(MAX_SLOPE_CLIMB);
 }

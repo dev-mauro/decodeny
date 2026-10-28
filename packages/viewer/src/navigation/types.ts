@@ -2,6 +2,7 @@ import type { Level, Vec2 } from '@decodeny/domain';
 import type { ComponentType, RefObject } from 'react';
 import type { Box3 } from 'three';
 import type { ViewerCameraApi } from '../scene/EditCamera';
+import type { LevelSlab } from '../scene/slabs';
 import type { ViewerSelection } from '../selection';
 import type { PersonProfile } from './person-profile';
 import type { VirtualInput } from './virtual-input';
@@ -11,7 +12,14 @@ export type BuiltInNavigationMode = 'edit' | 'ghost' | 'person';
 export type NavigationModeId = BuiltInNavigationMode | (string & {});
 
 export interface NavigationModeProps {
+  /** La planta activa. */
   readonly level: Level;
+  /** Todas las plantas, de abajo hacia arriba: el recorrido colisiona con todas. */
+  readonly levels: readonly Level[];
+  /** Huecos y losas de cada planta (por id), ver `levelSlab`. */
+  readonly slabs: ReadonlyMap<string, LevelSlab>;
+  /** El recorrido informa la planta en la que queda la persona al subir o bajar. */
+  readonly onLevelChange?: ((levelId: string) => void) | undefined;
   readonly bounds: Box3 | null;
   readonly selection: ViewerSelection | null;
   readonly profile: PersonProfile;

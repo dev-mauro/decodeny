@@ -14,6 +14,7 @@ import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
 import { PROJECT_TEMPLATES } from '@/features/samples/templates';
 import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch';
 import { DoorHint } from '@/features/navigation/DoorHint';
+import { switchLevel } from '@/features/levels/level-actions';
 import { PresentationBar } from '@/features/presentation/PresentationBar';
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
 import { useItemDragHandler } from '@/features/furniture/use-item-drag-handler';
@@ -222,6 +223,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 navigationMode={navigationMode}
                 onPointerLockChange={setPointerLocked}
                 onNearbyDoor={setNearbyDoor}
+                onLevelChange={switchLevel}
                 walkStart={walkStart}
                 headBob={headBob}
                 touchControls={touchControls}

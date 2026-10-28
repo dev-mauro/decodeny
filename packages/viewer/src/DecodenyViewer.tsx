@@ -12,6 +12,7 @@ import { createVirtualInput } from './navigation/virtual-input';
 import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
+import { levelSlab, type LevelSlab } from './scene/slabs';
 import { depthRange, rangeChanged } from './scene/depth-range';
 import { StaticShadows } from './scene/StaticShadows';
 import { prefersReducedMotion } from './scene/motion';
@@ -122,6 +123,11 @@ export interface DecodenyViewerProps {
    * cierra con E (recorrido) o F, con un clic con el puntero capturado o con `ViewerApi.toggleDoor`.
    */
   readonly onNearbyDoor?: (door: NearbyDoor | null) => void;
+  /**
+   * El recorrido pasó a otra planta (la persona subió o bajó una escalera): la aplicación decide
+   * si la activa. El visor no cambia `levelId` por su cuenta.
+   */
+  readonly onLevelChange?: (levelId: string) => void;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -209,6 +215,7 @@ export function DecodenyViewer({
   peers = null,
   onCameraPose,
   onNearbyDoor,
+  onLevelChange,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -225,6 +232,12 @@ export function DecodenyViewer({
         : [],
     [level, mode.interactive, project.levels],
   );
+  // Huecos de escalera y losas entre plantas: dependen solo de las plantas.
+  const slabs = useMemo(() => {
+    const map = new Map<string, LevelSlab>();
+    for (const l of project.levels) map.set(l.id, levelSlab(project.levels, l));
+    return map;
+  }, [project.levels]);
   const bounds = useMemo(() => {
     const boxes = [level, ...contextLevels].flatMap((l) => {
       const b = l ? levelWorldBounds(l) : null;
@@ -286,44 +299,50 @@ export function DecodenyViewer({
           <StaticShadows
             keys={[level, contextLevels, lighting, mode.id, sectionHeight, hiddenGroups]}
           />
-          {contextLevels.map((other) => (
-            <LevelView
-              key={other.id}
-              level={other}
-              selection={null}
-              onSelect={ignoreSelection}
-              locale={locale}
-              interactive={false}
-              finishes={finishes}
-              assetUrl={assetUrl}
-              hiddenGroups={hiddenGroups}
-              context
-            />
-          ))}
-          {level && (
-            <LevelView
-              level={level}
-              selection={selection}
-              selectionGroup={selectionGroup}
-              onSelect={onSelectionChange}
-              locale={locale}
-              interactive={interactive}
-              highlighted={highlighted}
-              onHoverChange={onHoverChange}
-              onRoomDrag={onRoomDrag}
-              onOpeningDrag={onOpeningDrag}
-              onItemDrag={onItemDrag}
-              finishes={finishes}
-              assetUrl={assetUrl}
-              hiddenGroups={hiddenGroups}
-              sectionHeight={mode.interactive ? sectionHeight : null}
-              sectionMode={sectionMode}
-              onSectionCutChange={setSectionCut}
-              onMeasurePoint={onMeasurePoint}
-              measurePoints={measurePoints}
-              trueSurfaceColors={trueSurfaceColors}
-              lampShadows={lighting === 'night'}
-            />
+          {/* Una sola lista con la planta activa y las de contexto: al cambiar de planta en el
+              recorrido, cada una conserva su componente (y sus geometrías). */}
+          {project.levels.map((other) =>
+            other.id === level?.id ? (
+              <LevelView
+                key={other.id}
+                level={other}
+                slab={slabs.get(other.id)}
+                selection={selection}
+                selectionGroup={selectionGroup}
+                onSelect={onSelectionChange}
+                locale={locale}
+                interactive={interactive}
+                highlighted={highlighted}
+                onHoverChange={onHoverChange}
+                onRoomDrag={onRoomDrag}
+                onOpeningDrag={onOpeningDrag}
+                onItemDrag={onItemDrag}
+                finishes={finishes}
+                assetUrl={assetUrl}
+                hiddenGroups={hiddenGroups}
+                sectionHeight={mode.interactive ? sectionHeight : null}
+                sectionMode={sectionMode}
+                onSectionCutChange={setSectionCut}
+                onMeasurePoint={onMeasurePoint}
+                measurePoints={measurePoints}
+                trueSurfaceColors={trueSurfaceColors}
+                lampShadows={lighting === 'night'}
+              />
+            ) : contextLevels.includes(other) ? (
+              <LevelView
+                key={other.id}
+                level={other}
+                slab={slabs.get(other.id)}
+                selection={null}
+                onSelect={ignoreSelection}
+                locale={locale}
+                interactive={false}
+                finishes={finishes}
+                assetUrl={assetUrl}
+                hiddenGroups={hiddenGroups}
+                context
+              />
+            ) : null,
           )}
           {placing && <PlacementPointer placement={placement} />}
           {level && peers && peers.list.length > 0 && (
@@ -335,6 +354,9 @@ export function DecodenyViewer({
               <Mode
                 key={mode.id}
                 level={level}
+                levels={project.levels}
+                slabs={slabs}
+                onLevelChange={onLevelChange}
                 bounds={bounds}
                 selection={selection}
                 profile={personProfile}

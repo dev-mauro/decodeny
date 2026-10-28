@@ -27,6 +27,10 @@ export function InspectorPanel() {
         })
       : [];
   const multi = groupItems.length > 1;
+  // Varios espacios: se mueven juntos arrastrando cualquiera.
+  const groupRooms = selectedTargets({ selection, selectionGroup }).filter(
+    (t) => t.kind === 'room',
+  ).length;
 
   const room =
     selection?.kind === 'room' ? level.rooms.find((r) => r.id === selection.id) : undefined;
@@ -60,6 +64,14 @@ export function InspectorPanel() {
       </h2>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <fieldset disabled={readOnly} className="contents" data-testid="inspector-fields">
+          {room && groupRooms > 1 && (
+            <p
+              className="mb-4 rounded-lg bg-brand-50 p-2 text-xs text-brand-700"
+              data-testid="room-group-note"
+            >
+              {t('rooms.selectedMany', { count: groupRooms })}
+            </p>
+          )}
           {room && <RoomInspector key={room.id} level={level} room={room} />}
           {wall && (
             <WallInspector key={wall.id} level={level} wall={wall} contextRoom={contextRoom} />

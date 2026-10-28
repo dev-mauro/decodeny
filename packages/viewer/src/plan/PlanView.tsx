@@ -44,6 +44,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -60,7 +61,9 @@ import { usePreventBrowserZoom } from '../scene/use-prevent-browser-zoom';
 import type { ViewerApi } from '../scene/ViewerApiBridge';
 import { measureOutlines, snapMeasurePoint, type MeasureSnap } from './measure-snap';
 import {
+  draggedRoomIds,
   interactionState,
+  ROOM_SNAP_PX,
   sameSelection,
   type AreaSelectEvent,
   type InteractionState,
@@ -148,6 +151,9 @@ const COLORS = {
 const DRAG_TOLERANCE_PX = 4;
 /** Radio de captura al dibujar muros (px de pantalla). */
 const DRAW_SNAP_PX = 10;
+/** Franja del borde (px) donde, arrastrando algo, el plano se desplaza solo; y a qué velocidad. */
+const EDGE_PAN_PX = 36;
+const EDGE_PAN_SPEED = 14;
 /** Con el dedo se apunta peor: radio de captura mayor. */
 const DRAW_SNAP_PX_TOUCH = 24;
 const GUIDE_COLOR = '#ea580c';
@@ -390,6 +396,15 @@ export function PlanView({
   };
 
   // --- Coordenadas ---------------------------------------------------------------------------
+  /** Punto de la planta (mm) bajo un punto de la pantalla, con una vista dada. */
+  const planAt = (view: ViewState, clientX: number, clientY: number): Vec2 => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return {
+      x: view.cx + (clientX - rect.left - rect.width / 2) / view.s,
+      y: view.cy - (clientY - rect.top - rect.height / 2) / view.s,
+    };
+  };
   const toPlan = useCallback(
     (clientX: number, clientY: number): Vec2 => {
       const rect = svgRef.current?.getBoundingClientRect();
@@ -401,6 +416,11 @@ export function PlanView({
     },
     [current],
   );
+  // La vista de ahora, para el desplazamiento automático (que corre entre renders).
+  const viewRef = useRef(current);
+  useLayoutEffect(() => {
+    viewRef.current = current;
+  });
 
   // --- Arrastres (fondo: desplazar; seleccionado: mover) -----------------------------------
   const drag = useRef<{
@@ -412,6 +432,8 @@ export function PlanView({
     id: string;
     /** Recuadro empezado sobre una entidad: si no hay arrastre, es un clic aditivo sobre ella. */
     clickTarget?: ViewerSelection;
+    /** Recintos que se mueven juntos (al arrastrar un recinto). */
+    roomIds?: readonly string[];
     dir?: Vec2;
     origin?: Vec2;
     startView: ViewState;
@@ -421,10 +443,17 @@ export function PlanView({
     e: ReactPointerEvent,
     kind: NonNullable<typeof drag.current>['kind'],
     id = '',
-    extra: { dir?: Vec2; origin?: Vec2; clickTarget?: ViewerSelection } = {},
+    extra: {
+      dir?: Vec2;
+      origin?: Vec2;
+      clickTarget?: ViewerSelection;
+      roomIds?: readonly string[];
+    } = {},
   ) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    // Fija el encuadre: si no, se reajustaría a lo que se mueve y todo el plano "saltaría".
+    if (!view) setView(current);
     svgRef.current?.setPointerCapture(e.pointerId);
     drag.current = {
       pointerId: e.pointerId,
@@ -441,14 +470,23 @@ export function PlanView({
   const emit = (
     phase: 'move' | 'end' | 'cancel',
     e: { clientX: number; clientY: number; altKey: boolean },
+    view: ViewState = current,
   ) => {
     const d = drag.current;
     if (!d) return;
-    const p = toPlan(e.clientX, e.clientY);
+    const p = planAt(view, e.clientX, e.clientY);
     const delta = sub(p, d.startPlan);
     const snap = !e.altKey;
-    if (d.kind === 'room') onRoomDrag?.({ phase, roomId: d.id, delta, snap });
-    else if (d.kind === 'item') onItemDrag?.({ phase, itemId: d.id, delta, snap });
+    if (d.kind === 'room') {
+      onRoomDrag?.({
+        phase,
+        roomId: d.id,
+        roomIds: d.roomIds ?? [d.id],
+        delta,
+        snap,
+        tolerance: ROOM_SNAP_PX / view.s,
+      });
+    } else if (d.kind === 'item') onItemDrag?.({ phase, itemId: d.id, delta, snap });
     else if (d.kind === 'opening' && d.dir) {
       onOpeningDrag?.({ phase, openingId: d.id, along: dot(delta, d.dir), snap });
     } else if (d.kind === 'node' && d.origin) {
@@ -584,12 +622,62 @@ export function PlanView({
       });
     } else {
       emit('move', e);
+      edgePanFrom(e);
     }
   };
+
+  // --- Desplazamiento automático: arrastrando algo cerca del borde, el plano se corre -------
+  const edgePan = useRef<{ x: number; y: number; altKey: boolean; frame: number } | null>(null);
+  const stopEdgePan = () => {
+    if (edgePan.current) cancelAnimationFrame(edgePan.current.frame);
+    edgePan.current = null;
+  };
+  /** Píxeles por cuadro hacia cada lado según cuán cerca del borde está el puntero. */
+  const edgeVelocity = (x: number, y: number): { vx: number; vy: number } => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return { vx: 0, vy: 0 };
+    const push = (gap: number) =>
+      gap < EDGE_PAN_PX ? ((EDGE_PAN_PX - gap) / EDGE_PAN_PX) * EDGE_PAN_SPEED : 0;
+    return {
+      vx: push(rect.right - x) - push(x - rect.left),
+      vy: push(rect.bottom - y) - push(y - rect.top),
+    };
+  };
+  const edgePanStep = () => {
+    const ep = edgePan.current;
+    if (!ep || !drag.current) {
+      stopEdgePan();
+      return;
+    }
+    const { vx, vy } = edgeVelocity(ep.x, ep.y);
+    if (vx === 0 && vy === 0) {
+      stopEdgePan();
+      return;
+    }
+    const v = viewRef.current;
+    const next = { ...v, cx: v.cx + vx / v.s, cy: v.cy - vy / v.s };
+    viewRef.current = next;
+    setView(next);
+    // Lo arrastrado sigue bajo el puntero mientras el plano se corre.
+    emit('move', { clientX: ep.x, clientY: ep.y, altKey: ep.altKey }, next);
+    ep.frame = requestAnimationFrame(edgePanStep);
+  };
+  const edgePanFrom = (e: { clientX: number; clientY: number; altKey: boolean }) => {
+    if (edgePan.current) {
+      Object.assign(edgePan.current, { x: e.clientX, y: e.clientY, altKey: e.altKey });
+      return;
+    }
+    const { vx, vy } = edgeVelocity(e.clientX, e.clientY);
+    if (vx === 0 && vy === 0) return;
+    edgePan.current = { x: e.clientX, y: e.clientY, altKey: e.altKey, frame: 0 };
+    edgePan.current.frame = requestAnimationFrame(edgePanStep);
+  };
+  useEffect(() => stopEdgePan, []);
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = drag.current;
     if (d?.pointerId !== e.pointerId) return;
+    stopEdgePan();
     drag.current = null;
     if (d.kind === 'draw') {
       const snap = snapAt(e.clientX, e.clientY, false, true);
@@ -681,7 +769,21 @@ export function PlanView({
   });
 
   const onWheel = (e: ReactWheelEvent) => {
-    const factor = Math.exp(-e.deltaY * 0.0015);
+    // Deslizar con dos dedos en un trackpad (deltas finos o de costado) desplaza el plano; la
+    // rueda de un mouse (pasos enteros grandes) y pellizcar (Ctrl) acercan o alejan.
+    const trackpadScroll =
+      !e.ctrlKey &&
+      e.deltaMode === 0 &&
+      (e.deltaX !== 0 || !Number.isInteger(e.deltaY) || Math.abs(e.deltaY) < 40);
+    if (trackpadScroll) {
+      setView({
+        ...current,
+        cx: current.cx + e.deltaX / current.s,
+        cy: current.cy - e.deltaY / current.s,
+      });
+      return;
+    }
+    const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015));
     const s = Math.min(2, Math.max(0.005, current.s * factor));
     // Zoom hacia el cursor: el punto bajo el puntero no se mueve.
     const p = toPlan(e.clientX, e.clientY);
@@ -713,13 +815,22 @@ export function PlanView({
     }
     const selected =
       sameSelection(target, selection) ||
-      (kind === 'item' && selectionGroup.some((g) => sameSelection(target, g)));
+      ((kind === 'item' || kind === 'room') &&
+        selectionGroup.some((g) => sameSelection(target, g)));
+    const roomIds =
+      kind === 'room' ? draggedRoomIds(target.id, selection, selectionGroup) : undefined;
     if (selected && kind) {
-      begin(e, kind, target.id, extra);
+      begin(e, kind, target.id, { ...extra, ...(roomIds ? { roomIds } : {}) });
       return;
     }
     e.stopPropagation();
     onSelectionChange(target);
+    // Un recinto o un mueble se arrastra de una: se selecciona y, si el puntero se mueve, se mueve.
+    // Con el dedo no: así es como se desplaza el plano (y se evita moverlo sin querer).
+    if (e.pointerType === 'touch') begin(e, 'pan');
+    else if (kind === 'room' || kind === 'item') {
+      begin(e, kind, target.id, { ...extra, ...(kind === 'room' ? { roomIds: [target.id] } : {}) });
+    }
   };
 
   useImperativeHandle(apiRef, () => ({

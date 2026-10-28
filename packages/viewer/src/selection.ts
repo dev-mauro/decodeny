@@ -50,9 +50,29 @@ export function interactionState(
 export interface RoomDragEvent {
   readonly phase: 'move' | 'end' | 'cancel';
   readonly roomId: string;
+  /** Los recintos que se mueven juntos: el arrastrado y los demás seleccionados con él. */
+  readonly roomIds: readonly string[];
   readonly delta: { readonly x: number; readonly y: number };
   /** `false` mientras se mantiene Alt: sin ajuste a muros ni grilla. */
   readonly snap: boolean;
+  /** Alcance del imán (mm): unos pocos píxeles en pantalla con el zoom de ahora. */
+  readonly tolerance: number;
+}
+
+/** Píxeles en pantalla a los que un recinto arrastrado se pega a los muros vecinos. */
+export const ROOM_SNAP_PX = 12;
+
+/**
+ * Recintos que se mueven al arrastrar `roomId`: si es parte de la selección, todos los recintos
+ * seleccionados; si no, solo él.
+ */
+export function draggedRoomIds(
+  roomId: string,
+  selection: ViewerSelection | null,
+  group: readonly ViewerSelection[],
+): string[] {
+  const rooms = [selection, ...group].flatMap((t) => (t?.kind === 'room' ? [t.id] : []));
+  return rooms.includes(roomId) ? rooms : [roomId];
 }
 
 /** Arrastre de una puerta o ventana a lo largo de su muro (mm acumulados en dirección start → end). */

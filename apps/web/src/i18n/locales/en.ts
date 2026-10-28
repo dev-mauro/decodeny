@@ -128,6 +128,7 @@ export const en: Translation<Resources> = {
     none: 'No rooms yet.',
     totalArea: 'Total floor area',
     uninhabitable: 'Not habitable',
+    selectedMany: '{{count}} spaces selected: drag any of them to move them together.',
     defaultName: 'Room {{n}}',
     baseName: 'Room',
   },

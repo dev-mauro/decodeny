@@ -20,11 +20,13 @@ import {
 } from '@decodeny/domain';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plane, Vector3, type Group } from 'three';
+import { PerspectiveCamera, Plane, Vector3, type Group } from 'three';
 import type { WallCut } from '../builders/wall-mesh';
 import { planDirToWorld, planToWorld } from '../coords';
 import {
+  draggedRoomIds,
   interactionState,
+  ROOM_SNAP_PX,
   sameSelection,
   type ItemDragEvent,
   type OpeningDragEvent,
@@ -130,6 +132,7 @@ export function LevelView({
   const [hovered, setHovered] = useState<ViewerSelection | null>(null);
   const hoveredRef = useRef<ViewerSelection | null>(null);
   const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
   const drag = usePlaneDrag();
 
   const footprints = useMemo(() => levelWallFootprints(level), [level]);
@@ -220,8 +223,9 @@ export function LevelView({
     interactive &&
     !measuring &&
     (sameSelection(target, selection) ||
-      // Los muebles de una selección múltiple se arrastran juntos desde cualquiera de ellos.
-      (target.kind === 'item' && selectionGroup.some((g) => sameSelection(target, g)))) &&
+      // Los muebles o recintos de una selección múltiple se arrastran juntos desde cualquiera.
+      ((target.kind === 'item' || target.kind === 'room') &&
+        selectionGroup.some((g) => sameSelection(target, g)))) &&
     (target.kind === 'room'
       ? !!onRoomDrag
       : target.kind === 'opening'
@@ -232,13 +236,21 @@ export function LevelView({
     (roomId: string, e: ThreeEvent<PointerEvent>) => {
       if (!onRoomDrag) return;
       const plane = new Plane(new Vector3(0, 1, 0), -mmToMeters(level.elevation));
+      const roomIds = draggedRoomIds(roomId, selection, selectionGroup);
+      // Imán de unos pocos píxeles: cuántos mm ocupa un píxel a la distancia del recinto.
+      const fov = camera instanceof PerspectiveCamera ? camera.fov : 45;
+      const height = gl.domElement.clientHeight || 1;
+      const tolerance =
+        (ROOM_SNAP_PX * 2 * e.distance * Math.tan((fov * Math.PI) / 360) * 1000) / height;
       drag.begin(`room:${roomId}`, e, {
         plane,
-        onMove: (delta, ev) => onRoomDrag({ phase: 'move', roomId, delta, snap: !ev.altKey }),
-        onFinish: (phase, delta, snap) => onRoomDrag({ phase, roomId, delta, snap }),
+        onMove: (delta, ev) =>
+          onRoomDrag({ phase: 'move', roomId, roomIds, delta, snap: !ev.altKey, tolerance }),
+        onFinish: (phase, delta, snap) =>
+          onRoomDrag({ phase, roomId, roomIds, delta, snap, tolerance }),
       });
     },
-    [drag, level.elevation, onRoomDrag],
+    [camera, drag, gl, level.elevation, onRoomDrag, selection, selectionGroup],
   );
   const startOpeningDrag = useCallback(
     (openingId: string, footprint: WallFootprint, e: ThreeEvent<PointerEvent>) => {

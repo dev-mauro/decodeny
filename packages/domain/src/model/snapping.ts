@@ -2,8 +2,11 @@ import { add, cross, dot, length, normalize, perpLeft, scale, sub, type Vec2 } f
 import { nodePositions, requireRoom, roomEdges } from './queries';
 import type { Level } from './types';
 
-/** Distancia (mm) dentro de la cual un recinto arrastrado se alinea con los muros vecinos. */
-export const ROOM_SNAP_DISTANCE = 250;
+/**
+ * Distancia (mm) dentro de la cual un recinto arrastrado se alinea con los muros vecinos: poca,
+ * un imán que actúa solo de cerca (la vista suele pasar una según el zoom, ver `RoomDragEvent`).
+ */
+export const ROOM_SNAP_DISTANCE = 120;
 /** Paso de la grilla cuando no hay muros cerca (mm). */
 export const ROOM_GRID_STEP = 10;
 
@@ -87,15 +90,32 @@ export function snapRoomTranslation(
   /** Paso de la grilla cuando no hay muros cerca (mm). */
   gridStep = ROOM_GRID_STEP,
 ): RoomSnap {
-  const room = requireRoom(level, roomId);
+  return snapRoomsTranslation(level, [roomId], delta, threshold, gridStep);
+}
+
+/**
+ * Ajuste del desplazamiento de varios recintos que se mueven juntos: sus muros se pegan a los
+ * de los demás recintos (no entre ellos) dentro de `threshold`; si no, a la grilla.
+ */
+export function snapRoomsTranslation(
+  level: Level,
+  roomIds: readonly string[],
+  delta: Vec2,
+  threshold = ROOM_SNAP_DISTANCE,
+  gridStep = ROOM_GRID_STEP,
+): RoomSnap {
+  const group = new Set(roomIds);
   const positions = nodePositions(level);
-  const base = room.boundary.map((id, i) =>
-    segment(positions.get(id)!, positions.get(room.boundary[(i + 1) % room.boundary.length]!)!),
-  );
+  const base = roomIds.flatMap((roomId) => {
+    const room = requireRoom(level, roomId);
+    return room.boundary.map((id, i) =>
+      segment(positions.get(id)!, positions.get(room.boundary[(i + 1) % room.boundary.length]!)!),
+    );
+  });
   const seen = new Set<string>();
   const targets: Target[] = [];
   for (const other of level.rooms) {
-    if (other.id === room.id) continue;
+    if (group.has(other.id)) continue;
     for (const edge of roomEdges(level, other)) {
       const wall = edge.wall;
       if (!wall || seen.has(wall.id)) continue;

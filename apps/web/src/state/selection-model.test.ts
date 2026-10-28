@@ -29,14 +29,23 @@ describe('selección', () => {
     expect(nextSelection(s, item('b'), true)).toEqual(EMPTY_SELECTION);
   });
 
-  it('lo que no admite selección múltiple se selecciona solo', () => {
+  it('un grupo es de una sola clase; los muros se seleccionan solos', () => {
     const s = selectMany(EMPTY_SELECTION, [item('a'), item('b')]);
     expect(nextSelection(s, room('r'), true)).toEqual({ selection: room('r'), selectionGroup: [] });
+    const wall = { kind: 'wall', id: 'w' } as const;
+    expect(nextSelection(s, wall, true)).toEqual({ selection: wall, selectionGroup: [] });
     // Sumar un mueble a un recinto seleccionado empieza una selección de muebles.
     expect(nextSelection({ selection: room('r'), selectionGroup: [] }, item('a'), true)).toEqual({
       selection: item('a'),
       selectionGroup: [],
     });
+  });
+
+  it('con Shift se juntan varios recintos (para moverlos juntos)', () => {
+    let s = nextSelection(EMPTY_SELECTION, room('a'));
+    s = nextSelection(s, room('b'), true);
+    s = nextSelection(s, room('c'), true);
+    expect(selectedTargets(s).map((t) => t.id)).toEqual(['c', 'a', 'b']);
   });
 
   it('el recuadro suma sin duplicar y quitar lo borrado conserva el resto', () => {

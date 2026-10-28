@@ -35,12 +35,22 @@ export function normalizeTopology(level: Level, ids: IdFactory): void {
  * pueda moverse sin arrastrar a los demás. Los vanos de un muro compartido quedan en el vecino.
  */
 export function detachRoom(level: Level, room: Room, ids: IdFactory): void {
-  const edges = roomEdges(level, room);
+  detachRooms(level, [room], ids);
+}
+
+/**
+ * Separa un grupo de recintos de los demás (para moverlos juntos): los muros y nodos que el
+ * grupo comparte con recintos de afuera se duplican; los que se comparten dentro del grupo
+ * quedan compartidos.
+ */
+export function detachRooms(level: Level, rooms: readonly Room[], ids: IdFactory): void {
+  const group = new Set(rooms.map((r) => r.id));
+  const edges = rooms.flatMap((room) => roomEdges(level, room));
   const ownWallIds = new Set(edges.flatMap((e) => (e.wall ? [e.wall.id] : [])));
   const usedElsewhere = new Set<string>();
   const wallsOfOthers = new Set<string>();
   for (const other of level.rooms) {
-    if (other.id === room.id) continue;
+    if (group.has(other.id)) continue;
     other.boundary.forEach((id) => usedElsewhere.add(id));
     for (const e of roomEdges(level, other)) if (e.wall) wallsOfOthers.add(e.wall.id);
   }
@@ -51,7 +61,7 @@ export function detachRoom(level: Level, room: Room, ids: IdFactory): void {
   }
 
   const remap = new Map<string, string>();
-  for (const nodeId of new Set(room.boundary)) {
+  for (const nodeId of new Set(rooms.flatMap((r) => r.boundary))) {
     if (!usedElsewhere.has(nodeId)) continue;
     const node = level.nodes.find((n) => n.id === nodeId)!;
     const copy = { id: ids('node'), x: node.x, y: node.y };
@@ -60,9 +70,11 @@ export function detachRoom(level: Level, room: Room, ids: IdFactory): void {
   }
   const mapNode = (id: string) => remap.get(id) ?? id;
 
+  const done = new Set<string>();
   for (const edge of edges) {
     const wall = edge.wall;
-    if (!wall) continue;
+    if (!wall || done.has(wall.id)) continue;
+    done.add(wall.id);
     if (wallsOfOthers.has(wall.id)) {
       level.walls.push({
         ...cloneWall(wall),
@@ -75,7 +87,7 @@ export function detachRoom(level: Level, room: Room, ids: IdFactory): void {
       wall.end = mapNode(wall.end);
     }
   }
-  room.boundary = room.boundary.map(mapNode);
+  for (const room of rooms) room.boundary = room.boundary.map(mapNode);
 }
 
 /**

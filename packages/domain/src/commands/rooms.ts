@@ -22,7 +22,7 @@ import {
   roomSides,
 } from '../model/queries';
 import { itemsInRoom } from '../model/items';
-import { detachRoom, normalizeTopology, TOPOLOGY_TOLERANCE } from '../model/topology';
+import { detachRooms, normalizeTopology, TOPOLOGY_TOLERANCE } from '../model/topology';
 import { WALL_LIMITS } from '../model/schema';
 import type { Level, Room } from '../model/types';
 import { defineCommand, type CommandContext } from './command';
@@ -191,28 +191,51 @@ export const deleteRoom = defineCommand<RoomRef>('room.delete', (draft, args, ct
 export const moveRoom = defineCommand<RoomRef & { readonly dx: number; readonly dy: number }>(
   'room.move',
   (draft, args, ctx) => {
-    const level = requireLevel(draft, args.levelId);
-    const room = requireRoom(level, args.roomId);
-    const dx = Math.round(args.dx);
-    const dy = Math.round(args.dy);
-    if (dx === 0 && dy === 0) return;
-    // Los muebles del recinto se mueven con él.
-    for (const item of itemsInRoom(level, room)) {
-      item.position.x += dx;
-      item.position.y += dy;
-    }
-    detachRoom(level, room, ctx.ids);
-    const ids = new Set(room.boundary);
-    for (const node of level.nodes) {
-      if (ids.has(node.id)) {
-        node.x += dx;
-        node.y += dy;
-      }
-    }
-    normalizeTopology(level, ctx.ids);
-    assertLevelGeometry(level);
+    translateRooms(requireLevel(draft, args.levelId), [args.roomId], args.dx, args.dy, ctx);
   },
 );
+
+/**
+ * Mueve varios recintos juntos (y sus muebles): lo que comparten entre ellos sigue compartido;
+ * lo que comparten con otros recintos se separa (ver `detachRooms`).
+ */
+export const moveRooms = defineCommand<{
+  readonly levelId: string;
+  readonly roomIds: readonly string[];
+  readonly dx: number;
+  readonly dy: number;
+}>('room.moveMany', (draft, args, ctx) => {
+  translateRooms(requireLevel(draft, args.levelId), args.roomIds, args.dx, args.dy, ctx);
+});
+
+function translateRooms(
+  level: Level,
+  roomIds: readonly string[],
+  rawDx: number,
+  rawDy: number,
+  ctx: CommandContext,
+): void {
+  const rooms = [...new Set(roomIds)].map((id) => requireRoom(level, id));
+  const dx = Math.round(rawDx);
+  const dy = Math.round(rawDy);
+  if ((dx === 0 && dy === 0) || rooms.length === 0) return;
+  // Los muebles de los recintos se mueven con ellos (cada uno una vez).
+  const items = new Set(rooms.flatMap((room) => itemsInRoom(level, room)));
+  for (const item of items) {
+    item.position.x += dx;
+    item.position.y += dy;
+  }
+  detachRooms(level, rooms, ctx.ids);
+  const ids = new Set(rooms.flatMap((r) => r.boundary));
+  for (const node of level.nodes) {
+    if (ids.has(node.id)) {
+      node.x += dx;
+      node.y += dy;
+    }
+  }
+  normalizeTopology(level, ctx.ids);
+  assertLevelGeometry(level);
+}
 
 /**
  * Nodos sobre la recta del lado `side` conectados a él por muros colineales: al empujar un

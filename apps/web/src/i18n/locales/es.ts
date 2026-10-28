@@ -124,6 +124,7 @@ export const es = {
     none: 'Aún no hay espacios.',
     totalArea: 'Superficie útil total',
     uninhabitable: 'No habitable',
+    selectedMany: '{{count}} espacios seleccionados: arrastra cualquiera para moverlos juntos.',
     defaultName: 'Espacio {{n}}',
     baseName: 'Espacio',
   },

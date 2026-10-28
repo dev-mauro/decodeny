@@ -6,8 +6,8 @@ const sameSelection = (a: ViewerSelection, b: ViewerSelection) =>
 
 /**
  * Selección de la interfaz: una entidad **principal** (la que muestra el inspector y da
- * contexto) y un **grupo** de otras seleccionadas con ella. Por ahora solo los muebles admiten
- * selección múltiple; el modelo no lo impone, lo decide `nextSelection`.
+ * contexto) y un **grupo** de otras seleccionadas con ella. Admiten selección múltiple los muebles
+ * y los recintos (cada grupo de una sola clase); lo decide `nextSelection`.
  */
 export interface SelectionState {
   readonly selection: ViewerSelection | null;
@@ -18,7 +18,7 @@ export const EMPTY_SELECTION: SelectionState = { selection: null, selectionGroup
 
 /** Entidades que admiten selección múltiple. */
 const multiSelectable = (target: ViewerSelection | null): target is ViewerSelection =>
-  target?.kind === 'item';
+  target?.kind === 'item' || target?.kind === 'room';
 
 /** Todas las entidades seleccionadas, la principal primero. */
 export function selectedTargets(state: SelectionState): ViewerSelection[] {
@@ -52,7 +52,8 @@ export function nextSelection(
   if (!additive || !multiSelectable(target)) {
     return target ? { selection: target, selectionGroup: [] } : EMPTY_SELECTION;
   }
-  const current = inOrder(state);
+  // Un grupo es de una sola clase: sumar un recinto a muebles (o al revés) empieza otro.
+  const current = inOrder(state).filter((t) => t.kind === target.kind);
   if (current.some((t) => sameSelection(t, target))) {
     const rest = current.filter((t) => !sameSelection(t, target));
     // Al quitar la principal, la principal pasa a ser la última que queda.

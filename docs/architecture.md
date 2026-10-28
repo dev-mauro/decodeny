@@ -190,7 +190,9 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 
 ## Muros compartidos
 
-Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer.
+Los recintos adosados comparten tabique (ADR-0007). `normalizeTopology` (dominio) mantiene el grafo sin nodos duplicados, con uniones en T y sin muros repetidos; `roomSides` agrupa tramos colineales en lados estables («Lado n», «Lado n.k»). Arrastrar un recinto en la vista produce `RoomDragEvent`s que la aplicación ajusta con `snapRoomsTranslation` y previsualiza como transacción (`preview` / `commitPreview` del store) para que quede como un solo paso de deshacer. Varios recintos seleccionados (Shift) se mueven juntos (`moveRooms`: lo que comparten entre ellos sigue compartido, lo que comparten con otros se separa con `detachRooms`). El imán es de unos pocos píxeles en pantalla (`ROOM_SNAP_PX`; el evento trae su alcance en mm según el zoom).
+
+En el plano, un recinto o un mueble se arrastra de una (se selecciona al tomarlo; con el dedo, arrastrar desplaza el plano). Al empezar un arrastre se fija el encuadre; cerca del borde el plano se desplaza solo. La rueda del mouse acerca y aleja; en un trackpad, deslizar desplaza y pellizcar acerca.
 
 ## Decisiones
 

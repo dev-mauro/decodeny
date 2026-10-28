@@ -38,6 +38,7 @@ import { ItemView } from './ItemView';
 import { itemGroupOf, type ItemGroup } from './item-groups';
 import { LevelLights } from './LevelLights';
 import { measureOutlines } from '../plan/measure-snap';
+import { RULER_CURSOR } from './cursors';
 import { MeasureClicks } from './MeasureClicks';
 import type { MeasurePoint } from './measure';
 import { MeasureOverlay } from './MeasureOverlay';
@@ -277,13 +278,16 @@ export function LevelView({
   );
 
   // Cursor: mover sobre lo seleccionado, mano sobre lo demás, agarre al arrastrar.
-  const cursor = drag.dragging
-    ? 'grabbing'
-    : activeHover
-      ? movable(activeHover)
-        ? 'move'
-        : 'pointer'
-      : null;
+  // Con la regla, el cursor es una regla en toda la vista.
+  const cursor = measuring
+    ? RULER_CURSOR
+    : drag.dragging
+      ? 'grabbing'
+      : activeHover
+        ? movable(activeHover)
+          ? 'move'
+          : 'pointer'
+        : null;
   useEffect(() => {
     if (!cursor) return;
     gl.domElement.style.cursor = cursor;

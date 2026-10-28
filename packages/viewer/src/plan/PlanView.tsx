@@ -51,6 +51,7 @@ import {
   type Ref,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import { RULER_CURSOR } from '../scene/cursors';
 import { itemGroupOf, type ItemGroup } from '../scene/item-groups';
 import { measureDistance, type MeasurePoint } from '../scene/measure';
 import { clipToSlab } from '../scene/section-geometry';
@@ -812,7 +813,10 @@ export function PlanView({
       className="size-full touch-none select-none"
       data-testid="plan-view"
       viewBox={viewBox}
-      style={{ background: COLORS.background, cursor: capturing ? 'crosshair' : undefined }}
+      style={{
+        background: COLORS.background,
+        cursor: measuring ? RULER_CURSOR : capturing ? 'crosshair' : undefined,
+      }}
       onPointerDown={(e) => {
         // Con el dedo, dibujar es arrastrar y soltar; desplazar el plano, con dos dedos.
         if (drawing && e.pointerType === 'touch') {

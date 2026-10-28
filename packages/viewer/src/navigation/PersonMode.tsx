@@ -18,7 +18,7 @@ import {
   chooseSpawn,
   closedDoorColliders,
   closedRoomColliders,
-  elevatorGateColliders,
+  elevatorDoorColliders,
   elevatorPlatformCollider,
   groundCollider,
   itemColliders,
@@ -29,7 +29,15 @@ import {
 } from './colliders';
 import { useClosedDoors } from './door-context';
 import { ElevatorStoreContext, useElevatorState } from './elevator-context';
-import { currentStop, elevatorUnder, isMoving, projectElevators, type Elevator } from './elevators';
+import {
+  closedStops,
+  elevatorAction,
+  elevatorUnder,
+  isMoving,
+  projectElevators,
+  type Elevator,
+  type ElevatorAction,
+} from './elevators';
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
 import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
@@ -147,13 +155,14 @@ function ElevatorColliders({ elevator }: { readonly elevator: Elevator }) {
     const at = elevatorPlatformCollider(elevator, store?.get(elevator.id).offset ?? 0).position;
     platform.current?.setNextKinematicTranslation({ x: at[0], y: at[1], z: at[2] });
   });
-  const moving = isMoving(state);
-  const gates = useMemo(
-    () => elevatorGateColliders(elevator, state),
-    // Las rejas cambian solo al salir o llegar a una parada, no en cada paso del viaje.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [elevator, moving, moving ? 0 : state.offset],
-  );
+  // Las puertas como obstáculo cambian solo al cerrarse o abrirse del todo, no en cada paso.
+  const closedKey = closedStops(elevator, state)
+    .map((s) => s.levelId)
+    .join(' ');
+  const gates = useMemo(() => {
+    const closed = new Set(closedKey.split(' '));
+    return elevatorDoorColliders(elevator, (stop) => closed.has(stop.levelId));
+  }, [closedKey, elevator]);
   return (
     <>
       <RigidBody
@@ -179,7 +188,9 @@ function PersonController({
   elevators,
   onLevelChange,
   onNearbyElevator,
+  onElevatorPanel,
   travelRef,
+  elevatorRef,
   selection,
   profile,
   onPointerLockChange,
@@ -188,6 +199,7 @@ function PersonController({
   virtualInput,
 }: NavigationModeProps & { readonly elevators: readonly Elevator[] }) {
   const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
   const elevatorStore = useContext(ElevatorStoreContext);
   // Sobre una escalera, adelante y atrás siguen su línea de paso (ver `stair-guide`).
   const guides = useMemo(() => stairGuides(levels), [levels]);
@@ -305,7 +317,38 @@ function PersonController({
     };
   }, [dims.centerY, elevatorStore, elevators, travelRef]);
   const reportedElevator = useRef('');
+  const elevatorHere = useRef<ElevatorAction | null>(null);
   useEffect(() => () => onNearbyElevator?.(null), [onNearbyElevator]);
+
+  // Usar el ascensor al alcance (E, clic con el puntero capturado o la interfaz): llamarlo a
+  // esta parada o abrir su botonera.
+  useEffect(() => {
+    const interact = (): boolean => {
+      const here = elevatorHere.current;
+      if (!here || !elevatorStore) return false;
+      if (here.action === 'call') elevatorStore.travel(here.elevator.id, here.stop.offset);
+      else onElevatorPanel?.();
+      return true;
+    };
+    if (elevatorRef) elevatorRef.current = interact;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || e.code !== 'KeyE') return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      interact();
+    };
+    const canvas = gl.domElement;
+    const onPointerDown = () => {
+      if (document.pointerLockElement === canvas) interact();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      if (elevatorRef) elevatorRef.current = null;
+      window.removeEventListener('keydown', onKeyDown);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [elevatorRef, elevatorStore, gl, onElevatorPanel]);
 
   // Planta informada; la activa puede cambiar también desde afuera (el selector).
   const reportedLevel = useRef(level.id);
@@ -337,19 +380,26 @@ function PersonController({
       reportedLevel.current = here.id;
       onLevelChange?.(here.id);
     }
-    // El ascensor en el que está, detenido en una parada: la interfaz ofrece los pisos.
+    // El ascensor al alcance: llamarlo desde afuera o usar su botonera desde adentro.
     if (!elevatorStore) return;
-    const feet = { x: t.x * 1000, y: -t.z * 1000 };
-    const elevator = elevatorUnder(elevators, elevatorStore, feet, (t.y - dims.centerY) * 1000);
-    const stop = elevator && currentStop(elevator, elevatorStore.get(elevator.id));
-    const report = elevator && stop ? `${elevator.id}:${stop.levelId}` : '';
+    const yaw = look.current.yaw;
+    const reach = elevatorAction(
+      elevators,
+      elevatorStore,
+      { x: t.x * 1000, y: -t.z * 1000 },
+      (t.y - dims.centerY) * 1000,
+      { x: -Math.sin(yaw), y: Math.cos(yaw) },
+    );
+    elevatorHere.current = reach;
+    const report = reach ? `${reach.elevator.id}:${reach.action}:${reach.stop.levelId}` : '';
     if (report === reportedElevator.current) return;
     reportedElevator.current = report;
     onNearbyElevator?.(
-      elevator && stop
+      reach
         ? {
-            stops: elevator.stops.map(({ levelId, name }) => ({ levelId, name })),
-            current: stop.levelId,
+            action: reach.action,
+            stops: reach.elevator.stops.map(({ levelId, name }) => ({ levelId, name })),
+            current: reach.stop.levelId,
           }
         : null,
     );

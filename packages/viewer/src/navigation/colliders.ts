@@ -1,4 +1,5 @@
 import {
+  ELEVATOR_DOOR,
   itemBase,
   itemEnvelope,
   resolveItemDefinition,
@@ -29,15 +30,7 @@ import {
 import earcut from 'earcut';
 import { planToWorld, type Vec3Tuple } from '../coords';
 import type { SlabBelow } from '../scene/slabs';
-import {
-  cabinToPlan,
-  GATE_HEIGHT,
-  GATE_MM,
-  gatedStops,
-  PLATFORM_MM,
-  type Elevator,
-  type ElevatorState,
-} from './elevators';
+import { cabinToPlan, PLATFORM_MM, type Elevator, type ElevatorStop } from './elevators';
 import type { ViewerSelection } from '../selection';
 
 /** Caja de colisión orientada (metros, mundo). */
@@ -365,19 +358,35 @@ export function elevatorPlatformCollider(elevator: Elevator, offset: number): Bo
   };
 }
 
-/** Rejas al frente de las paradas donde no está la plataforma (ver `gatedStops`). */
-export function elevatorGateColliders(elevator: Elevator, state: ElevatorState): BoxCollider[] {
+/** Grosor (mm) del frente de cada parada como obstáculo. */
+const FRONT_COLLIDER_MM = 80;
+
+/**
+ * Frente de las paradas: los paños fijos a los costados de la puerta y, donde las puertas no
+ * están del todo abiertas (todas las paradas mientras viaja), la puerta misma.
+ */
+export function elevatorDoorColliders(
+  elevator: Elevator,
+  closed: (stop: ElevatorStop) => boolean,
+): BoxCollider[] {
   const { x, z } = elevator.cabin;
-  return gatedStops(elevator, state).map((stop) => ({
+  const half = elevator.doorWidth / 2;
+  const rotationY = (elevator.item.rotation * Math.PI) / 180;
+  const box = (x0: number, x1: number, offset: number): BoxCollider => ({
     position: planToWorld(
-      cabinToPlan(elevator, (x[0] + x[1]) / 2, z[1] - GATE_MM / 2),
-      elevator.base + stop.offset + GATE_HEIGHT / 2,
+      cabinToPlan(elevator, (x0 + x1) / 2, z[1] - FRONT_COLLIDER_MM / 2),
+      elevator.base + offset + ELEVATOR_DOOR.height / 2,
     ),
     halfExtents: [
-      mmToMeters(x[1] - x[0]) / 2,
-      mmToMeters(GATE_HEIGHT) / 2,
-      mmToMeters(GATE_MM) / 2,
+      mmToMeters(x1 - x0) / 2,
+      mmToMeters(ELEVATOR_DOOR.height) / 2,
+      mmToMeters(FRONT_COLLIDER_MM) / 2,
     ],
-    rotationY: (elevator.item.rotation * Math.PI) / 180,
-  }));
+    rotationY,
+  });
+  return elevator.stops.flatMap((stop) =>
+    closed(stop)
+      ? [box(x[0], x[1], stop.offset)]
+      : [box(x[0], -half, stop.offset), box(half, x[1], stop.offset)],
+  );
 }

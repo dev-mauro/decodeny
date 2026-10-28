@@ -1,5 +1,4 @@
 import {
-  booleanParam,
   defineItem,
   lengthParam,
   type CollisionBox,
@@ -108,26 +107,36 @@ const FRAME = 60;
 const CABIN_HEIGHT = 2400;
 const GLASS = 12;
 
+/** Terminación del ascensor: ducto y puertas de vidrio o de metal. */
+export type ElevatorFinish = 'glass' | 'metal';
+
+/** Puertas correderas de cada parada y alto libre de la cabina (los dibuja y anima el visor). */
+export const ELEVATOR_DOOR = {
+  height: 2100,
+  thickness: 40,
+  cabin: CABIN_HEIGHT,
+  frame: FRAME,
+} as const;
+
 interface ElevatorParams {
   readonly width: number;
   readonly depth: number;
   readonly stops: number;
   readonly height: number;
-  readonly glass: boolean;
 }
 
 /**
  * Ducto del ascensor (marco local; se entra por el frente, +z): pilares en las esquinas, paños
- * a los costados y al fondo y techo sobre la última parada. La plataforma que sube y las rejas
- * de las paradas donde no está las dibuja el visor (se mueven en el recorrido).
+ * a los costados y al fondo y techo sobre la última parada. La plataforma que sube, su botonera
+ * y las puertas correderas de cada parada las dibuja el visor (se mueven en el recorrido).
  */
-function elevatorShaft(p: ElevatorParams) {
+function elevatorShaft(p: ElevatorParams, finish: ElevatorFinish) {
   const x: P2 = [-p.width / 2 - FRAME, p.width / 2 + FRAME];
   const depth = p.depth + FRAME;
   const z: P2 = [-depth / 2, depth / 2];
   const top = p.height + CABIN_HEIGHT;
-  const slot = p.glass ? 'glass' : 'lacquer';
-  const panel = p.glass ? GLASS : FRAME;
+  const slot = finish === 'glass' ? 'glass' : 'steel';
+  const panel = finish === 'glass' ? GLASS : FRAME;
   const parts: Part[] = [
     ...[
       [x[0], z[0]],
@@ -166,40 +175,64 @@ function elevatorShaft(p: ElevatorParams) {
   return { parts, colliders, cabin, cabinZ: (z[0] + FRAME + z[1]) / 2 };
 }
 
-export const elevator = defineItem({
-  id: 'structure.elevator@1',
-  category: 'stairs',
-  name: label('Ascensor', 'Elevator'),
-  keywords: ['ascensor', 'elevador', 'montacargas', 'lift', 'plataforma'],
-  mount: 'floor',
-  fillsStorey: true,
-  params: {
-    width: lengthParam({
-      default: 1100,
-      min: 800,
-      max: 3000,
-      step: 10,
-      label: label('Ancho de la cabina', 'Car width'),
-    }),
-    depth: lengthParam({
-      default: 1400,
-      min: 800,
-      max: 3000,
-      step: 10,
-      label: label('Fondo de la cabina', 'Car depth'),
-    }),
-    stops: countParam(2, 10, label('Paradas', 'Stops')),
-    height: storeyHeightParam,
-    glass: booleanParam({ default: true, label: label('Ducto de vidrio', 'Glass shaft') }),
-  },
-  envelope: (p) => partsEnvelope(elevatorShaft(p).parts),
-  build: (p) => elevatorShaft(p).parts,
-  colliders: (p) => elevatorShaft(p).colliders,
-  floorOpening: (p) => elevatorShaft(p).cabin,
-  openingSpan: (p) => Math.max(1, p.stops - 1),
-  planSymbol: (p) => {
-    const { cabin } = elevatorShaft(p);
-    return cross(p.width, cabin[0]![1], cabin[2]![1], false);
-  },
-  affordances: (p) => [{ kind: 'travel', at: [0, 0, elevatorShaft(p).cabinZ] }],
-});
+const elevatorDefinition = (id: string, name: LocalizedText, finish: ElevatorFinish) =>
+  defineItem({
+    id,
+    category: 'stairs',
+    name,
+    keywords: ['ascensor', 'elevador', 'lift', finish === 'glass' ? 'vidrio' : 'metal'],
+    mount: 'floor',
+    fillsStorey: true,
+    params: {
+      width: lengthParam({
+        default: 1100,
+        min: 800,
+        max: 3000,
+        step: 10,
+        label: label('Ancho de la cabina', 'Car width'),
+      }),
+      depth: lengthParam({
+        default: 1400,
+        min: 800,
+        max: 3000,
+        step: 10,
+        label: label('Fondo de la cabina', 'Car depth'),
+      }),
+      stops: countParam(2, 10, label('Paradas', 'Stops')),
+      height: storeyHeightParam,
+    },
+    envelope: (p) => partsEnvelope(elevatorShaft(p, finish).parts),
+    build: (p) => elevatorShaft(p, finish).parts,
+    colliders: (p) => elevatorShaft(p, finish).colliders,
+    floorOpening: (p) => elevatorShaft(p, finish).cabin,
+    openingSpan: (p) => Math.max(1, p.stops - 1),
+    planSymbol: (p) => {
+      const { cabin } = elevatorShaft(p, finish);
+      return [
+        ...cross(p.width, cabin[0]![1], cabin[2]![1], false),
+        // La puerta, al frente.
+        {
+          points: [
+            [-p.width / 2, cabin[0]![1]],
+            [p.width / 2, cabin[0]![1]],
+          ],
+        },
+      ];
+    },
+    affordances: (p) => [{ kind: 'travel', at: [0, 0, elevatorShaft(p, finish).cabinZ] }],
+  });
+
+export const elevator = elevatorDefinition(
+  'structure.elevator@1',
+  label('Ascensor de vidrio', 'Glass elevator'),
+  'glass',
+);
+export const elevatorMetal = elevatorDefinition(
+  'structure.elevator-metal@1',
+  label('Ascensor de metal', 'Metal elevator'),
+  'metal',
+);
+
+/** Terminación de un ascensor del catálogo (para sus puertas y botonera). */
+export const elevatorFinish = (def: string): ElevatorFinish =>
+  def === elevatorMetal.id ? 'metal' : 'glass';

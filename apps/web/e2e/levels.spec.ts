@@ -91,7 +91,7 @@ test('una escalera en U entre dos plantas: hueco arriba y aviso si no llega', as
   await expect(page.getByTestId('param-height')).toHaveValue('3,50');
 });
 
-test('en el recorrido, el ascensor sube y baja entre plantas', async ({ page }) => {
+test('en el recorrido, se usa la botonera del ascensor y viaja entre plantas', async ({ page }) => {
   test.setTimeout(90_000);
   const select = page.getByTestId('level-select');
   await page.getByTestId('level-add').click();
@@ -99,28 +99,42 @@ test('en el recorrido, el ascensor sube y baja entre plantas', async ({ page }) 
   await page.keyboard.press('PageDown');
   await expect(select.locator('option:checked')).toHaveText('Piso 1');
 
+  // Hay uno de vidrio y otro de metal.
   await page.getByRole('button', { name: /Living-comedor/ }).click();
   await page.getByTestId('tab-catalog').click();
   await page.getByTestId('catalog-search').fill('ascensor');
+  await expect(page.getByTestId('catalog-structure.elevator-metal@1')).toBeVisible();
   await page.getByTestId('catalog-structure.elevator@1').click();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('inspector-title')).toHaveText('Ascensor');
+  await expect(page.getByTestId('inspector-title')).toHaveText('Ascensor de vidrio');
 
   // El recorrido empieza dentro de la cabina.
   await page.getByTestId('view-plan').click();
   await page.getByTestId('walk-from-point').click();
-  const cabin = (await page.getByTestId('plan-item-Ascensor').boundingBox())!;
+  const cabin = (await page.getByTestId('plan-item-Ascensor de vidrio').boundingBox())!;
   await page.mouse.click(cabin.x + cabin.width / 2, cabin.y + cabin.height / 2);
   await expect(page.getByTestId('viewer')).toHaveAttribute('data-navigation-mode', 'person');
   await page.bringToFront();
-  await expect(page.getByTestId('elevator-panel')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('walk-begin').click();
 
-  // Sube, baja y vuelve a subir: cada vez queda detenido en la parada elegida.
-  for (const stop of [2, 1, 2]) {
-    await page.getByTestId(`elevator-stop-${stop}`).click();
-    await expect(page.getByTestId(`elevator-stop-${stop}`)).toBeDisabled({ timeout: 20_000 });
-  }
-  // Al llegar arriba, la planta activa pasó a ser la de arriba.
+  // Adentro, la botonera: E muestra los pisos; elegir uno los cierra y el ascensor parte.
+  const hint = page.getByTestId('elevator-hint');
+  await expect(hint).toHaveAttribute('data-elevator-action', 'panel', { timeout: 30_000 });
+  await page.keyboard.press('KeyE');
+  await expect(page.getByTestId('elevator-panel')).toBeVisible();
+  await expect(page.getByTestId('elevator-stop-1')).toBeDisabled();
+  await page.getByTestId('elevator-stop-2').click();
+  await expect(page.getByTestId('elevator-panel')).toBeHidden();
+
+  // Llega arriba: la botonera ya marca el Piso 2 como el actual.
+  await expect(hint).toHaveAttribute('data-elevator-stop', 'Piso 2', { timeout: 20_000 });
+  await expect(hint).toHaveAttribute('data-elevator-action', 'panel');
+  await page.keyboard.press('KeyE');
+  await expect(page.getByTestId('elevator-stop-2')).toBeDisabled({ timeout: 20_000 });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('elevator-panel')).toBeHidden();
+
+  // La planta activa pasó a ser la de arriba.
   await page.getByTestId('mode-edit').click();
   await page.getByTestId('tab-rooms').click();
   await expect(select.locator('option:checked')).toHaveText('Piso 2');

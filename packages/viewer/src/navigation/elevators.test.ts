@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { planToWorld } from '../coords';
 import { levelSlab } from '../scene/slabs';
 import {
-  elevatorGateColliders,
+  elevatorDoorColliders,
   elevatorPlatformCollider,
   groundCollider,
   itemColliders,
@@ -26,7 +26,8 @@ import {
   currentStop,
   ELEVATOR_SPEED,
   elevatorUnder,
-  gatedStops,
+  closedStops,
+  elevatorAction,
   projectElevators,
 } from './elevators';
 import { NO_MOVEMENT } from './input';
@@ -75,17 +76,48 @@ describe('ascensores', () => {
     ]);
     const store = createElevatorStore();
     expect(currentStop(elevator!, store.get(elevator!.id))?.name).toBe('Piso 1');
-    expect(gatedStops(elevator!, store.get(elevator!.id)).map((s) => s.name)).toEqual([
+    // Abajo, con las puertas abiertas; arriba, cerradas.
+    expect(closedStops(elevator!, store.get(elevator!.id)).map((s) => s.name)).toEqual([
       'Piso 2',
       'Piso 3',
     ]);
     store.travel(elevator!.id, 2800);
-    // Mientras viaja, todas las paradas tienen reja.
+    // Primero cierra las puertas (sin moverse) y recién entonces viaja.
+    store.step(1);
+    expect(store.get(elevator!.id)).toMatchObject({ offset: 0, door: 0 });
+    expect(closedStops(elevator!, store.get(elevator!.id))).toHaveLength(3);
     store.step(1);
     expect(store.get(elevator!.id).offset).toBe(ELEVATOR_SPEED);
-    expect(gatedStops(elevator!, store.get(elevator!.id))).toHaveLength(3);
     store.step(5);
     expect(currentStop(elevator!, store.get(elevator!.id))?.name).toBe('Piso 2');
+    // Al llegar abre las puertas de esa parada.
+    store.step(1);
+    expect(closedStops(elevator!, store.get(elevator!.id)).map((s) => s.name)).toEqual([
+      'Piso 1',
+      'Piso 3',
+    ]);
+  });
+
+  it('desde afuera, frente a sus puertas cerradas, se lo llama; adentro, se usa la botonera', () => {
+    const [elevator] = projectElevators(building().levels);
+    const store = createElevatorStore();
+    store.travel(elevator!.id, 5600);
+    store.step(1);
+    store.step(10);
+    store.step(1);
+    // La puerta mira al sur (y menor): en el Piso 1, al sur del ascensor, mirando al norte.
+    const call = elevatorAction([elevator!], store, { x: 2000, y: 1800 }, 0, { x: 0, y: 1 });
+    expect(call).toMatchObject({ action: 'call', stop: { name: 'Piso 1' } });
+    // De espaldas, no.
+    expect(elevatorAction([elevator!], store, { x: 2000, y: 1800 }, 0, { x: 0, y: -1 })).toBeNull();
+    store.travel(elevator!.id, call!.stop.offset);
+    store.step(1);
+    store.step(10);
+    store.step(1);
+    // Ya está aquí con las puertas abiertas: nada que llamar; adentro, mirando la botonera.
+    expect(elevatorAction([elevator!], store, { x: 2000, y: 1800 }, 0, { x: 0, y: 1 })).toBeNull();
+    const panel = elevatorAction([elevator!], store, { x: 2000, y: 3000 }, 0, { x: 1, y: -0.5 });
+    expect(panel).toMatchObject({ action: 'panel', stop: { name: 'Piso 1' } });
   });
 
   it('se sabe quién está en la plataforma (en planta y a su altura)', () => {
@@ -102,7 +134,8 @@ describe('ascensores', () => {
     const [elevator] = projectElevators(project.levels);
     const store = createElevatorStore();
     store.travel(elevator!.id, 2800);
-    store.step(10);
+    // Cierra, viaja y abre.
+    for (let i = 0; i < 3; i++) store.step(10);
 
     const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
     const fixed = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
@@ -125,7 +158,8 @@ describe('ascensores', () => {
       }
     }
     add(elevatorPlatformCollider(elevator!, store.get(elevator!.id).offset));
-    elevatorGateColliders(elevator!, store.get(elevator!.id)).forEach(add);
+    const closed = new Set(closedStops(elevator!, store.get(elevator!.id)).map((s) => s.levelId));
+    elevatorDoorColliders(elevator!, (stop) => closed.has(stop.levelId)).forEach(add);
 
     const dims = capsuleDimensions(DEFAULT_PERSON);
     const controller = world.createCharacterController(0.02);

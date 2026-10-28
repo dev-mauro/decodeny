@@ -14,7 +14,7 @@ import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
 import { PROJECT_TEMPLATES } from '@/features/samples/templates';
 import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch';
 import { DoorHint } from '@/features/navigation/DoorHint';
-import { ElevatorPanel } from '@/features/navigation/ElevatorPanel';
+import { ElevatorHint, ElevatorPanel } from '@/features/navigation/ElevatorPanel';
 import { switchLevel } from '@/features/levels/level-actions';
 import { PresentationBar } from '@/features/presentation/PresentationBar';
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
@@ -106,6 +106,11 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const sectionMode = useUiStore((s) => s.sectionMode);
   const setNearbyDoor = useUiStore((s) => s.setNearbyDoor);
   const setNearbyElevator = useUiStore((s) => s.setNearbyElevator);
+  const openElevatorMenu = useCallback(() => {
+    // Para elegir con el mouse, se libera.
+    if (document.pointerLockElement) document.exitPointerLock();
+    useUiStore.getState().setElevatorMenu(true);
+  }, []);
   const measuring = useUiStore((s) => s.measuring);
   const measurePoints = useUiStore((s) => s.measurePoints);
   const editingFinish = useUiStore((s) => s.finishEditors > 0);
@@ -228,6 +233,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 onNearbyDoor={setNearbyDoor}
                 onLevelChange={switchLevel}
                 onNearbyElevator={setNearbyElevator}
+                onElevatorPanel={openElevatorMenu}
                 walkStart={walkStart}
                 headBob={headBob}
                 touchControls={touchControls}
@@ -243,6 +249,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
 
       <WalkOverlay viewerRef={viewerRef} />
       <DoorHint viewerRef={viewerRef} />
+      <ElevatorHint viewerRef={viewerRef} />
       <ElevatorPanel viewerRef={viewerRef} />
 
       <div className="absolute top-3 left-3 flex flex-wrap gap-2">

@@ -33,9 +33,16 @@ import {
 import { armchair, chairDining, chairOffice, sofaL, sofaStraight } from './seating';
 import { stairL, stairSpiral, stairStraight, stairU } from './stairs';
 
-export { elevator, structureVoid } from './structure';
+export {
+  ELEVATOR_DOOR,
+  elevator,
+  elevatorFinish,
+  elevatorMetal,
+  structureVoid,
+  type ElevatorFinish,
+} from './structure';
 import { dresser, shelf, wardrobe } from './storage';
-import { elevator, structureVoid } from './structure';
+import { elevator, elevatorMetal, structureVoid } from './structure';
 import { tableCoffee, tableRect, tableRound } from './tables';
 
 /**
@@ -83,6 +90,7 @@ export const itemCatalog = new Registry<AnyItemDefinition>('item').register(
   stairSpiral,
   structureVoid,
   elevator,
+  elevatorMetal,
 );
 
 /** Orden de las categorías en el panel de catálogo. */

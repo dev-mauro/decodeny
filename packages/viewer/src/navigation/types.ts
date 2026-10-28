@@ -23,6 +23,10 @@ export interface NavigationModeProps {
   readonly onLevelChange?: ((levelId: string) => void) | undefined;
   /** El ascensor en el que está la persona, detenido en una parada, o `null`. */
   readonly onNearbyElevator?: ((elevator: NearbyElevator | null) => void) | undefined;
+  /** Se usó la botonera del ascensor en el que está la persona (la interfaz ofrece los pisos). */
+  readonly onElevatorPanel?: (() => void) | undefined;
+  /** El modo deja aquí cómo usar el ascensor al alcance (ver `ViewerApi.interactElevator`). */
+  readonly elevatorRef?: RefObject<(() => boolean) | null> | undefined;
   /** El modo deja aquí cómo viajar en ascensor a una planta (ver `ViewerApi.travel`). */
   readonly travelRef?: RefObject<((levelId: string) => boolean) | null> | undefined;
   readonly bounds: Box3 | null;

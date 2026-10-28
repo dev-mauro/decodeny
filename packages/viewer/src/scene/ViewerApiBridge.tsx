@@ -14,6 +14,8 @@ export interface ViewerApi {
   toggleDoor?(): boolean;
   /** Recorrido: viaja en el ascensor en el que está la persona a esa planta. Devuelve si pudo. */
   travel?(levelId: string): boolean;
+  /** Recorrido: usa el ascensor al alcance (lo llama o abre su botonera). Devuelve si había uno. */
+  interactElevator?(): boolean;
   /** Recorrido y vuelo: captura el mouse para mirar (debe llamarse desde un gesto del usuario). */
   lockPointer?(): void;
 }
@@ -30,10 +32,12 @@ export function ViewerApiBridge({
   apiRef,
   toggleDoorRef,
   travelRef,
+  elevatorRef,
 }: {
   readonly apiRef: Ref<ViewerApi> | undefined;
   readonly toggleDoorRef?: RefObject<(() => boolean) | null>;
   readonly travelRef?: RefObject<((levelId: string) => boolean) | null>;
+  readonly elevatorRef?: RefObject<(() => boolean) | null>;
 }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -57,6 +61,7 @@ export function ViewerApiBridge({
       }),
     toggleDoor: () => toggleDoorRef?.current?.() ?? false,
     travel: (levelId: string) => travelRef?.current?.(levelId) ?? false,
+    interactElevator: () => elevatorRef?.current?.() ?? false,
     lockPointer: () => {
       if (document.pointerLockElement !== gl.domElement) void gl.domElement.requestPointerLock();
     },

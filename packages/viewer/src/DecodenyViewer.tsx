@@ -136,6 +136,8 @@ export interface DecodenyViewerProps {
    * o `null`. Se viaja con `ViewerApi.travel`.
    */
   readonly onNearbyElevator?: (elevator: NearbyElevator | null) => void;
+  /** Recorrido: se usó la botonera del ascensor (la aplicación muestra los pisos para elegir). */
+  readonly onElevatorPanel?: () => void;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -225,6 +227,7 @@ export function DecodenyViewer({
   onNearbyDoor,
   onLevelChange,
   onNearbyElevator,
+  onElevatorPanel,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -271,6 +274,7 @@ export function DecodenyViewer({
   const elevatorStore = useMemo(() => (doorSession ? createElevatorStore() : null), [doorSession]);
   const toggleDoorRef = useRef<(() => boolean) | null>(null);
   const travelRef = useRef<((levelId: string) => boolean) | null>(null);
+  const elevatorRef = useRef<(() => boolean) | null>(null);
   // Ascensores de las plantas que se ven (la plataforma y las rejas las dibuja `ElevatorCars`).
   const elevators = useMemo(() => {
     const visible = new Set([level?.id, ...contextLevels.map((l) => l.id)]);
@@ -311,7 +315,12 @@ export function DecodenyViewer({
               gridElevation={level?.elevation ?? 0}
             />
             <FirstFrame onFrame={() => setReady(true)} />
-            <ViewerApiBridge apiRef={apiRef} toggleDoorRef={toggleDoorRef} travelRef={travelRef} />
+            <ViewerApiBridge
+              apiRef={apiRef}
+              toggleDoorRef={toggleDoorRef}
+              travelRef={travelRef}
+              elevatorRef={elevatorRef}
+            />
             <ElevatorCars elevators={elevators} />
             <ContextLossGuard onRestored={onGraphicsRestored} />
             <CameraFov fov={mode.fov} />
@@ -378,7 +387,9 @@ export function DecodenyViewer({
                   slabs={slabs}
                   onLevelChange={onLevelChange}
                   onNearbyElevator={onNearbyElevator}
+                  onElevatorPanel={onElevatorPanel}
                   travelRef={travelRef}
+                  elevatorRef={elevatorRef}
                   bounds={bounds}
                   selection={selection}
                   profile={personProfile}

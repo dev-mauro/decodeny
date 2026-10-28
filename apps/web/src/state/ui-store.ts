@@ -109,6 +109,8 @@ interface UiState {
   readonly nearbyDoor: NearbyDoor | null;
   /** Recorrido: el ascensor en el que está la persona (para ofrecer los pisos). */
   readonly nearbyElevator: NearbyElevator | null;
+  /** Recorrido: la botonera del ascensor abierta (los pisos para elegir). */
+  readonly elevatorMenu: boolean;
   /** Corte de muros: toda la envolvente o solo los muros que tapan el interior (se recuerda). */
   readonly sectionMode: SectionMode;
   /** `additive` (Shift, Ctrl o Cmd): suma o quita de la selección en vez de reemplazarla. */
@@ -141,6 +143,7 @@ interface UiState {
   readonly setSectionMode: (mode: SectionMode) => void;
   readonly setNearbyDoor: (door: NearbyDoor | null) => void;
   readonly setNearbyElevator: (elevator: NearbyElevator | null) => void;
+  readonly setElevatorMenu: (open: boolean) => void;
 }
 
 const HEAD_BOB_KEY = 'decodeny.headBob';
@@ -210,9 +213,16 @@ export const useUiStore = create<UiState>()((set) => ({
   sectionMode: readSectionMode(),
   nearbyDoor: null,
   nearbyElevator: null,
+  elevatorMenu: false,
   presenting: false,
   setNearbyDoor: (nearbyDoor) => set({ nearbyDoor }),
-  setNearbyElevator: (nearbyElevator) => set({ nearbyElevator }),
+  // Al salir de la cabina (o al partir), la botonera se cierra.
+  setNearbyElevator: (nearbyElevator) =>
+    set((s) => ({
+      nearbyElevator,
+      elevatorMenu: nearbyElevator?.action === 'panel' ? s.elevatorMenu : false,
+    })),
+  setElevatorMenu: (elevatorMenu) => set({ elevatorMenu }),
   select: (target, options) => set((s) => nextSelection(s, target, options?.additive)),
   selectMany: (targets, additive) => set((s) => selectMany(s, targets, additive)),
   setCreateRoomOpen: (createRoomOpen) => set({ createRoomOpen }),

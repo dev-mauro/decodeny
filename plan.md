@@ -1,6 +1,6 @@
 # Decodeny — Plan de desarrollo
 
-> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10 ✅ · I11–I12 planificadas · I13–I14 pendientes/opcionales (de I14, adelantados: presentación y puertas en el recorrido).
+> **Estado (2026-10-27):** I0 ✅ · I1 ✅ · I2 ✅ · muros compartidos y arrastre (adelantados de I7) ✅ · I3 ✅ · I4 ✅ · I5 ✅ · I6 ✅ · I7 ✅ · I8 🟡 (errores, WebGL, movimiento reducido, inglés, PWA/offline, presupuestos de bundle, carga inicial y draw calls en CI y móvil/táctil ✅; pendientes: telemetría y reporte de errores —requieren un servicio externo— y la meta de < 300 draw calls con 80 muebles —requiere agrupar muebles—) · colaboración en tiempo real ✅ (ADR-0011) · **Fase 2 (§11):** I9 ✅ · I10 ✅ · I10b iluminación e I10c salas de colaboración planificadas (antes de I11) · I11–I12 planificadas · I13–I14 pendientes/opcionales (de I14, adelantados: presentación y puertas en el recorrido).
 
 > Aplicación web para modelar departamentos y casas a partir de medidas, recorrerlos en primera persona o en vuelo libre, y amoblarlos/decorarlos con elementos paramétricos.
 
@@ -715,6 +715,57 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
 - Crear el proyecto de Firebase en plan Spark con Firestore y Auth anónima.
 - Cargar el secreto `FIREBASE_SERVICE_ACCOUNT` y las variables web.
 - Decidir las preguntas abiertas del ADR-0012.
+
+### I10b — Iluminación sin parpadeos (M) — antes de I11
+
+**Diagnóstico** (capturas y código, 2026-10-28):
+
+- **Parpadeo de día:** bajo los pisos hay un plano que recibe la sombra del sol (`shadowMaterial`, a −4 mm) y la cuadrícula decorativa (a −2 mm). El piso, además, se empuja hacia atrás en profundidad (`polygonOffset`) para que las alfombras ganen, así que queda pegado a ese plano.
+  - La cámara usa `near` 0,05 m y `far` 2000 m (relación 1:40 000): a distancia de edición, la precisión de profundidad no separa milímetros.
+  - El plano de sombra solo dibuja algo con sol, por eso parpadea de día y no de noche.
+- **Alfombra que «pelea»:** es la misma falta de precisión. Una alfombra de pocos milímetros sobre el piso se alterna con él al orbitar.
+- **Sombras raras:**
+  - El cuadro de sombra del sol es un cuadrado fijo (2,6 × radio de la escena) con sesgos fijos: aparece _acne_ (rayas que tiemblan al mover la cámara) y despegues.
+  - Los mapas de sombra (el sol y hasta 3 luminarias con mapa cúbico de 6 caras) **se vuelven a dibujar en cada cuadro** del recorrido, aunque nada se mueva.
+- **Interior plano en el recorrido:** tres rellenos uniformes sumados (ambiente 0,45 + hemisferio 0,75 + entorno 0,55) borran el contraste. Además, los muebles no «apoyan»: no hay oscurecimiento de contacto.
+
+**Plan** (cada punto neutro o positivo en rendimiento):
+
+1. **Rango de profundidad ajustado:** en edición y vuelo, `near` y `far` se calculan con la distancia de la cámara y el tamaño del nivel (p. ej. `near` = distancia/250, `far` = distancia + 4 × radio). En el recorrido, `far` = 4 × radio del nivel. Gana 10–100× de precisión. Costo cero.
+2. **Capas del suelo separadas de verdad:** el plano de sombra y la cuadrícula decorativa bajan a −2 cm / −1 cm, y el piso deja de empujarse hacia atrás. Lo plano (alfombras) se apoya 1 mm sobre el piso.
+3. **Sombra del sol encuadrada y estable:**
+   - El cuadro de sombra se ajusta a la caja del nivel vista desde el sol y se alinea a la grilla de texels (no tiembla).
+   - Los sesgos se calculan con el tamaño del texel.
+   - Filtrado suave (PCF soft) de bordes.
+4. **Sombras estáticas:**
+   - Se apaga `shadowMap.autoUpdate`. Los mapas se redibujan solo cuando cambia algo: el documento, una puerta que se mueve, la luz, el día o la noche, o el nivel.
+   - Es un ahorro grande en el recorrido. Parte se reinvierte en calidad: mapa del sol de 4096 en escritorio y 2048 en móvil.
+5. **Luces con transición:**
+   - Al recalcular qué luminarias se encienden por cercanía, se interpola su intensidad en ~300 ms, en vez de que aparezcan o desaparezcan de golpe.
+   - Margen (histéresis) para que no alternen en un límite.
+6. **Equilibrio de la luz:**
+   - Menos relleno uniforme, más entorno y hemisferio.
+   - _Tone mapping_ AgX (o ACES ajustado) con exposición por modo: edición más clara, recorrido con más contraste.
+   - El sol entra por las ventanas (el vidrio no hace sombra) y deja manchas de luz en el piso.
+7. **Sombra de contacto barata:**
+   - Bajo cada mueble de piso, un cuadrado con un degradado radial (una textura y un material compartidos, instanciado).
+   - Los apoya en el piso sin postproceso, con ~1 draw call en total.
+8. **Opcional, «calidad alta» (solo escritorio, desactivado en móvil):** oclusión ambiental en pantalla (SSAO/N8AO), bajo demanda, en edición y presentación.
+
+**Aceptación:**
+
+- Tests puros: rango de profundidad, encuadre del sol, histéresis de luces.
+- E2E: con la cámara quieta, dos capturas consecutivas idénticas (sin parpadeo), y la orientación del parpadeo verificada con la alfombra del ejemplo desde lejos.
+- `perf-budget.spec.ts` sin más draw calls.
+- En el recorrido, los mapas de sombra no se redibujan con la escena quieta (se mide con `renderStats`).
+
+### I10c — Salas de colaboración con código corto (M) — ADR-0014
+
+- **Anfitrión:** crea una sala con un código de 6 letras y comparte el código o el enlace `?sala=…`.
+- **Invitado:** escribe el código. Su oferta WebRTC y la respuesta del anfitrión viajan por Firestore, sin copiar ni pegar.
+- **Seguridad:** las solicitudes las leen solo el invitado y el anfitrión, y se borran al conectar. Las salas vencen y las borra la limpieza diaria.
+- **Alternativa:** la conexión a mano queda disponible para cuando no hay nube.
+- **Aceptación:** tests de reglas en el emulador; E2E con dos navegadores que se unen por código.
 
 ### I11 — Muebles personalizados (L) — ADR-0013
 

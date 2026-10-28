@@ -1,6 +1,8 @@
 import { DomainError } from '../errors';
 import { distance, type Vec2 } from '../geometry';
 import { requireLevel, requireWall, roomEdges } from '../model/queries';
+import type { Level } from '../model/types';
+import { fitRoomToDrawnFaces } from '../model/drawn-faces';
 import { reconcileRooms, retireRoom } from '../model/room-detection';
 import { WALL_LIMITS } from '../model/schema';
 import { insertCrossingNodes, normalizeTopology } from '../model/topology';
@@ -30,6 +32,12 @@ export interface AddWallArgs {
   readonly height?: number;
   /** Nombre base de los recintos que se cierren con este muro; sin él no se detectan recintos. */
   readonly roomName?: string;
+  /**
+   * Dibujo con el lápiz: los puntos de la cadena en curso (incluidos `from` y `to`). Lo dibujado
+   * es la cara interior: si este tramo cierra un espacio, sus muros recién dibujados se corren
+   * hacia afuera medio espesor (ver `fitRoomToDrawnFaces`).
+   */
+  readonly chain?: readonly Vec2[];
 }
 
 /**
@@ -70,10 +78,31 @@ export const addWall = defineCommand<AddWallArgs, RoomDetectionResult>(
       args.roomName !== undefined
         ? reconcileRooms(level, ctx.ids, { baseName: args.roomName })
         : [];
+    if (args.chain && roomIds.length > 0) fitDrawnRooms(level, roomIds, args.chain);
     assertLevelGeometry(level);
     return { roomIds };
   },
 );
+
+/**
+ * Ajusta los recintos recién cerrados a las caras dibujadas. Si el resultado no fuera válido (p. ej.
+ * un recinto más angosto que sus muros), se deja como estaba: el muro igual se agrega.
+ */
+function fitDrawnRooms(level: Level, roomIds: readonly string[], chain: readonly Vec2[]): void {
+  const before = new Map(level.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
+  for (const id of roomIds) {
+    const room = level.rooms.find((r) => r.id === id);
+    if (room) fitRoomToDrawnFaces(level, room, chain);
+  }
+  try {
+    assertLevelGeometry(level);
+  } catch {
+    for (const node of level.nodes) {
+      const p = before.get(node.id);
+      if (p) Object.assign(node, p);
+    }
+  }
+}
 
 /**
  * Elimina un muro y sus vanos. Los recintos que lo usaban dejan de estar cerrados y se quitan

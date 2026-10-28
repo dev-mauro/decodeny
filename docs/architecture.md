@@ -114,7 +114,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - `PlanView` (paquete `viewer`, SVG puro) es otra proyección del mismo documento: recintos con nombre y superficie, muros con huecos en los vanos, símbolos de apertura del catálogo (`plan`), muebles (los de cielo, punteados) y cotas del recinto seleccionado.
 - Comparte con la vista 3D la selección, el hover y los eventos de arrastre (`RoomDragEvent`, `ItemDragEvent`, `OpeningDragEvent`), así la app usa los mismos manejadores y ajustes. Agrega `NodeDragEvent`: arrastrar las esquinas del recinto seleccionado (`moveNode`, con `snapNodePosition` a escuadra).
 - La captura serializa el SVG a PNG; rueda = zoom hacia el cursor, arrastrar el fondo = desplazar, doble clic = encuadrar.
-- **Dibujar muros** (`tool="wall"`, tecla `W`): `snapDrawPoint` (dominio) engancha nodos, muros, direcciones cada 45° y la grilla de 1 cm; el largo se puede escribir. Cada tramo es un `addWall`, que une el muro al grafo (esquinas, T y cruces en X) y detecta recintos (ADR-0009). `deleteWall` quita un muro y vuelve a detectar (unir recintos).
+- **Dibujar muros** (`tool="wall"`, tecla `W`): `snapDrawPoint` (dominio) engancha nodos, muros, direcciones cada 45° y la grilla de 1 cm; el largo se puede escribir. Cada tramo es un `addWall`, que une el muro al grafo (esquinas, T y cruces en X) y detecta recintos (ADR-0009). `deleteWall` quita un muro y vuelve a detectar (unir recintos). Lo dibujado es la **cara interior** (ADR-0015): al cerrar un espacio, `addWall` (con la cadena dibujada, `chain`) corre sus muros nuevos medio espesor hacia afuera (`fitRoomToDrawnFaces`), así 2 × 1 m dibujados dejan 2 × 1 m libres; adosado a un muro existente, se mide desde su cara.
 
 ## Ubicar elementos nuevos (ADR-0010)
 

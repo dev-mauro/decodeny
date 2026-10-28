@@ -95,7 +95,12 @@ export interface PlanViewProps {
   /** Espesor con que se previsualiza el muro que se dibuja (mm). */
   readonly wallThickness?: number;
   /** Se dibujó un tramo de muro (eje, mm de planta). */
-  readonly onWallDraw?: (from: Vec2, to: Vec2) => void;
+  /**
+   * Un tramo dibujado. `chain`: los puntos de la cadena en curso, incluidos `from` y `to` (lo
+   * dibujado es la cara interior: al cerrar un espacio, el dominio ajusta los muros, ver
+   * `AddWallArgs.chain`).
+   */
+  readonly onWallDraw?: (from: Vec2, to: Vec2, chain: readonly Vec2[]) => void;
   /** Esc sin nada en curso: salir de la herramienta. */
   readonly onToolExit?: () => void;
   /** Hay un tramo en curso (un punto de partida puesto): habilita escribir largo y dirección. */
@@ -154,9 +159,11 @@ interface DrawState {
   readonly cursor: DrawSnap | null;
   /** Largo escrito con el teclado (p. ej. "3,5"), se confirma con Enter. */
   readonly typed: string;
+  /** Puntos de la cadena en curso (el primero es donde empezó). */
+  readonly chain: readonly Vec2[];
 }
 
-const NO_DRAW: DrawState = { from: null, cursor: null, typed: '' };
+const NO_DRAW: DrawState = { from: null, cursor: null, typed: '', chain: [] };
 const NO_GROUP: readonly ViewerSelection[] = [];
 const NO_POINTS: readonly MeasurePoint[] = [];
 const MEASURE_COLOR = '#db2777';
@@ -456,14 +463,15 @@ export function PlanView({
     // Fija el encuadre: si no, se reajustaría a cada muro nuevo y el dibujo "saltaría".
     if (!view) setView(current);
     if (!from) {
-      setDraw({ from: to.point, cursor: to, typed: '' });
+      setDraw({ from: to.point, cursor: to, typed: '', chain: [to.point] });
       return;
     }
     if (distance(from, to.point) < MIN_DRAWN_WALL) return;
-    onWallDraw?.(from, to.point);
+    const chain = [...(draw.chain.length > 0 ? draw.chain : [from]), to.point];
+    onWallDraw?.(from, to.point, chain);
     // Al llegar a un muro o nodo existente (p. ej. cerrar el contorno), la cadena termina.
     const ends = to.kind === 'node' || to.kind === 'wall';
-    setDraw({ from: ends ? null : to.point, cursor: to, typed: '' });
+    setDraw({ from: ends ? null : to.point, cursor: to, typed: '', chain: ends ? [] : chain });
   };
 
   /** Extremo del tramo según el largo escrito, en la dirección del cursor. */
@@ -652,7 +660,7 @@ export function PlanView({
         if (drag.current?.moved) return;
         consume();
         if (draw.typed !== '') setDraw((prev) => ({ ...prev, typed: '' }));
-        else if (draw.from) setDraw((prev) => ({ ...prev, from: null }));
+        else if (draw.from) setDraw((prev) => ({ ...prev, from: null, chain: [] }));
         else onToolExit?.();
       }
     };

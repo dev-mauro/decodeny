@@ -63,6 +63,8 @@ test('muros exactos con largo y dirección, sin teclado; guías al quedar parejo
     await page.getByTestId(`wall-dir-${dir}`).click();
   }
   await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
+  // Lo dibujado es la cara interior: 3 × 3 m libres entre muro y muro.
+  await expect(page.getByTestId('rooms-list')).toContainText('9,00 m²');
 
   // Un tramo paralelo más arriba muestra la guía al llegar a la x del muro existente.
   const a = await toScreen(page, 0, 3700);
@@ -72,7 +74,8 @@ test('muros exactos con largo y dirección, sin teclado; guías al quedar parejo
   await page.mouse.move(near.x, near.y);
   // (Una línea vertical tiene caja de ancho cero: se comprueba que exista, no su "visibilidad".)
   await expect(page.getByTestId('plan-draw-guide')).not.toHaveCount(0);
-  await expect(page.getByTestId('plan-draw-length')).toHaveText('3,00 m');
+  // Alineado con los ejes de los muros del cuadrado (3 m libres + medio espesor de cada lado).
+  await expect(page.getByTestId('plan-draw-length')).toHaveText('3,15 m');
 });
 
 test('corte de los que tapan: al girar la cámara se recortan otros muros', async ({ page }) => {

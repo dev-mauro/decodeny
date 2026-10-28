@@ -14,9 +14,18 @@ function announceRooms(count: number): void {
   if (count > 0) notify('success', i18next.t('viewport.roomsDetected', { count }));
 }
 
-/** Dibuja un tramo de muro en la planta; si cierra contornos, crea sus recintos. */
-export function drawWall(from: Vec2, to: Vec2): void {
-  const out = runCommand(addWall, { levelId: levelId(), from, to, roomName: roomName() });
+/**
+ * Dibuja un tramo de muro en la planta; si cierra contornos, crea sus recintos. Lo dibujado es la
+ * cara interior: al cerrar, el espacio mide entre muro y muro lo que se dibujó (`chain`).
+ */
+export function drawWall(from: Vec2, to: Vec2, chain?: readonly Vec2[]): void {
+  const out = runCommand(addWall, {
+    levelId: levelId(),
+    from,
+    to,
+    roomName: roomName(),
+    ...(chain ? { chain } : {}),
+  });
   if (out.ok) announceRooms(out.result.roomIds.length);
 }
 

@@ -77,3 +77,26 @@ test('los extremos de un muro se editan por coordenadas', async ({ page }) => {
   await endX.press('Enter');
   await expect(page.getByTestId('wall-inspector')).toContainText('3,00 m');
 });
+
+test('lo que se dibuja es el interior: 2 m × 1 m dejan 2 × 1 m libres entre muro y muro', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByTestId('empty-draw-walls').click();
+  await clickPlan(page, 0, 0);
+  for (const [length, dir] of [
+    ['2', 'right'],
+    ['1', 'up'],
+    ['2', 'left'],
+    ['1', 'down'],
+  ] as const) {
+    await page.getByTestId('wall-length').fill(length);
+    await page.getByTestId(`wall-dir-${dir}`).click();
+  }
+  await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
+  // Antes quedaba (2 − 0,15) × (1 − 0,15) = 1,57 m².
+  await expect(page.getByTestId('rooms-list')).toContainText('2,00 m²');
+  // Un solo paso de deshacer quita el último tramo (y el ajuste a las caras).
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByTestId('rooms-list')).toBeHidden();
+});

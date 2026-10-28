@@ -6,6 +6,7 @@ export * from './model/schema';
 export type * from './model/types';
 export * from './model/factory';
 export * from './model/queries';
+export * from './model/drawn-faces';
 export * from './model/integrity';
 export * from './model/topology';
 export * from './model/room-detection';

@@ -103,8 +103,6 @@ export interface PlanViewProps {
   readonly onWallDraw?: (from: Vec2, to: Vec2, chain: readonly Vec2[]) => void;
   /** Esc sin nada en curso: salir de la herramienta. */
   readonly onToolExit?: () => void;
-  /** Hay un tramo en curso (un punto de partida puesto): habilita escribir largo y dirección. */
-  readonly onDrawChainChange?: (active: boolean) => void;
   /** Ubicación con el puntero (mismo contrato que en la vista 3D; la altura no aplica). */
   readonly placement?: ViewerPlacement | null;
   /** Medición (mismo contrato que la vista 3D): cada clic entrega un punto (z = 0). */
@@ -217,7 +215,6 @@ export function PlanView({
   wallThickness = 150,
   onWallDraw,
   onToolExit,
-  onDrawChainChange,
   placement = null,
   onMeasurePoint,
   measurePoints = NO_POINTS,
@@ -239,10 +236,6 @@ export function PlanView({
   const measuring = onMeasurePoint !== undefined && !placing;
   const drawing = tool === 'wall' && !placing && !measuring;
   const [measureCursor, setMeasureCursor] = useState<MeasureSnap | null>(null);
-  const chainActive = drawing && draw.from !== null;
-  useEffect(() => {
-    onDrawChainChange?.(chainActive);
-  }, [chainActive, onDrawChainChange]);
   // Al dibujar o ubicar, las entidades no capturan el puntero: todo clic es para la herramienta.
   const capturing = drawing || placing || measuring;
   // La cadena en curso se descarta al cambiar de herramienta o de nivel.
@@ -447,15 +440,6 @@ export function PlanView({
           grid?.step,
         )
       : null;
-
-  /** Agrega un tramo de `length` mm en `direction` desde el punto actual (largo exacto). */
-  const drawSegment = (direction: Vec2, length: number): boolean => {
-    if (!level || !draw.from || length < MIN_DRAWN_WALL) return false;
-    const p = add(draw.from, scale(normalize(direction), length));
-    // Paso 1 mm: el largo escrito no se redondea a la cuadrícula.
-    placePoint(snapDrawPoint(level, { x: Math.round(p.x), y: Math.round(p.y) }, null, 2, false, 1));
-    return true;
-  };
 
   /** Agrega el punto: el primero empieza la cadena; los siguientes dibujan un tramo. */
   const placePoint = (to: DrawSnap) => {
@@ -711,7 +695,6 @@ export function PlanView({
   };
 
   useImperativeHandle(apiRef, () => ({
-    drawSegment,
     captureImage: async (scaleFactor = 2) => {
       const svg = svgRef.current;
       if (!svg) return null;

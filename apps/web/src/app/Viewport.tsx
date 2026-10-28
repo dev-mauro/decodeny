@@ -5,16 +5,7 @@ import {
   type ViewerCameraApi,
 } from '@decodeny/viewer';
 import { Maximize, PenLine, Plus, Sparkles, SquareDashed } from 'lucide-react';
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { useAssetStore } from '@/features/assets/asset-store';
 import { useInSession } from '@/features/collab/collab-store';
 import { shareCameraPose, useViewerPeers } from '@/features/collab/session';
@@ -37,7 +28,6 @@ import { itemsInArea } from '@/features/furniture/item-actions';
 import { useOpeningDragHandler } from '@/features/openings/use-opening-drag-handler';
 import { useNodeDragHandler } from '@/features/plan/use-node-drag-handler';
 import { PlanTools } from '@/features/plan/PlanTools';
-import { WallDrawHint } from '@/features/plan/WallDrawHint';
 import { ViewSwitch } from '@/features/plan/ViewSwitch';
 import { drawWall } from '@/features/walls/wall-actions';
 import { useRoomDragHandler } from '@/features/rooms/use-room-drag-handler';
@@ -150,7 +140,6 @@ export function Viewport({ cameraRef }: ViewportProps) {
   );
   const addMeasurePoint = useUiStore((s) => s.addMeasurePoint);
   const viewerRef = useRef<ViewerApi>(null);
-  const [drawChain, setDrawChain] = useState(false);
   // Diagnóstico de rendimiento (`?perf`): los tests de presupuesto leen el costo de dibujar.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('perf')) return;
@@ -197,7 +186,6 @@ export function Viewport({ cameraRef }: ViewportProps) {
               wallThickness={project.settings.defaultWallThickness}
               {...(readOnly ? {} : { onWallDraw: drawWall })}
               onToolExit={exitPlanTool}
-              onDrawChainChange={setDrawChain}
               placement={placement}
               measurePoints={measurePoints}
               {...(measuring ? { onMeasurePoint: addMeasurePoint } : {})}
@@ -257,7 +245,6 @@ export function Viewport({ cameraRef }: ViewportProps) {
       </div>
       {presenting && <PresentationBar />}
 
-      <WallDrawHint viewerRef={viewerRef} chainActive={drawChain} />
       {pointerHeight !== null && (
         <ToolHint
           text={t(coarse ? 'catalog.placeHintTouch' : 'catalog.placeHint')}

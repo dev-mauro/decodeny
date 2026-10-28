@@ -114,15 +114,14 @@ test('en el plano se dibuja arrastrando el dedo y soltando en cada esquina', asy
   // Primer punto: tocar. Luego, arrastrar hasta la esquina siguiente y soltar.
   await touch(plan, 'pointerdown', 1, cx - 100, cy);
   await touch(plan, 'pointerup', 1, cx - 100, cy);
-  await expect(page.getByTestId('wall-length')).toBeEnabled();
+  // Sin panel de indicaciones sobre la vista.
+  await expect(page.getByTestId('wall-draw-hint')).toBeHidden();
   await touch(plan, 'pointerdown', 1, cx - 60, cy + 4);
   await touch(plan, 'pointermove', 1, cx + 40, cy + 2);
   await expect(page.getByTestId('plan-draw-length')).toBeVisible();
   await touch(plan, 'pointermove', 1, cx + 100, cy);
   await touch(plan, 'pointerup', 1, cx + 100, cy);
   await expect.poll(walls).toBeGreaterThan(before);
-  // Las indicaciones táctiles no nombran teclas.
-  await expect(page.getByTestId('wall-draw-hint')).not.toContainText('Enter');
 });
 
 test.describe('teléfono en horizontal', () => {

@@ -10,11 +10,6 @@ export interface ViewerApi {
   captureImage(scale?: number): Promise<Blob | null>;
   /** Costo de dibujar la vista actual (solo vistas WebGL): para medir presupuestos de rendimiento. */
   renderStats?(): RenderStats;
-  /**
-   * Plano, dibujando muros: agrega un tramo de `lengthMm` en `direction` desde el punto actual.
-   * Devuelve `false` si no hay un tramo en curso.
-   */
-  drawSegment?(direction: { readonly x: number; readonly y: number }, lengthMm: number): boolean;
   /** Recorrido o vuelo: abre o cierra la puerta al alcance. Devuelve si había una. */
   toggleDoor?(): boolean;
 }

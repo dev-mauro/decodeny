@@ -423,6 +423,8 @@ export const es = {
     joinHint: 'Pega el enlace de invitación que te enviaron.',
     inviteField: 'Enlace o código de invitación',
     joinAction: 'Unirse',
+    nameRequired: 'Escribe tu nombre para unirte.',
+    connectingAction: 'Conectando…',
     joining: 'Invitación de {{name}}',
     joiningHint: 'Al unirte verás su proyecto. El tuyo queda guardado en este navegador.',
     preparing: 'Preparando la conexión…',

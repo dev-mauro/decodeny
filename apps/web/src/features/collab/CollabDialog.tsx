@@ -1,4 +1,4 @@
-import { DoorOpen, Hand, LogOut, UserPlus, Users, X } from 'lucide-react';
+import { DoorOpen, Hand, LoaderCircle, LogOut, UserPlus, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/cn';
@@ -7,7 +7,7 @@ import { CopyBox as SharedCopyBox, Field, inputClass } from '@/shared/ui/CopyBox
 import { Dialog } from '@/shared/ui/Dialog';
 import { useCollabStore, type Invite } from './collab-store';
 import { HOST_ID } from './protocol';
-import { formatRoomCode } from './room-signaling';
+import { formatRoomCode, parseRoomCode } from './room-signaling';
 import { roomsAvailable } from './rooms';
 import {
   acceptAnswer,
@@ -257,11 +257,20 @@ function JoinPanel() {
             <p className="text-xs text-slate-500">{t('collab.limitations')}</p>
           </>
         ) : (
-          <p className="text-sm text-slate-500">
-            {join.status === 'preparing'
-              ? t('collab.preparing')
-              : t('collab.roomWaiting', { name: join.hostName })}
-          </p>
+          <>
+            <p className="text-sm text-slate-500">
+              {join.status === 'preparing'
+                ? t('collab.preparing')
+                : t('collab.roomWaiting', { name: join.hostName })}
+            </p>
+            {/* Sigue claro que se está conectando. */}
+            <JoinButton
+              enabled={false}
+              busy
+              onJoin={() => undefined}
+              testId="collab-room-connecting"
+            />
+          </>
         )}
       </div>
     );
@@ -295,15 +304,62 @@ function JoinPanel() {
   );
 }
 
+/** Bajo un botón de unirse sin nombre: por qué no se puede todavía. */
+function NameRequired({ show }: { readonly show: boolean }) {
+  const { t } = useTranslation();
+  if (!show) return null;
+  return (
+    <p className="text-xs text-red-600" role="alert" data-testid="collab-name-required">
+      {t('collab.nameRequired')}
+    </p>
+  );
+}
+
+/** Botón de unirse: deshabilitado hasta que se pueda, y mientras se conecta lo dice. */
+function JoinButton({
+  enabled,
+  busy,
+  onJoin,
+  testId,
+}: {
+  readonly enabled: boolean;
+  readonly busy: boolean;
+  readonly onJoin: () => void;
+  readonly testId: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Button
+      variant="primary"
+      disabled={!enabled || busy}
+      aria-busy={busy}
+      icon={busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : undefined}
+      onClick={onJoin}
+      data-testid={testId}
+      data-busy={busy || undefined}
+    >
+      {t(busy ? 'collab.connectingAction' : 'collab.joinAction')}
+    </Button>
+  );
+}
+
 /** Inicio con salas: crear una (con código) o unirse escribiendo el código. */
 function RoomStart({ name, ready }: { readonly name: string; readonly ready: boolean }) {
   const { t } = useTranslation();
   const prefilled = useCollabStore((s) => s.roomCode);
   const [code, setCode] = useState(prefilled ?? '');
   const [error, setError] = useState<CollabErrorKey | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Se puede unir con nombre y un código completo.
+  const valid = ready && parseRoomCode(code) !== null;
   const join = async () => {
+    if (!valid || busy) return;
     rememberName(name);
-    setError(await joinRoom(code, name));
+    setBusy(true);
+    setError(null);
+    const failure = await joinRoom(code, name);
+    setBusy(false);
+    setError(failure);
   };
   return (
     <>
@@ -340,7 +396,7 @@ function RoomStart({ name, ready }: { readonly name: string; readonly ready: boo
               placeholder={t('collab.roomCodePlaceholder')}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && ready && code.trim()) void join();
+                if (e.key === 'Enter') void join();
               }}
               className={cn(inputClass, 'h-10 text-center font-mono text-lg tracking-widest')}
               data-testid="collab-room-input"
@@ -348,14 +404,13 @@ function RoomStart({ name, ready }: { readonly name: string; readonly ready: boo
           )}
         </Field>
         <ErrorText error={error} />
-        <Button
-          variant={prefilled ? 'primary' : 'secondary'}
-          disabled={!ready || code.trim() === ''}
-          onClick={() => void join()}
-          data-testid="collab-room-join"
-        >
-          {t('collab.joinAction')}
-        </Button>
+        <JoinButton
+          enabled={valid}
+          busy={busy}
+          onJoin={() => void join()}
+          testId="collab-room-join"
+        />
+        <NameRequired show={!ready} />
       </section>
     </>
   );
@@ -368,10 +423,15 @@ function StartPanel() {
   const [name, setName] = useState(storedName);
   const [invite, setInvite] = useState('');
   const [error, setError] = useState<CollabErrorKey | null>(null);
+  const [busy, setBusy] = useState(false);
   const ready = name.trim() !== '';
   const join = async (text: string) => {
     rememberName(name);
-    setError(await prepareJoin(text, name));
+    setBusy(true);
+    setError(null);
+    const failure = await prepareJoin(text, name);
+    setBusy(false);
+    setError(failure);
   };
 
   return (
@@ -395,14 +455,13 @@ function StartPanel() {
         <section className="flex flex-col gap-2">
           <p className="text-sm text-slate-600">{t('collab.joiningHint')}</p>
           <ErrorText error={error} />
-          <Button
-            variant="primary"
-            disabled={!ready}
-            onClick={() => void join(joinCode)}
-            data-testid="collab-join"
-          >
-            {t('collab.joinAction')}
-          </Button>
+          <JoinButton
+            enabled={ready}
+            busy={busy}
+            onJoin={() => void join(joinCode)}
+            testId="collab-join"
+          />
+          <NameRequired show={!ready} />
         </section>
       ) : (
         <>
@@ -438,13 +497,13 @@ function StartPanel() {
               )}
             </Field>
             <ErrorText error={error} />
-            <Button
-              disabled={!ready || invite.trim() === ''}
-              onClick={() => void join(invite)}
-              data-testid="collab-join"
-            >
-              {t('collab.joinAction')}
-            </Button>
+            <JoinButton
+              enabled={ready && invite.trim() !== ''}
+              busy={busy}
+              onJoin={() => void join(invite)}
+              testId="collab-join"
+            />
+            <NameRequired show={!ready} />
           </section>
         </>
       )}

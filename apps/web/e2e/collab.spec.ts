@@ -98,3 +98,20 @@ test('una invitación inválida se informa', async ({ page }) => {
   await page.getByTestId('collab-join').click();
   await expect(page.getByTestId('collab-error')).toBeVisible();
 });
+
+test('unirse queda deshabilitado (y lo explica) hasta tener nombre e invitación', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openCollab(page);
+  const join = page.getByTestId('collab-join');
+  await expect(join).toBeDisabled();
+  await expect(page.getByTestId('collab-name-required')).toHaveText(
+    'Escribe tu nombre para unirte.',
+  );
+  await page.getByTestId('collab-name').fill('Ana');
+  await expect(page.getByTestId('collab-name-required')).toBeHidden();
+  await expect(join).toBeDisabled();
+  await page.getByTestId('collab-invite-input').fill('hola');
+  await expect(join).toBeEnabled();
+});

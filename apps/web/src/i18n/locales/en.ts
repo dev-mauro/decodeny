@@ -424,6 +424,8 @@ export const en: Translation<Resources> = {
     joinHint: 'Paste the invitation link you received.',
     inviteField: 'Invitation link or code',
     joinAction: 'Join',
+    nameRequired: 'Type your name to join.',
+    connectingAction: 'Connecting…',
     joining: 'Invitation from {{name}}',
     joiningHint: 'When you join you will see their project. Yours stays saved in this browser.',
     preparing: 'Preparing the connection…',

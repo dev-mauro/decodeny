@@ -82,6 +82,9 @@ test('se crea una sala y varias personas se unen con el código', async ({ brows
 test('un código que no existe se informa; a mano sigue disponible', async ({ page }) => {
   await page.goto('/');
   await openCollab(page, 'Beto');
+  // Con un código incompleto, no se puede.
+  await page.getByTestId('collab-room-input').fill('ZZZ');
+  await expect(page.getByTestId('collab-room-join')).toBeDisabled();
   await page.getByTestId('collab-room-input').fill('ZZZ-ZZZ');
   await page.getByTestId('collab-room-join').click();
   await expect(page.getByTestId('collab-error')).toContainText('No hay una sala abierta');

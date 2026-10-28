@@ -9,10 +9,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Versión de Ubuntu fija (no `ubuntu-latest`): los E2E dependen del WebGL por software del
+# runner y un cambio de imagen no debe romperlos sin aviso. Se actualiza a propósito.
 jobs:
   check:
     name: Lint, tipos y tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,7 +33,7 @@ jobs:
 
   cloud:
     name: Reglas de Firestore y limpieza (emulador)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -49,7 +51,7 @@ jobs:
 
   e2e:
     name: E2E (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@v4

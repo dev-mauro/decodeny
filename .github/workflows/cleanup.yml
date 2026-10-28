@@ -25,7 +25,7 @@ concurrency:
 jobs:
   cleanup:
     name: Borrar lo vencido
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Cuenta de servicio con el rol «Usuario de Cloud Datastore».
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

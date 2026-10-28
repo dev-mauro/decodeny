@@ -18,7 +18,7 @@ concurrency:
 jobs:
   deploy:
     name: Probar y desplegar reglas e índices
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Cuenta de servicio con roles «Administrador de reglas de Firebase» y «Administrador de
       # índices de Cloud Datastore» (no la de limpieza: cada una con lo justo).

@@ -37,6 +37,7 @@ import { ContactShadows } from './ContactShadows';
 import { ItemView } from './ItemView';
 import { itemGroupOf, type ItemGroup } from './item-groups';
 import { LevelLights } from './LevelLights';
+import { measureOutlines } from '../plan/measure-snap';
 import { MeasureClicks } from './MeasureClicks';
 import type { MeasurePoint } from './measure';
 import { MeasureOverlay } from './MeasureOverlay';
@@ -131,6 +132,11 @@ export function LevelView({
   const drag = usePlaneDrag();
 
   const footprints = useMemo(() => levelWallFootprints(level), [level]);
+  // Bordes a los que se pega la regla (caras interiores de los espacios y muebles).
+  const measureTargets = useMemo(
+    () => (measuring ? measureOutlines(level) : []),
+    [level, measuring],
+  );
   // Corte de los que tapan: qué muros se recortan según la cámara (`null`: aún sin calcular).
   const cutaway = !context && sectionHeight !== null && sectionMode === 'facing';
   const exposure = useMemo(() => (cutaway ? levelWallExposure(level) : null), [cutaway, level]);
@@ -321,7 +327,12 @@ export function LevelView({
   return (
     <group ref={groupRef} name={`level:${level.id}`} position-y={level.elevation / 1000}>
       {measuring && (
-        <MeasureClicks target={groupRef} elevation={level.elevation} onPoint={onMeasurePoint} />
+        <MeasureClicks
+          target={groupRef}
+          elevation={level.elevation}
+          outlines={measureTargets}
+          onPoint={onMeasurePoint}
+        />
       )}
       {level.walls.map((wall) => {
         const footprint = footprints.get(wall.id);

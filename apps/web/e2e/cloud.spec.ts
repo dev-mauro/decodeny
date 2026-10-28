@@ -103,7 +103,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
 
 test('un enlace que no existe avisa y abre lo propio', async ({ page }) => {
   await page.goto('/?maqueta=no-existe');
-  await expect(page.getByText('La maqueta compartida no existe o venció.')).toBeVisible({
+  await expect(page.getByText('Este enlace no existe o ya desapareció.')).toBeVisible({
     timeout: 20_000,
   });
   await expect(page.getByTestId('visit-badge')).toBeHidden();

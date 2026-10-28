@@ -115,7 +115,7 @@ export function ShareDialog() {
             <p>{t('share.intro')}</p>
             {binding.kind === 'visit' && <p className="font-medium">{t('share.visitFirst')}</p>}
             <ul className="flex list-disc flex-col gap-1 pl-5 text-slate-600">
-              <li>{t('share.rules')}</li>
+              <li>{t('share.anyone')}</li>
               <li>{t('share.expiry')}</li>
               <li>{t('share.privacy')}</li>
             </ul>
@@ -136,9 +136,11 @@ export function ShareDialog() {
               rows={2}
             />
             <p className="text-slate-600" data-testid="share-status">
-              {t(`share.status.${status}`)} · {t('share.synced')}
+              {t(`share.status.${status}`)}
             </p>
-            <p className="text-xs text-slate-500">{t('share.expiry')}</p>
+            <p className="text-xs text-slate-500">
+              {t('share.anyone')} {t('share.expiry')}
+            </p>
           </>
         )}
       </div>

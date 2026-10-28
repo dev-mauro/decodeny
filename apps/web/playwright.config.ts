@@ -18,6 +18,8 @@ export default defineConfig({
   // WebGL por software (SwiftShader) y la vista 3D cargada bajo demanda: con varios workers el
   // primer render puede tardar más que los 5 s por defecto.
   expect: { timeout: 10_000 },
+  // En CI la vista 3D puede tardar hasta ~30 s en su primer cuadro (ver `waitForScene`).
+  timeout: isCI ? 60_000 : 30_000,
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',

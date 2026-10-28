@@ -1,8 +1,8 @@
 // Service worker de Decodeny: la aplicación funciona sin conexión.
 // El build inserta la versión de la caché y la lista de archivos (ver `serviceWorker()` en vite.config.ts).
-const CACHE = 'decodeny-ab98c00052ea';
+const CACHE = 'decodeny-d8ee3a512a16';
 /** @type {string[]} */
-const PRECACHE = ["index.html","assets/PersonMode-k-3CZ8GU.js","assets/canvas-TL2DTO99.js","assets/cloud-CIDId6-W.js","assets/firebase-backend-CPnbJcM2.js","assets/index-BCAij7p4.js","assets/index-D989JySS.css","assets/item-thumbnails-8zo7u07K.js","assets/part-geometry-D6AWSwTO.js","assets/r3f-Dmlb-Kjf.js","assets/three-COrgbxsN.js","assets/vendor-C3teOI_o.js","favicon.svg","manifest.webmanifest"];
+const PRECACHE = ["index.html","assets/PersonMode-DB7hN2mF.js","assets/app-BCq1XrmU.js","assets/canvas-D_RY7u_x.js","assets/cloud-V9f72Hlm.js","assets/firebase-backend-zOPrnJgC.js","assets/index-CdU2qeMx.js","assets/index-Cpt3teN7.css","assets/item-thumbnails-s6NjFEZq.js","assets/part-geometry-BKygNyY9.js","assets/r3f-CLcHxA2U.js","assets/rooms-jR4jrYzo.js","assets/three-DvdRK6n5.js","assets/vendor-BznljI30.js","favicon.svg","manifest.webmanifest"];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));

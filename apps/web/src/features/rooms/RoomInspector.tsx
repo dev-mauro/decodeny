@@ -6,6 +6,7 @@ import {
   moveRoom,
   renameRoom,
   roomEdges,
+  setRoomUninhabitable,
   roomMetrics,
   roomSides,
   roomsOfWall,
@@ -101,6 +102,20 @@ export function RoomInspector({ level, room }: RoomInspectorProps) {
           </dd>
         </div>
       </dl>
+
+      <label className="flex items-start gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={room.uninhabitable === true}
+          onChange={(e) => run(setRoomUninhabitable, { ...ref, uninhabitable: e.target.checked })}
+          data-testid="room-uninhabitable"
+        />
+        <span>
+          <span className="font-medium">{t('inspector.uninhabitable')}</span>
+          <span className="block text-xs text-slate-500">{t('inspector.uninhabitableHint')}</span>
+        </span>
+      </label>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">

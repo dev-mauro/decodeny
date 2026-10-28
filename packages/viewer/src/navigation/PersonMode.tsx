@@ -17,6 +17,7 @@ import type { LevelSlab } from '../scene/slabs';
 import {
   chooseSpawn,
   closedDoorColliders,
+  closedRoomColliders,
   elevatorGateColliders,
   elevatorPlatformCollider,
   groundCollider,
@@ -113,10 +114,12 @@ const LevelColliders = memo(function LevelColliders({
     () => (!lowest && slab?.below ? slabCollider(level, slab.below) : null),
     [level, lowest, slab],
   );
+  const closed = useMemo(() => closedRoomColliders(level), [level]);
   return (
     <RigidBody type="fixed" colliders={false}>
       <Boxes boxes={boxes} />
       {floor && <TrimeshCollider args={[floor.vertices, floor.indices]} />}
+      {closed && <TrimeshCollider args={[closed.vertices, closed.indices]} />}
     </RigidBody>
   );
 });

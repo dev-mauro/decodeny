@@ -16,6 +16,7 @@ import {
   mmToMeters,
   pointInPolygon,
   openingEnvelope,
+  roomEdges,
   roomInteriorPolygon,
   roomsOfWall,
   scale,
@@ -147,9 +148,42 @@ export interface SpawnPoint {
   readonly yaw: number;
 }
 
-/** Recinto que contiene un punto de planta (mm), si alguno. */
+/** Recinto habitable que contiene un punto de planta (mm), si alguno. */
 export function roomAt(level: Level, p: Vec2): Room | undefined {
-  return level.rooms.find((room) => pointInPolygon(p, roomInteriorPolygon(level, room)));
+  return level.rooms.find(
+    (room) => !room.uninhabitable && pointInPolygon(p, roomInteriorPolygon(level, room)),
+  );
+}
+
+/**
+ * Los espacios no habitables no se recorren: un cerco (caras verticales por su contorno
+ * interior, del piso al cielo) tapa también sus puertas.
+ */
+export function closedRoomColliders(level: Level): TrimeshCollider | null {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const base = mmToMeters(level.elevation);
+  for (const room of level.rooms) {
+    if (!room.uninhabitable) continue;
+    const top =
+      base + mmToMeters(Math.max(...roomEdges(level, room).map((e) => e.wall?.height ?? 0)));
+    const ring = roomInteriorPolygon(level, room);
+    for (const [i, a] of ring.entries()) {
+      const b = ring[(i + 1) % ring.length]!;
+      const first = vertices.length / 3;
+      for (const [p, y] of [
+        [a, base],
+        [b, base],
+        [b, top],
+        [a, top],
+      ] as const) {
+        vertices.push(mmToMeters(p.x), y, -mmToMeters(p.y));
+      }
+      indices.push(first, first + 1, first + 2, first, first + 2, first + 3);
+    }
+  }
+  if (indices.length === 0) return null;
+  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices) };
 }
 
 /** Aparición dentro de un recinto, en su punto interior más holgado (lejos de los muebles). */
@@ -272,7 +306,8 @@ export function chooseSpawn(
       : selection
         ? roomsOfWall(level, selection.id)[0]?.id
         : undefined;
-  const room = level.rooms.find((r) => r.id === selectedRoomId) ?? level.rooms[0];
+  const habitable = level.rooms.filter((r) => !r.uninhabitable);
+  const room = habitable.find((r) => r.id === selectedRoomId) ?? habitable[0];
   if (room) return spawnInRoom(level, room, yaw);
   return { feet: [0, level.elevation / 1000, 0], yaw };
 }

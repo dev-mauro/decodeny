@@ -124,6 +124,7 @@ export const en: Translation<Resources> = {
     add: 'Add',
     none: 'No rooms yet.',
     totalArea: 'Total floor area',
+    uninhabitable: 'Not habitable',
     defaultName: 'Room {{n}}',
     baseName: 'Room',
   },
@@ -163,6 +164,9 @@ export const en: Translation<Resources> = {
     opening: 'Opening',
     name: 'Name',
     area: 'Floor area',
+    uninhabitable: 'Not habitable',
+    uninhabitableHint:
+      'Enclosed with no access, or a built-in closet: not counted in the floor area and not walkable.',
     perimeter: 'Interior perimeter',
     position: 'Position (interior corner)',
     positionX: 'X',

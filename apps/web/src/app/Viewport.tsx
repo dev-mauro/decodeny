@@ -196,6 +196,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
               apiRef={viewerRef}
               grid={grid}
               locale={i18n.language}
+              uninhabitableLabel={t('rooms.uninhabitable')}
             />
           ) : (
             <Suspense fallback={<ViewerLoading />}>

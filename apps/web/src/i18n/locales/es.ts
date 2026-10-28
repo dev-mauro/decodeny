@@ -120,6 +120,7 @@ export const es = {
     add: 'Agregar',
     none: 'Aún no hay espacios.',
     totalArea: 'Superficie útil total',
+    uninhabitable: 'No habitable',
     defaultName: 'Espacio {{n}}',
     baseName: 'Espacio',
   },
@@ -160,6 +161,9 @@ export const es = {
     opening: 'Vano',
     name: 'Nombre',
     area: 'Superficie útil',
+    uninhabitable: 'No habitable',
+    uninhabitableHint:
+      'Encerrado, sin acceso, o un clóset empotrado: no suma a la superficie útil ni se recorre.',
     perimeter: 'Perímetro interior',
     position: 'Posición (esquina interior)',
     positionX: 'X',

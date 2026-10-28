@@ -44,3 +44,15 @@ test('descarga la planta como imagen', async ({ page }) => {
   const png = await readFile(await (await downloadPromise).path());
   expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
 });
+
+test('un espacio no habitable no suma a la superficie útil y se ve rayado', async ({ page }) => {
+  await expect(page.getByTestId('total-area')).toHaveText('50,58 m²');
+  await page.getByTestId('plan-room-Baño').click();
+  await page.getByTestId('room-uninhabitable').check();
+  await expect(page.getByTestId('total-area')).toHaveText('46,62 m²');
+  await expect(page.getByRole('button', { name: /Baño/ })).toContainText('No habitable');
+  await expect(page.getByTestId('plan-room-closed-Baño')).toBeAttached();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByTestId('total-area')).toHaveText('50,58 m²');
+  await expect(page.getByTestId('plan-room-closed-Baño')).toHaveCount(0);
+});

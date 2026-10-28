@@ -175,3 +175,16 @@ export function defaultFinish(surface: SurfaceKind): ResolvedMaterial {
   }
   return m;
 }
+
+const tinted = new Map<string, ResolvedMaterial>();
+
+/** La terminación por defecto de una superficie con otro color (si admite tinte). */
+export function tintedFinish(surface: SurfaceKind, tint: string): ResolvedMaterial {
+  const key = `${surface}|${tint}`;
+  let m = tinted.get(key);
+  if (!m) {
+    m = resolveMaterial(resolveMaterialDefinition(DEFAULT_FINISHES[surface]), { tint });
+    tinted.set(key, m);
+  }
+  return m;
+}

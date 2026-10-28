@@ -354,6 +354,7 @@ export function reconcileRooms(level: Level, ids: IdFactory, options: ReconcileO
         boundary: face.cycle,
         ...(source?.room.floor !== undefined ? { floor: source.room.floor } : {}),
         ...(source?.room.ceiling !== undefined ? { ceiling: source.room.ceiling } : {}),
+        ...(source && i === 0 && source.room.uninhabitable ? { uninhabitable: true } : {}),
       };
       names.add(room.name);
       level.rooms.push(room);

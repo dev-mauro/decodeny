@@ -149,6 +149,16 @@ export const renameRoom = defineCommand<RoomRef & { readonly name: string }>(
   },
 );
 
+/** Marca el espacio como no habitable (encerrado o clóset empotrado) o como habitable. */
+export const setRoomUninhabitable = defineCommand<RoomRef & { readonly uninhabitable: boolean }>(
+  'room.setUninhabitable',
+  (draft, args) => {
+    const room = requireRoom(requireLevel(draft, args.levelId), args.roomId);
+    if (args.uninhabitable) room.uninhabitable = true;
+    else delete room.uninhabitable;
+  },
+);
+
 /** Elimina el recinto, sus muebles y los muros, vanos y nodos que solo él usaba. */
 export const deleteRoom = defineCommand<RoomRef>('room.delete', (draft, args, ctx) => {
   const level = requireLevel(draft, args.levelId);

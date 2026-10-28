@@ -22,7 +22,8 @@ export function RoomsPanel() {
     () => level.rooms.map((room) => ({ room, area: roomMetrics(level, room).area })),
     [level],
   );
-  const total = rooms.reduce((sum, r) => sum + r.area, 0);
+  // Lo no habitable (encerrado, clóset empotrado) no suma a la superficie útil.
+  const total = rooms.reduce((sum, r) => sum + (r.room.uninhabitable ? 0 : r.area), 0);
 
   return (
     <section aria-labelledby="rooms-title" className="flex min-h-0 flex-1 flex-col">
@@ -70,7 +71,9 @@ export function RoomsPanel() {
                   <Square className="size-4 shrink-0 text-slate-400" aria-hidden />
                   <span className="min-w-0 flex-1 truncate font-medium">{room.name}</span>
                   <span className="text-xs text-slate-500 tabular-nums">
-                    {formatArea(area, i18n.language)}
+                    {room.uninhabitable
+                      ? t('rooms.uninhabitable')
+                      : formatArea(area, i18n.language)}
                   </span>
                 </button>
               </li>

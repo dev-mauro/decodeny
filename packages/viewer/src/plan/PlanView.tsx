@@ -120,6 +120,8 @@ export interface PlanViewProps {
   readonly hiddenGroups?: ReadonlySet<ItemGroup>;
   readonly apiRef?: Ref<ViewerApi>;
   readonly locale?: string;
+  /** Texto en lugar de la superficie de un espacio no habitable (p. ej. «No habitable»). */
+  readonly uninhabitableLabel?: string;
 }
 
 interface ViewState {
@@ -229,6 +231,7 @@ export function PlanView({
   hiddenGroups,
   apiRef,
   locale = 'es',
+  uninhabitableLabel,
 }: PlanViewProps) {
   const level = findLevel(project, levelId);
   // La planta de abajo, en tenue, para alinear los muros de esta, y los huecos que sus escaleras
@@ -858,6 +861,30 @@ export function PlanView({
           );
         })}
 
+        {/* Espacios no habitables (encerrados o clósets empotrados): rayados. */}
+        <defs>
+          <pattern
+            id="plan-hatch"
+            width={px(8)}
+            height={px(8)}
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <line x1={0} y1={0} x2={0} y2={px(8)} stroke="#94a3b8" strokeWidth={px(1.5)} />
+          </pattern>
+        </defs>
+        {data.rooms
+          .filter(({ room }) => room.uninhabitable)
+          .map(({ room, interior }) => (
+            <polygon
+              key={`hatch-${room.id}`}
+              points={pts(interior)}
+              fill="url(#plan-hatch)"
+              pointerEvents="none"
+              data-testid={`plan-room-closed-${room.name}`}
+            />
+          ))}
+
         {/* Cuadrícula de trabajo, alineada al origen del proyecto */}
         {grid && (
           <>
@@ -1043,7 +1070,9 @@ export function PlanView({
             strokeWidth={px(3)}
             paintOrder="stroke"
           >
-            {formatArea(area, locale)}
+            {room.uninhabitable && uninhabitableLabel
+              ? uninhabitableLabel
+              : formatArea(area, locale)}
           </text>
         </g>
       ))}

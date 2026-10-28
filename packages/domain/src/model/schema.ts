@@ -67,6 +67,11 @@ export const RoomSchema = z.object({
   boundary: z.array(IdSchema).min(3),
   floor: IdSchema.optional(),
   ceiling: IdSchema.optional(),
+  /**
+   * Espacio no habitable: encerrado sin acceso (un ducto) o un clóset empotrado. No suma a la
+   * superficie útil, se ve cerrado y no se recorre.
+   */
+  uninhabitable: z.boolean().optional(),
 });
 
 export const Vec3MmSchema = z.object({

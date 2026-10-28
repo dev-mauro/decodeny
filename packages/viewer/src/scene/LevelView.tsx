@@ -358,6 +358,9 @@ export function LevelView({
           room={room}
           interior={interior}
           ceilingHeight={ceilingHeight}
+          lidHeight={
+            room.uninhabitable ? Math.min(ceilingHeight, sectionHeight ?? ceilingHeight) : null
+          }
           floorVoids={slab?.floorVoids}
           ceilingVoids={slab?.ceilingVoids}
           floorFinish={room.floor ? finishes.get(room.floor) : undefined}

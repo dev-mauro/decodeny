@@ -81,6 +81,11 @@ interface LevelViewProps {
   readonly trueSurfaceColors?: boolean | undefined;
   /** Las luminarias más cercanas proyectan sombra (de noche, cuando se notan). */
   readonly lampShadows?: boolean | undefined;
+  /**
+   * Otra planta, solo para ver (la de abajo en edición, todas en el recorrido): sin selección,
+   * sin corte de muros ni luminarias propias (el presupuesto de luces es de la planta activa).
+   */
+  readonly context?: boolean | undefined;
 }
 
 const NO_FINISHES: ReadonlyMap<string, ResolvedMaterial> = new Map();
@@ -111,6 +116,7 @@ export function LevelView({
   measurePoints,
   trueSurfaceColors = false,
   lampShadows = false,
+  context = false,
 }: LevelViewProps) {
   const measuring = interactive && onMeasurePoint !== undefined;
   const groupRef = useRef<Group>(null);
@@ -121,7 +127,7 @@ export function LevelView({
 
   const footprints = useMemo(() => levelWallFootprints(level), [level]);
   // Corte de los que tapan: qué muros se recortan según la cámara (`null`: aún sin calcular).
-  const cutaway = sectionHeight !== null && sectionMode === 'facing';
+  const cutaway = !context && sectionHeight !== null && sectionMode === 'facing';
   const exposure = useMemo(() => (cutaway ? levelWallExposure(level) : null), [cutaway, level]);
   const [cutWalls, setCutWalls] = useState<ReadonlySet<string> | null>(null);
   const activeCuts = exposure ? cutWalls : null;
@@ -394,12 +400,16 @@ export function LevelView({
         );
       })}
       <ContactShadows items={contactItems} />
-      <LevelLights level={level} shadows={lampShadows} />
+      {!context && <LevelLights level={level} shadows={lampShadows} />}
       {measurePoints && measurePoints.length > 0 && interactive && (
         <MeasureOverlay points={measurePoints} locale={locale} />
       )}
-      <SectionClipping heightMm={sectionHeight === null ? null : level.elevation + sectionHeight} />
-      {sectionHeight !== null && (
+      {!context && (
+        <SectionClipping
+          heightMm={sectionHeight === null ? null : level.elevation + sectionHeight}
+        />
+      )}
+      {!context && sectionHeight !== null && (
         <WallSectionCaps
           level={level}
           footprints={footprints}

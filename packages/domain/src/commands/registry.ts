@@ -1,6 +1,7 @@
 import type { Command } from './command';
 import * as assets from './assets';
 import * as items from './items';
+import * as levels from './levels';
 import * as materials from './materials';
 import * as openings from './openings';
 import * as project from './project';
@@ -23,7 +24,7 @@ const isCommand = (value: unknown): value is AnyCommand =>
  */
 export const COMMANDS: ReadonlyMap<string, AnyCommand> = (() => {
   const map = new Map<string, AnyCommand>();
-  for (const module of [assets, items, materials, openings, project, rooms, walls]) {
+  for (const module of [assets, items, levels, materials, openings, project, rooms, walls]) {
     for (const value of Object.values(module)) {
       if (!isCommand(value)) continue;
       if (map.has(value.type) && map.get(value.type) !== value) {

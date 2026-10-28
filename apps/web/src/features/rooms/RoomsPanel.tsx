@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { useReadOnly } from '@/state/project-store';
 import { useActiveLevel, useUiStore } from '@/state/ui-store';
+import { LevelSwitcher } from '../levels/LevelSwitcher';
 
 export function RoomsPanel() {
   const { t, i18n } = useTranslation();
@@ -25,6 +26,7 @@ export function RoomsPanel() {
 
   return (
     <section aria-labelledby="rooms-title" className="flex min-h-0 flex-1 flex-col">
+      <LevelSwitcher />
       <header className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
         <h2 id="rooms-title" className="text-sm font-semibold text-slate-900">
           {t('rooms.title')}

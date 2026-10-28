@@ -174,6 +174,13 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Contacto:** `ContactShadows` dibuja, en una malla instanciada (un draw call), una mancha degradada bajo cada mueble de piso, apoyada sobre la alfombra si la hay (`contactShadowItems`).
 - **Balance de día:** menos relleno uniforme (ambiente 0,1, hemisferio 0,5) y más entorno (0,9), con el sol a 2,2.
 
+## Plantas (I12)
+
+- **Dominio** (`commands/levels.ts`): `addLevel` (vacía o con el contorno de otra: muros y recintos con ids nuevos, sin vanos ni muebles), `duplicateLevel`, `renameLevel`, `setLevelElevation` y `removeLevel` (siempre queda una). `levels` se mantiene ordenado por elevación; `nextLevelElevation` propone el muro más alto de la planta superior más la losa (`SLAB_THICKNESS`, 200 mm). `levelAbove` y `levelBelow` ubican las vecinas.
+- **Visor:** además de la planta activa, dibuja las demás como **contexto** (`LevelView` con `context`: sin selección, corte de muros ni luminarias propias). En edición solo las de abajo (las de arriba se ocultan, como casa de muñecas); en recorrido y vuelo, todas. El encuadre y las sombras usan la unión de las plantas visibles.
+- **Plano:** la planta de abajo se ve en tenue (`plan-underlay`) para alinear los muros.
+- **Interfaz** (`features/levels`): `LevelSwitcher` arriba de «Espacios» (también en móvil) elige la planta activa, agrega otra arriba y ajusta nombre y altura del piso; `PgUp`/`PgDn` suben y bajan.
+
 ## Presentación y puertas en el recorrido (adelanto de I14)
 
 - **Presentación** (`features/presentation`): solo la vista (sin barra, paneles ni herramientas de edición), a pantalla completa y en solo lectura **temporal** (`setReadOnly(true, { remember: false })`: al salir vuelve la preferencia). `?presentar=1` la abre directo (la pantalla completa la pide un clic).

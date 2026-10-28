@@ -11,6 +11,7 @@ import {
   isCounterClockwise,
   itemFootprint,
   levelBounds,
+  levelBelow,
   levelWallFootprints,
   lerp,
   localize,
@@ -224,6 +225,11 @@ export function PlanView({
   locale = 'es',
 }: PlanViewProps) {
   const level = findLevel(project, levelId);
+  // La planta de abajo, en tenue, para alinear los muros de esta.
+  const underlay = useMemo(() => {
+    const below = levelBelow(project, levelId);
+    return below ? [...levelWallFootprints(below).values()].map((f) => f.polygon) : [];
+  }, [levelId, project]);
   const svgRef = useRef<SVGSVGElement>(null);
   usePreventBrowserZoom(svgRef);
   const [size, setSize] = useState({ w: 800, h: 600 });
@@ -863,6 +869,14 @@ export function PlanView({
               data-testid="plan-grid"
             />
           </>
+        )}
+
+        {underlay.length > 0 && (
+          <g pointerEvents="none" data-testid="plan-underlay">
+            {underlay.map((polygon, i) => (
+              <polygon key={i} points={pts(polygon)} fill="#94a3b8" fillOpacity={0.28} />
+            ))}
+          </g>
         )}
 
         {/* Muebles */}

@@ -166,6 +166,8 @@ function CameraFov({ fov }: { readonly fov: number }) {
   return null;
 }
 
+const ignoreSelection = () => undefined;
+
 /** E también sube en el vuelo: ahí las puertas se abren con F. */
 const WALK_DOOR_KEYS = ['KeyE', 'KeyF'] as const;
 const FLY_DOOR_KEYS = ['KeyF'] as const;
@@ -211,14 +213,31 @@ export function DecodenyViewer({
   className,
 }: DecodenyViewerProps) {
   const level = findLevel(project, levelId);
-  const bounds = useMemo(() => (level ? levelWorldBounds(level) : null), [level]);
+  // Las demás plantas, para ver: en edición, las de abajo (las de arriba se ocultan, como una casa
+  // de muñecas); en el recorrido y el vuelo, todas.
+  const mode = navigationModes.get(navigationMode) ?? navigationModes.require('edit');
+  const contextLevels = useMemo(
+    () =>
+      level
+        ? project.levels.filter(
+            (l) => l.id !== level.id && (!mode.interactive || l.elevation < level.elevation),
+          )
+        : [],
+    [level, mode.interactive, project.levels],
+  );
+  const bounds = useMemo(() => {
+    const boxes = [level, ...contextLevels].flatMap((l) => {
+      const b = l ? levelWorldBounds(l) : null;
+      return b ? [b] : [];
+    });
+    return boxes.length === 0 ? null : boxes.reduce((a, b) => a.clone().union(b));
+  }, [contextLevels, level]);
   const finishes = useMemo(() => resolveFinishes(project.materials), [project.materials]);
   const autoFitted = useRef(false);
   // `data-ready` en la raíz: la escena ya se dibujó (útil para tests e integraciones).
   const [ready, setReady] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   usePreventBrowserZoom(rootRef);
-  const mode = navigationModes.get(navigationMode) ?? navigationModes.require('edit');
   const Mode = mode.Component;
   const placing = mode.interactive && placement !== null;
   const [virtualInput] = useState(createVirtualInput);
@@ -264,7 +283,23 @@ export function DecodenyViewer({
           <ContextLossGuard onRestored={onGraphicsRestored} />
           <CameraFov fov={mode.fov} />
           <CameraDepth bounds={bounds} />
-          <StaticShadows keys={[level, lighting, mode.id, sectionHeight, hiddenGroups]} />
+          <StaticShadows
+            keys={[level, contextLevels, lighting, mode.id, sectionHeight, hiddenGroups]}
+          />
+          {contextLevels.map((other) => (
+            <LevelView
+              key={other.id}
+              level={other}
+              selection={null}
+              onSelect={ignoreSelection}
+              locale={locale}
+              interactive={false}
+              finishes={finishes}
+              assetUrl={assetUrl}
+              hiddenGroups={hiddenGroups}
+              context
+            />
+          ))}
           {level && (
             <LevelView
               level={level}

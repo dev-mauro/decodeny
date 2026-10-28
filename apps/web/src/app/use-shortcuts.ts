@@ -15,6 +15,7 @@ import { MODE_ORDER } from '@/features/navigation/mode-order';
 import { deleteSelectedWall } from '@/features/walls/wall-actions';
 import { cancelPlacement, confirmPlacement, rotatePlacement } from '@/features/furniture/placement';
 import { activeLevel, useUiStore } from '@/state/ui-store';
+import { stepLevel } from '@/features/levels/level-actions';
 
 const isEditable = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement &&
@@ -85,6 +86,10 @@ export function useShortcuts(): void {
         if (store.readOnly) return;
         const ui = useUiStore.getState();
         ui.setPlanTool(ui.view === 'plan' && ui.planTool === 'wall' ? 'select' : 'wall');
+      } else if (!mod && (e.key === 'PageUp' || e.key === 'PageDown')) {
+        // Planta de arriba o de abajo.
+        e.preventDefault();
+        stepLevel(e.key === 'PageUp' ? 1 : -1);
       } else if (!mod && key === 'm') {
         const ui = useUiStore.getState();
         ui.setMeasuring(!ui.measuring);

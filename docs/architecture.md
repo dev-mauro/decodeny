@@ -162,6 +162,17 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Firestore:** `houses/{id}` (proyecto comprimido en `Bytes` sin índice, `assets`, `rev`, `lastVisitAt`) y `assets/{id}` + `chunks/{n}` (inmutables, verificados por `sha256`). Reglas, índices y emuladores en `firebase/`; `cleanup.yml` borra lo que no tuvo visitas en 30 días; `firebase-rules.yml` despliega las reglas.
 - **Colaboración:** el invitado instala la sesión antes de recibir el documento del anfitrión, así nunca lo guarda sobre una maqueta propia.
 
+## Iluminación (I10b)
+
+- **Profundidad:** `CameraDepth` ajusta `near`/`far` en cada cuadro a la escena (`depthRange`: `near` hasta la mitad de la distancia a la caja del nivel, `far` lo justo para la escena y el suelo). Con el rango fijo 0,05–2000 m, el piso, las alfombras y el plano de sombra bajo los pisos parpadeaban de lejos.
+- **Capas del suelo:** el plano que recibe la sombra del sol va a −2 cm y la cuadrícula decorativa a −1 cm; lo plano sobre el piso (alfombras, ≤ 30 mm) se apoya 1 mm arriba.
+- **Sol:** `sunShadowFrame` encuadra la cámara de la sombra a la caja del nivel vista desde el sol, alineada a texels, con sesgos según el tamaño del texel y bordes suaves (`shadow.radius`).
+- **Sombras estáticas:** `StaticShadows` apaga `shadowMap.autoUpdate` y pide mapas nuevos solo cuando cambia el documento, la luz, el modo, el corte o las capas; quien mueve algo lo pide con `requestShadowUpdate` (puertas, luces encendidas). Recorrer la casa no recalcula sombras.
+- **Cielos:** en el recorrido y el vuelo proyectan sombra (el sol entra por las ventanas); en edición no (se ve la casa por arriba, como maqueta).
+- **Luminarias:** las encendidas tienen ventaja de 1,5 m al reelegir por cercanía (`KEEP_MARGIN`) y las que entran suben su intensidad en 0,3 s.
+- **Contacto:** `ContactShadows` dibuja, en una malla instanciada (un draw call), una mancha degradada bajo cada mueble de piso, apoyada sobre la alfombra si la hay (`contactShadowItems`).
+- **Balance de día:** menos relleno uniforme (ambiente 0,1, hemisferio 0,5) y más entorno (0,9), con el sol a 2,2.
+
 ## Presentación y puertas en el recorrido (adelanto de I14)
 
 - **Presentación** (`features/presentation`): solo la vista (sin barra, paneles ni herramientas de edición), a pantalla completa y en solo lectura **temporal** (`setReadOnly(true, { remember: false })`: al salir vuelve la preferencia). `?presentar=1` la abre directo (la pantalla completa la pide un clic).

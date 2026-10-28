@@ -32,6 +32,8 @@ import {
   type ViewerSelection,
   type SelectOptions,
 } from '../selection';
+import { contactShadowItems, FLAT_ITEM_MM } from './contact-shadows';
+import { ContactShadows } from './ContactShadows';
 import { ItemView } from './ItemView';
 import { itemGroupOf, type ItemGroup } from './item-groups';
 import { LevelLights } from './LevelLights';
@@ -137,6 +139,15 @@ export function LevelView({
     }
     return map;
   }, [level.openings]);
+  // Muebles de piso visibles, con su apoyo: llevan sombra de contacto.
+  const contactItems = useMemo(
+    () =>
+      contactShadowItems(
+        level,
+        (item) => !hiddenGroups?.has(itemGroupOf(resolveItemDefinition(item.def).category)),
+      ),
+    [hiddenGroups, level],
+  );
   const warnings = useMemo(
     () => itemWarnings(level, itemEnvelope, (item) => itemBase(level, item)),
     [level],
@@ -328,6 +339,7 @@ export function LevelView({
           floorFinish={room.floor ? finishes.get(room.floor) : undefined}
           ceilingFinish={room.ceiling ? finishes.get(room.ceiling) : undefined}
           state={surfaceStateOf({ kind: 'room', id: room.id })}
+          ceilingShadows={!interactive}
           onSelect={handleSelect}
           onHover={handleHover}
           onDragStart={movable({ kind: 'room', id: room.id }) ? startRoomDrag : undefined}
@@ -354,7 +366,9 @@ export function LevelView({
       {level.items.map((item) => {
         const definition = resolveItemDefinition(item.def);
         if (hiddenGroups?.has(itemGroupOf(definition.category))) return null;
-        const base = itemBase(level, item);
+        // Lo plano sobre el piso (alfombras) se apoya 1 mm arriba: nunca coplanar con él.
+        const flat = definition.mount === 'floor' && itemEnvelope(item).height <= FLAT_ITEM_MM;
+        const base = itemBase(level, item) + (flat ? 1 : 0);
         // Con el corte activo, lo que queda entero sobre la altura de corte (cuadros altos,
         // lámparas de cielo) se oculta; los muebles no se cortan. Lo montado en un muro que
         // queda entero (corte de los que tapan) se sigue viendo.
@@ -379,6 +393,7 @@ export function LevelView({
           />
         );
       })}
+      <ContactShadows items={contactItems} />
       <LevelLights level={level} shadows={lampShadows} />
       {measurePoints && measurePoints.length > 0 && interactive && (
         <MeasureOverlay points={measurePoints} locale={locale} />

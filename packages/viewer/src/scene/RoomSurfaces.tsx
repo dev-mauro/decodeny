@@ -15,6 +15,8 @@ interface RoomSurfacesProps {
   readonly floorFinish?: ResolvedMaterial | undefined;
   readonly ceilingFinish?: ResolvedMaterial | undefined;
   readonly state: InteractionState;
+  /** Recorrido y vuelo: el cielo tapa el sol (entra solo por las ventanas). En edición, no. */
+  readonly ceilingShadows?: boolean | undefined;
   readonly onSelect: (target: ViewerSelection, options?: SelectOptions) => void;
   readonly onHover: (target: ViewerSelection | null) => void;
   /** Si está definido, arrastrar el piso mueve el recinto. */
@@ -30,6 +32,7 @@ export const RoomSurfaces = memo(function RoomSurfaces({
   floorFinish,
   ceilingFinish,
   state,
+  ceilingShadows = false,
   onSelect,
   onHover,
   onDragStart,
@@ -63,10 +66,12 @@ export const RoomSurfaces = memo(function RoomSurfaces({
         }}
         onPointerOut={() => onHover(null)}
       />
-      {/* Solo visible desde abajo; no proyecta sombra para no oscurecer el interior. */}
+      {/* Solo visible desde abajo. En edición no proyecta sombra (se ve la casa por arriba, como
+          una maqueta); en el recorrido sí, y el sol entra solo por las ventanas. */}
       <mesh
         geometry={ceiling}
         material={finishMaterial(ceilingFinish ?? defaultFinish('ceiling'), 'normal')}
+        castShadow={ceilingShadows}
         receiveShadow
       />
     </group>

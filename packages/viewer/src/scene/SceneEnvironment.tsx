@@ -1,9 +1,10 @@
 import { Grid } from '@react-three/drei';
 import { FloorGrid } from './FloorGrid';
+import { sunShadowFrame } from './sun-shadow';
 import { setFloorGrid } from '../materials/finish-materials';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { Object3D, PMREMGenerator, Sphere, Vector3, type Box3 } from 'three';
+import { Box3, Object3D, PMREMGenerator, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 /**
@@ -58,10 +59,10 @@ const LIGHTING: Record<
 > = {
   day: {
     background: '#eef0f3',
-    hemisphere: 0.75,
-    ambient: 0.45,
-    sun: 1.8,
-    env: 0.55,
+    hemisphere: 0.5,
+    ambient: 0.1,
+    sun: 2.2,
+    env: 0.9,
     grid: ['#cfd3da', '#a9afb9'],
     workGrid: ['#7d8794', '#4b5563'],
   },
@@ -76,7 +77,10 @@ const LIGHTING: Record<
   },
 };
 
-const DEFAULT_CENTER = new Vector3(0, 0, 0);
+/** Escena vacía: una caja de 6 × 6 m para encuadrar el sol igual. */
+const EMPTY_BOUNDS = new Box3(new Vector3(-3, 0, -3), new Vector3(3, 2.4, 3));
+/** Resolución del mapa de sombra del sol (encuadrado a la casa: texels de ~1 cm). */
+const SUN_SHADOW_MAP = 2048;
 
 /** Iluminación base, suelo de referencia y grilla métrica (celdas de 0,5 m, secciones de 1 m). */
 export function SceneEnvironment({
@@ -97,17 +101,7 @@ export function SceneEnvironment({
     invalidate();
   }, [gridStep, invalidate, look.workGrid]);
   const target = useMemo(() => new Object3D(), []);
-  const { center, radius } = useMemo(() => {
-    if (!bounds) return { center: DEFAULT_CENTER, radius: 8 };
-    const sphere = bounds.getBoundingSphere(new Sphere());
-    return { center: sphere.center.clone().setY(0), radius: Math.max(sphere.radius, 4) };
-  }, [bounds]);
-
-  const lightPosition: [number, number, number] = [
-    center.x + radius * 0.6,
-    radius * 1.6 + 6,
-    center.z + radius * 0.9,
-  ];
+  const sun = useMemo(() => sunShadowFrame(bounds ?? EMPTY_BOUNDS, SUN_SHADOW_MAP), [bounds]);
 
   return (
     <>
@@ -116,23 +110,25 @@ export function SceneEnvironment({
       <hemisphereLight args={['#ffffff', '#b9b2a6', look.hemisphere]} />
       {/* Relleno para interiores: el cielo bloquea la luz direccional del sol. */}
       <ambientLight intensity={look.ambient} />
-      <primitive object={target} position={[center.x, 0, center.z]} />
+      <primitive object={target} position={sun.target} />
       <directionalLight
-        position={lightPosition}
+        position={sun.position}
         target={target}
         intensity={look.sun}
         castShadow={look.sun > 0}
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-radius * 1.3}
-        shadow-camera-right={radius * 1.3}
-        shadow-camera-top={radius * 1.3}
-        shadow-camera-bottom={-radius * 1.3}
-        shadow-camera-near={0.5}
-        shadow-camera-far={radius * 6 + 20}
+        shadow-mapSize={[SUN_SHADOW_MAP, SUN_SHADOW_MAP]}
+        shadow-bias={sun.bias}
+        shadow-normalBias={sun.normalBias}
+        shadow-radius={3}
+        shadow-camera-left={sun.left}
+        shadow-camera-right={sun.right}
+        shadow-camera-top={sun.top}
+        shadow-camera-bottom={sun.bottom}
+        shadow-camera-near={sun.near}
+        shadow-camera-far={sun.far}
       />
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.004} receiveShadow>
+      {/* Bajo los pisos con holgura (antes −4 mm: "peleaba" con ellos de lejos). */}
+      <mesh rotation-x={-Math.PI / 2} position-y={-0.02} receiveShadow>
         <planeGeometry args={[1000, 1000]} />
         <shadowMaterial opacity={0.12} />
       </mesh>
@@ -145,7 +141,7 @@ export function SceneEnvironment({
         />
       ) : (
         <Grid
-          position-y={-0.002}
+          position-y={-0.01}
           infiniteGrid
           cellSize={0.5}
           cellThickness={0.6}

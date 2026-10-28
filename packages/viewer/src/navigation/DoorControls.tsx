@@ -2,6 +2,7 @@ import { levelWallFootprints, type Level, type Opening } from '@decodeny/domain'
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import { Vector3 } from 'three';
+import { requestShadowUpdate } from '../scene/shadow-updates';
 import { canClose, nearestDoor, type DoorStore } from './doors';
 
 /** Puerta al alcance: su id y si está abierta (para la indicación de la interfaz). */
@@ -35,7 +36,8 @@ export function DoorControls({
 }: DoorControlsProps) {
   const camera = useThree((s) => s.camera);
   const invalidate = useThree((s) => s.invalidate);
-  const canvas = useThree((s) => s.gl.domElement);
+  const gl = useThree((s) => s.gl);
+  const canvas = gl.domElement;
   const footprints = useMemo(() => levelWallFootprints(level), [level]);
   const nearby = useRef<Opening | null>(null);
   const reported = useRef<string>('');
@@ -90,7 +92,11 @@ export function DoorControls({
   );
 
   useFrame((_, dt) => {
-    if (store.step(Math.min(dt, 0.1))) invalidate();
+    // Una hoja que se mueve cambia las sombras (que son estáticas: ver `StaticShadows`).
+    if (store.step(Math.min(dt, 0.1))) {
+      requestShadowUpdate(gl);
+      invalidate();
+    }
     // La puerta al alcance se recalcula unas 8 veces por segundo.
     sinceCheck.current += dt;
     if (sinceCheck.current < 0.12) return;

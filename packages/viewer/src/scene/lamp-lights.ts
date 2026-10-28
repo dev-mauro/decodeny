@@ -64,21 +64,27 @@ export interface BudgetedLight extends LampLight {
   readonly castShadow: boolean;
 }
 
+/** Ventaja (m) de una luz ya encendida: otra la reemplaza solo si está claramente más cerca. */
+export const KEEP_MARGIN = 1.5;
+
 /**
  * Presupuesto de luces: las `maxLights` más cercanas a la cámara se encienden y, de ellas, las
  * `maxShadows` más cercanas proyectan sombra. Mantener la cantidad estable evita que Three
- * recompile los materiales al moverse.
+ * recompile los materiales al moverse. Las que ya estaban encendidas (`current`) tienen una
+ * ventaja de `KEEP_MARGIN`: así no alternan cuando la cámara anda por el límite.
  */
 export function lightBudget(
   lights: readonly LampLight[],
   camera: Vec3Tuple,
   maxLights = MAX_LAMP_LIGHTS,
   maxShadows = MAX_SHADOW_LAMPS,
+  current: ReadonlySet<string> = new Set(),
 ): BudgetedLight[] {
-  const distance2 = (p: Vec3Tuple) =>
-    (p[0] - camera[0]) ** 2 + (p[1] - camera[1]) ** 2 + (p[2] - camera[2]) ** 2;
+  const distance = (l: LampLight) =>
+    Math.hypot(l.position[0] - camera[0], l.position[1] - camera[1], l.position[2] - camera[2]) -
+    (current.has(l.key) ? KEEP_MARGIN : 0);
   return [...lights]
-    .sort((a, b) => distance2(a.position) - distance2(b.position))
+    .sort((a, b) => distance(a) - distance(b))
     .slice(0, maxLights)
     .map((light, i) => ({ ...light, castShadow: i < maxShadows }));
 }

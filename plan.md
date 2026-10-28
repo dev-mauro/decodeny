@@ -716,7 +716,9 @@ Contrastado con §6–§7. **Alta:** cambia lo que se puede mostrar o cómo se c
 - Cargar el secreto `FIREBASE_SERVICE_ACCOUNT` y las variables web.
 - Decidir las preguntas abiertas del ADR-0012.
 
-### I10b — Iluminación sin parpadeos (M) — antes de I11
+### I10b — Iluminación sin parpadeos (M) — antes de I11 ✅
+
+**Notas de implementación:** hechos los puntos 1–7 (el 8, «calidad alta» con SSAO, queda opcional). El sol usa un mapa de 2048 encuadrado a la casa (texels de ~1 cm, en vez de ~2 cm con el cuadrado holgado) y bordes suaves (`shadow.radius`; en Three r186 el PCF admite radio). El cielo proyecta sombra en el recorrido y el vuelo.
 
 **Diagnóstico** (capturas y código, 2026-10-28):
 

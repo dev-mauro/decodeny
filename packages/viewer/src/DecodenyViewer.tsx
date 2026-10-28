@@ -1,7 +1,7 @@
 import { findLevel, mmToMeters, type Project, type Vec2 } from '@decodeny/domain';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useMemo, useRef, useState, type Ref, type RefObject } from 'react';
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, type Box3 } from 'three';
 import { DoorControls, type NearbyDoor } from './navigation/DoorControls';
 import { DoorStoreContext } from './navigation/door-context';
 import { createDoorStore } from './navigation/doors';
@@ -12,6 +12,8 @@ import { createVirtualInput } from './navigation/virtual-input';
 import type { NavigationModeId } from './navigation/types';
 import { resolveFinishes } from './materials/finish-materials';
 import { levelWorldBounds } from './scene/content-bounds';
+import { depthRange, rangeChanged } from './scene/depth-range';
+import { StaticShadows } from './scene/StaticShadows';
 import { prefersReducedMotion } from './scene/motion';
 import type { SectionMode } from './scene/section-cutaway';
 import { usePreventBrowserZoom } from './scene/use-prevent-browser-zoom';
@@ -137,6 +139,20 @@ function FirstFrame({ onFrame }: { readonly onFrame: () => void }) {
 }
 
 /** Ajusta el campo de visión de la cámara según el modo. */
+/** Ajusta `near`/`far` a la escena en cada cuadro (ver `depthRange`): sin parpadeos de lejos. */
+function CameraDepth({ bounds }: { readonly bounds: Box3 | null }) {
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    if (!(camera instanceof PerspectiveCamera)) return;
+    const next = depthRange(camera.position, bounds);
+    if (!rangeChanged(camera, next)) return;
+    camera.near = next.near;
+    camera.far = next.far;
+    camera.updateProjectionMatrix();
+  });
+  return null;
+}
+
 function CameraFov({ fov }: { readonly fov: number }) {
   const camera = useThree((s) => s.camera);
   const invalidate = useThree((s) => s.invalidate);
@@ -150,14 +166,14 @@ function CameraFov({ fov }: { readonly fov: number }) {
   return null;
 }
 
-/**
- * Visor 3D: proyección de solo lectura del documento. Nunca modifica el proyecto;
- * comunica intenciones (selección) mediante callbacks (ver ADR-003).
- */
 /** E también sube en el vuelo: ahí las puertas se abren con F. */
 const WALK_DOOR_KEYS = ['KeyE', 'KeyF'] as const;
 const FLY_DOOR_KEYS = ['KeyF'] as const;
 
+/**
+ * Visor 3D: proyección de solo lectura del documento. Nunca modifica el proyecto;
+ * comunica intenciones (selección) mediante callbacks (ver ADR-003).
+ */
 export function DecodenyViewer({
   project,
   levelId,
@@ -247,6 +263,8 @@ export function DecodenyViewer({
           <ViewerApiBridge apiRef={apiRef} toggleDoorRef={toggleDoorRef} />
           <ContextLossGuard onRestored={onGraphicsRestored} />
           <CameraFov fov={mode.fov} />
+          <CameraDepth bounds={bounds} />
+          <StaticShadows keys={[level, lighting, mode.id, sectionHeight, hiddenGroups]} />
           {level && (
             <LevelView
               level={level}

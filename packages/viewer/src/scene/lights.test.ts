@@ -74,6 +74,23 @@ describe('luces de luminarias', () => {
     expect(lightBudget(lights, [20, 1.6, 0], 3, 0).every((l) => !l.castShadow)).toBe(true);
   });
 
+  it('una luz encendida no se cambia por otra apenas más cercana (no alternan)', () => {
+    const at = (key: string, x: number) => ({
+      key,
+      position: [x, 2.4, 0] as [number, number, number],
+      intensity: 1,
+      color: kelvinToColor(3000),
+    });
+    const lights = [at('a', 5), at('b', 5.8)];
+    // Sin historia, gana la más cercana; si `b` ya estaba encendida, la conserva.
+    expect(lightBudget(lights, [0, 1.6, 0], 1, 0).map((l) => l.key)).toEqual(['a']);
+    expect(lightBudget(lights, [0, 1.6, 0], 1, 0, new Set(['b'])).map((l) => l.key)).toEqual(['b']);
+    // Si la otra está claramente más cerca, se cambia igual.
+    expect(lightBudget([at('a', 2), at('b', 6)], [0, 1.6, 0], 1, 0, new Set(['b']))[0]?.key).toBe(
+      'a',
+    );
+  });
+
   it('la temperatura de color va de cálida a fría', () => {
     const warm = kelvinToColor(2700);
     const cold = kelvinToColor(6500);

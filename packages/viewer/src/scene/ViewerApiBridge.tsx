@@ -14,6 +14,8 @@ export interface ViewerApi {
   toggleDoor?(): boolean;
   /** Recorrido: viaja en el ascensor en el que está la persona a esa planta. Devuelve si pudo. */
   travel?(levelId: string): boolean;
+  /** Recorrido y vuelo: captura el mouse para mirar (debe llamarse desde un gesto del usuario). */
+  lockPointer?(): void;
 }
 
 export interface RenderStats {
@@ -55,6 +57,9 @@ export function ViewerApiBridge({
       }),
     toggleDoor: () => toggleDoorRef?.current?.() ?? false,
     travel: (levelId: string) => travelRef?.current?.(levelId) ?? false,
+    lockPointer: () => {
+      if (document.pointerLockElement !== gl.domElement) void gl.domElement.requestPointerLock();
+    },
     renderStats: () => {
       gl.render(scene, camera);
       const { render, memory } = gl.info;

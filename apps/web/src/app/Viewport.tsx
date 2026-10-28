@@ -240,7 +240,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
         </ErrorBoundary>
       </div>
 
-      <WalkOverlay />
+      <WalkOverlay viewerRef={viewerRef} />
       <DoorHint viewerRef={viewerRef} />
       <ElevatorPanel viewerRef={viewerRef} />
 

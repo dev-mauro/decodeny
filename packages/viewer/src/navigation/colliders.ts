@@ -28,6 +28,15 @@ import {
 import earcut from 'earcut';
 import { planToWorld, type Vec3Tuple } from '../coords';
 import type { SlabBelow } from '../scene/slabs';
+import {
+  cabinToPlan,
+  GATE_HEIGHT,
+  GATE_MM,
+  gatedStops,
+  PLATFORM_MM,
+  type Elevator,
+  type ElevatorState,
+} from './elevators';
 import type { ViewerSelection } from '../selection';
 
 /** Caja de colisión orientada (metros, mundo). */
@@ -302,4 +311,38 @@ export function closedDoorColliders(level: Level, closedIds: readonly string[]):
     });
   }
   return boxes;
+}
+
+/** Plataforma de un ascensor a una altura (mm sobre su planta): su cara de arriba es el piso. */
+export function elevatorPlatformCollider(elevator: Elevator, offset: number): BoxCollider {
+  const { x, z } = elevator.cabin;
+  return {
+    position: planToWorld(
+      cabinToPlan(elevator, (x[0] + x[1]) / 2, (z[0] + z[1]) / 2),
+      elevator.base + offset - PLATFORM_MM / 2,
+    ),
+    halfExtents: [
+      mmToMeters(x[1] - x[0]) / 2,
+      mmToMeters(PLATFORM_MM) / 2,
+      mmToMeters(z[1] - z[0]) / 2,
+    ],
+    rotationY: (elevator.item.rotation * Math.PI) / 180,
+  };
+}
+
+/** Rejas al frente de las paradas donde no está la plataforma (ver `gatedStops`). */
+export function elevatorGateColliders(elevator: Elevator, state: ElevatorState): BoxCollider[] {
+  const { x, z } = elevator.cabin;
+  return gatedStops(elevator, state).map((stop) => ({
+    position: planToWorld(
+      cabinToPlan(elevator, (x[0] + x[1]) / 2, z[1] - GATE_MM / 2),
+      elevator.base + stop.offset + GATE_HEIGHT / 2,
+    ),
+    halfExtents: [
+      mmToMeters(x[1] - x[0]) / 2,
+      mmToMeters(GATE_HEIGHT) / 2,
+      mmToMeters(GATE_MM) / 2,
+    ],
+    rotationY: (elevator.item.rotation * Math.PI) / 180,
+  }));
 }

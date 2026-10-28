@@ -1,6 +1,7 @@
 import { itemEnvelope, resolveItemDefinition, surfaceElevationAt } from '@decodeny/catalog';
 import {
   defaultParams,
+  resolveParams,
   storeyRise,
   deleteItems,
   duplicateItems,
@@ -138,8 +139,10 @@ export function initialItemSpot(level: Level, definition: AnyItemDefinition): In
     ...defaultParams(definition.params),
   };
   // Una escalera sube de piso a piso: toma la altura hasta la planta de arriba.
-  if (definition.fillsStorey)
-    params.height = storeyRise(useProjectStore.getState().project, level.id);
+  if (definition.fillsStorey) {
+    const span = definition.openingSpan?.(resolveParams(definition.params, params)) ?? 1;
+    params.height = storeyRise(useProjectStore.getState().project, level.id, span);
+  }
   const env = definitionEnvelope(definition, params);
   const obstacles =
     definition.mount === 'floor'

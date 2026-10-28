@@ -62,7 +62,9 @@ export function ItemInspector({ level, item }: ItemInspectorProps) {
 
   // Una escalera debe llegar a la planta de arriba (su alto es de piso a piso).
   const rise = useProjectStore((s) =>
-    definition.fillsStorey ? storeyRise(s.project, level.id) : null,
+    definition.fillsStorey
+      ? storeyRise(s.project, level.id, definition.openingSpan?.(params) ?? 1)
+      : null,
   );
   const storeyMismatch = rise !== null && Math.abs(Number(params.height) - rise) > 1;
 

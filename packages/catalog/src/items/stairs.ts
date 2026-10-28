@@ -37,8 +37,8 @@ const RISER_MAX = 180;
 const BLONDEL = 630;
 const TREAD = { min: 240, max: 320 } as const;
 /** Alto del pasamanos sobre la huella y de las barandas sobre el piso de arriba. */
-const RAIL = 900;
-const POST = 40;
+export const RAIL = 900;
+export const POST = 40;
 const BALUSTER = 20;
 /** Espesor de la huella de madera sobre el cuerpo del peldaño. */
 const CAP = 30;
@@ -83,7 +83,7 @@ const turnParam = choiceParam({
 
 // --- Utilidades geométricas -------------------------------------------------------------------
 
-type P2 = readonly [number, number];
+export type P2 = readonly [number, number];
 
 /**
  * Caja de colisión cuya cara de arriba va de `from` a `to` (una rampa; plana si están a la misma
@@ -210,7 +210,7 @@ function flightRailColliders(f: Flight, s: StairSteps): CollisionBox[] {
 }
 
 /** Baranda horizontal de `a` a `b` a la altura `floor` (pilares en los extremos y dos barras). */
-function guardRail(a: P2, b: P2, floor: number): Part[] {
+export function guardRail(a: P2, b: P2, floor: number): Part[] {
   const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (length < 1) return [];
   const post = (p: P2): BoxPart => box('black', [POST, RAIL, POST], [p[0], floor + RAIL / 2, p[1]]);
@@ -218,7 +218,7 @@ function guardRail(a: P2, b: P2, floor: number): Part[] {
   return [post(a), post(b), rail(floor + RAIL - POST / 2), rail(floor + RAIL / 2)];
 }
 
-function guardCollider(a: P2, b: P2, floor: number): CollisionBox {
+export function guardCollider(a: P2, b: P2, floor: number): CollisionBox {
   return ramp(
     [a[0], floor + RAIL, a[1]],
     [b[0], floor + RAIL, b[1]],
@@ -235,13 +235,13 @@ function edgesExcept(polygon: readonly P2[], skip: number): [P2, P2][] {
 }
 
 /** Caja envolvente centrada a partir de las piezas (el alto incluye las barandas). */
-function partsEnvelope(parts: readonly Part[]): ItemEnvelope {
+export function partsEnvelope(parts: readonly Part[]): ItemEnvelope {
   const b = partsBounds(parts);
   return { width: b.max[0] - b.min[0], depth: b.max[2] - b.min[2], height: b.max[1] };
 }
 
 /** Polígono acercado `d` hacia adentro en cada eje (para que las barandas no salgan del borde). */
-const insetRect = (x: P2, z: P2, d: number): P2[] => [
+export const insetRect = (x: P2, z: P2, d: number): P2[] => [
   [x[0] + d, z[1] - d],
   [x[1] - d, z[1] - d],
   [x[1] - d, z[0] + d],

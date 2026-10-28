@@ -1,6 +1,7 @@
 import type { AnyItemDefinition, ItemCategory } from '@decodeny/domain';
 import {
   Archive,
+  ArrowDownUp,
   Blinds,
   Flower2,
   Frame,
@@ -9,6 +10,7 @@ import {
   LampFloor,
   LampWallUp,
   RectangleHorizontal,
+  SquareDashed,
   Sprout,
   Armchair,
   Bath,
@@ -53,6 +55,8 @@ const ITEM_ICONS: Partial<Record<string, LucideIcon>> = {
   'decor.plant@1': Flower2,
   'decor.rug@1': RectangleHorizontal,
   'decor.curtain@1': Blinds,
+  'structure.elevator@1': ArrowDownUp,
+  'structure.void@1': SquareDashed,
 };
 
 export const itemIcon = (def: AnyItemDefinition): LucideIcon =>

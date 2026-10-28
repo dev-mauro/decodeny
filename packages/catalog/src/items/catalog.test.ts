@@ -101,7 +101,9 @@ describe.each(definitions.map((d) => [d.id, d] as const))('%s', (_, def) => {
       expect(b.max[0], ctx).toBeCloseTo(env.width / 2, 0);
       expect(b.min[2], ctx).toBeCloseTo(-env.depth / 2, 0);
       expect(b.max[2], ctx).toBeCloseTo(env.depth / 2, 0);
-      expect(b.min[1], ctx).toBeCloseTo(0, 0);
+      // Lo que abre la losa de arriba (un vacío) puede no tener cuerpo abajo: solo sus barandas.
+      if (def.floorOpening) expect(b.min[1], ctx).toBeGreaterThanOrEqual(-0.5);
+      else expect(b.min[1], ctx).toBeCloseTo(0, 0);
       expect(b.max[1], ctx).toBeCloseTo(env.height, 0);
       for (const a of itemAffordances(def, params)) {
         expect(finite([...a.at])).toBe(true);

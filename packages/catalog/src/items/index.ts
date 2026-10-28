@@ -32,7 +32,10 @@ import {
 } from './lighting';
 import { armchair, chairDining, chairOffice, sofaL, sofaStraight } from './seating';
 import { stairL, stairSpiral, stairStraight, stairU } from './stairs';
+
+export { elevator, structureVoid } from './structure';
 import { dresser, shelf, wardrobe } from './storage';
+import { elevator, structureVoid } from './structure';
 import { tableCoffee, tableRect, tableRound } from './tables';
 
 /**
@@ -78,6 +81,8 @@ export const itemCatalog = new Registry<AnyItemDefinition>('item').register(
   stairL,
   stairU,
   stairSpiral,
+  structureVoid,
+  elevator,
 );
 
 /** Orden de las categorías en el panel de catálogo. */
@@ -159,16 +164,37 @@ export function itemPlanOutline(item: Item): Vec2[] {
 }
 
 /**
- * Huecos que los items de una planta abren en la losa de arriba (escaleras, ductos): polígonos
- * en planta (mm). Se descuentan del cielo de esa planta y del piso de la de arriba.
+ * Huecos que los items de una planta abren en las losas de arriba (escaleras, ductos): polígonos
+ * en planta (mm). `reach` es qué losa: 1, la de inmediato arriba; 2, la siguiente (un ascensor
+ * de tres paradas atraviesa dos).
  */
-export function levelFloorOpenings(level: Level): Vec2[][] {
+export function levelFloorOpenings(level: Level, reach = 1): Vec2[][] {
   return level.items.flatMap((item) => {
     const definition = resolveItemDefinition(item.def);
     if (!definition.floorOpening) return [];
-    const polygon = definition.floorOpening(resolveParams(definition.params, item.params));
+    const params = resolveParams(definition.params, item.params);
+    if ((definition.openingSpan?.(params) ?? 1) < reach) return [];
+    const polygon = definition.floorOpening(params);
     return polygon.length >= 3 ? [localPolygonToPlan(item, polygon)] : [];
   });
+}
+
+/**
+ * Huecos en el piso (`floor`) o en el cielo (`ceiling`) de una planta, abiertos por los items
+ * de esa planta o de las de abajo. `levels`, de abajo hacia arriba.
+ */
+export function slabOpenings(
+  levels: readonly Level[],
+  levelId: string,
+  surface: 'floor' | 'ceiling',
+): Vec2[][] {
+  const index = levels.findIndex((l) => l.id === levelId);
+  const first = surface === 'floor' ? 1 : 0;
+  const openings: Vec2[][] = [];
+  for (let k = first; k <= index; k++) {
+    openings.push(...levelFloorOpenings(levels[index - k]!, k + 1 - first));
+  }
+  return openings;
 }
 
 export { curtain, mirror, picture, plant, rug, wallShelf };

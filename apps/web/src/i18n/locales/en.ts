@@ -81,6 +81,8 @@ export const en: Translation<Resources> = {
     controlsDoor: 'Open or close doors',
     keysDoorWalk: 'E / click',
     keysDoorFly: 'F',
+    elevator: 'Elevator',
+    elevatorGo: 'Go to {{name}}',
     doorOpen: 'Open door',
     doorClose: 'Close door',
     keysMove: 'W A S D',
@@ -247,7 +249,7 @@ export const en: Translation<Resources> = {
       bath: 'Bathroom',
       lighting: 'Lighting',
       decor: 'Decoration',
-      stairs: 'Stairs',
+      stairs: 'Stairs and elevators',
     },
   },
   furniture: {

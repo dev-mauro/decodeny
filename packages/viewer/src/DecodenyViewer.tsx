@@ -5,6 +5,8 @@ import { PerspectiveCamera, type Box3 } from 'three';
 import { DoorControls, type NearbyDoor } from './navigation/DoorControls';
 import { DoorStoreContext } from './navigation/door-context';
 import { createDoorStore } from './navigation/doors';
+import { ElevatorStoreContext } from './navigation/elevator-context';
+import { createElevatorStore, projectElevators, type NearbyElevator } from './navigation/elevators';
 import { DEFAULT_PERSON, type PersonProfile } from './navigation/person-profile';
 import { navigationModes } from './navigation/registry';
 import { TouchControls, type TouchControlsLabels } from './navigation/TouchControls';
@@ -24,6 +26,7 @@ import { ViewerApiBridge, type ViewerApi } from './scene/ViewerApiBridge';
 import type { ItemGroup } from './scene/item-groups';
 import type { MeasurePoint } from './scene/measure';
 import { LevelView } from './scene/LevelView';
+import { ElevatorCars } from './scene/ElevatorCars';
 import { PlacementPointer } from './scene/PlacementPointer';
 import { CameraPoseReporter } from './scene/CameraPoseReporter';
 import { PeerAvatars } from './scene/PeerAvatars';
@@ -128,6 +131,11 @@ export interface DecodenyViewerProps {
    * si la activa. El visor no cambia `levelId` por su cuenta.
    */
   readonly onLevelChange?: (levelId: string) => void;
+  /**
+   * Recorrido: el ascensor en el que está la persona, detenido en una parada (con sus paradas),
+   * o `null`. Se viaja con `ViewerApi.travel`.
+   */
+  readonly onNearbyElevator?: (elevator: NearbyElevator | null) => void;
   /** Locale para formatear cotas (p. ej. `es`). */
   readonly locale?: string;
   readonly className?: string;
@@ -216,6 +224,7 @@ export function DecodenyViewer({
   onCameraPose,
   onNearbyDoor,
   onLevelChange,
+  onNearbyElevator,
   locale = 'es',
   className,
 }: DecodenyViewerProps) {
@@ -259,7 +268,16 @@ export function DecodenyViewer({
   // Puertas del recorrido: un estado nuevo (el del documento) cada vez que se entra a un modo.
   const doorSession = mode.interactive ? null : mode.id;
   const doorStore = useMemo(() => (doorSession ? createDoorStore() : null), [doorSession]);
+  const elevatorStore = useMemo(() => (doorSession ? createElevatorStore() : null), [doorSession]);
   const toggleDoorRef = useRef<(() => boolean) | null>(null);
+  const travelRef = useRef<((levelId: string) => boolean) | null>(null);
+  // Ascensores de las plantas que se ven (la plataforma y las rejas las dibuja `ElevatorCars`).
+  const elevators = useMemo(() => {
+    const visible = new Set([level?.id, ...contextLevels.map((l) => l.id)]);
+    return projectElevators(project.levels).filter((e) =>
+      e.stops.some((s) => visible.has(s.levelId)),
+    );
+  }, [contextLevels, level?.id, project.levels]);
 
   return (
     <div
@@ -285,100 +303,105 @@ export function DecodenyViewer({
         style={{ position: 'absolute', inset: 0, touchAction: 'none' }}
       >
         <DoorStoreContext.Provider value={doorStore}>
-          <SceneEnvironment
-            bounds={bounds}
-            lighting={lighting}
-            gridStep={grid?.step ?? null}
-            gridElevation={level?.elevation ?? 0}
-          />
-          <FirstFrame onFrame={() => setReady(true)} />
-          <ViewerApiBridge apiRef={apiRef} toggleDoorRef={toggleDoorRef} />
-          <ContextLossGuard onRestored={onGraphicsRestored} />
-          <CameraFov fov={mode.fov} />
-          <CameraDepth bounds={bounds} />
-          <StaticShadows
-            keys={[level, contextLevels, lighting, mode.id, sectionHeight, hiddenGroups]}
-          />
-          {/* Una sola lista con la planta activa y las de contexto: al cambiar de planta en el
-              recorrido, cada una conserva su componente (y sus geometrías). */}
-          {project.levels.map((other) =>
-            other.id === level?.id ? (
-              <LevelView
-                key={other.id}
-                level={other}
-                slab={slabs.get(other.id)}
-                selection={selection}
-                selectionGroup={selectionGroup}
-                onSelect={onSelectionChange}
-                locale={locale}
-                interactive={interactive}
-                highlighted={highlighted}
-                onHoverChange={onHoverChange}
-                onRoomDrag={onRoomDrag}
-                onOpeningDrag={onOpeningDrag}
-                onItemDrag={onItemDrag}
-                finishes={finishes}
-                assetUrl={assetUrl}
-                hiddenGroups={hiddenGroups}
-                sectionHeight={mode.interactive ? sectionHeight : null}
-                sectionMode={sectionMode}
-                onSectionCutChange={setSectionCut}
-                onMeasurePoint={onMeasurePoint}
-                measurePoints={measurePoints}
-                trueSurfaceColors={trueSurfaceColors}
-                lampShadows={lighting === 'night'}
-              />
-            ) : contextLevels.includes(other) ? (
-              <LevelView
-                key={other.id}
-                level={other}
-                slab={slabs.get(other.id)}
-                selection={null}
-                onSelect={ignoreSelection}
-                locale={locale}
-                interactive={false}
-                finishes={finishes}
-                assetUrl={assetUrl}
-                hiddenGroups={hiddenGroups}
-                context
-              />
-            ) : null,
-          )}
-          {placing && <PlacementPointer placement={placement} />}
-          {level && peers && peers.list.length > 0 && (
-            <PeerAvatars peers={peers} floorY={mmToMeters(level.elevation)} />
-          )}
-          {onCameraPose && <CameraPoseReporter onPose={onCameraPose} />}
-          {level && (
-            <Suspense fallback={null}>
-              <Mode
-                key={mode.id}
-                level={level}
-                levels={project.levels}
-                slabs={slabs}
-                onLevelChange={onLevelChange}
-                bounds={bounds}
-                selection={selection}
-                profile={personProfile}
-                cameraApiRef={cameraRef}
-                autoFitted={autoFitted}
-                onPointerLockChange={onPointerLockChange}
-                walkStart={walkStart}
-                headBob={headBob && !prefersReducedMotion()}
-                virtualInput={virtualInput}
-              />
-            </Suspense>
-          )}
-          {level && doorStore && (
-            <DoorControls
-              level={level}
-              store={doorStore}
-              keys={mode.id === 'person' ? WALK_DOOR_KEYS : FLY_DOOR_KEYS}
-              radiusMm={personProfile.radiusMm}
-              onNearbyDoor={onNearbyDoor}
-              toggleRef={toggleDoorRef}
+          <ElevatorStoreContext.Provider value={elevatorStore}>
+            <SceneEnvironment
+              bounds={bounds}
+              lighting={lighting}
+              gridStep={grid?.step ?? null}
+              gridElevation={level?.elevation ?? 0}
             />
-          )}
+            <FirstFrame onFrame={() => setReady(true)} />
+            <ViewerApiBridge apiRef={apiRef} toggleDoorRef={toggleDoorRef} travelRef={travelRef} />
+            <ElevatorCars elevators={elevators} />
+            <ContextLossGuard onRestored={onGraphicsRestored} />
+            <CameraFov fov={mode.fov} />
+            <CameraDepth bounds={bounds} />
+            <StaticShadows
+              keys={[level, contextLevels, lighting, mode.id, sectionHeight, hiddenGroups]}
+            />
+            {/* Una sola lista con la planta activa y las de contexto: al cambiar de planta en el
+              recorrido, cada una conserva su componente (y sus geometrías). */}
+            {project.levels.map((other) =>
+              other.id === level?.id ? (
+                <LevelView
+                  key={other.id}
+                  level={other}
+                  slab={slabs.get(other.id)}
+                  selection={selection}
+                  selectionGroup={selectionGroup}
+                  onSelect={onSelectionChange}
+                  locale={locale}
+                  interactive={interactive}
+                  highlighted={highlighted}
+                  onHoverChange={onHoverChange}
+                  onRoomDrag={onRoomDrag}
+                  onOpeningDrag={onOpeningDrag}
+                  onItemDrag={onItemDrag}
+                  finishes={finishes}
+                  assetUrl={assetUrl}
+                  hiddenGroups={hiddenGroups}
+                  sectionHeight={mode.interactive ? sectionHeight : null}
+                  sectionMode={sectionMode}
+                  onSectionCutChange={setSectionCut}
+                  onMeasurePoint={onMeasurePoint}
+                  measurePoints={measurePoints}
+                  trueSurfaceColors={trueSurfaceColors}
+                  lampShadows={lighting === 'night'}
+                />
+              ) : contextLevels.includes(other) ? (
+                <LevelView
+                  key={other.id}
+                  level={other}
+                  slab={slabs.get(other.id)}
+                  selection={null}
+                  onSelect={ignoreSelection}
+                  locale={locale}
+                  interactive={false}
+                  finishes={finishes}
+                  assetUrl={assetUrl}
+                  hiddenGroups={hiddenGroups}
+                  context
+                />
+              ) : null,
+            )}
+            {placing && <PlacementPointer placement={placement} />}
+            {level && peers && peers.list.length > 0 && (
+              <PeerAvatars peers={peers} floorY={mmToMeters(level.elevation)} />
+            )}
+            {onCameraPose && <CameraPoseReporter onPose={onCameraPose} />}
+            {level && (
+              <Suspense fallback={null}>
+                <Mode
+                  key={mode.id}
+                  level={level}
+                  levels={project.levels}
+                  slabs={slabs}
+                  onLevelChange={onLevelChange}
+                  onNearbyElevator={onNearbyElevator}
+                  travelRef={travelRef}
+                  bounds={bounds}
+                  selection={selection}
+                  profile={personProfile}
+                  cameraApiRef={cameraRef}
+                  autoFitted={autoFitted}
+                  onPointerLockChange={onPointerLockChange}
+                  walkStart={walkStart}
+                  headBob={headBob && !prefersReducedMotion()}
+                  virtualInput={virtualInput}
+                />
+              </Suspense>
+            )}
+            {level && doorStore && (
+              <DoorControls
+                level={level}
+                store={doorStore}
+                keys={mode.id === 'person' ? WALK_DOOR_KEYS : FLY_DOOR_KEYS}
+                radiusMm={personProfile.radiusMm}
+                onNearbyDoor={onNearbyDoor}
+                toggleRef={toggleDoorRef}
+              />
+            )}
+          </ElevatorStoreContext.Provider>
         </DoorStoreContext.Provider>
       </Canvas>
       {touchControls && !mode.interactive && (

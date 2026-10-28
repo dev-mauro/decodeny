@@ -1,9 +1,9 @@
 import {
   itemEnvelope,
   itemPlanOutline,
-  levelFloorOpenings,
   resolveItemDefinition,
   resolveOpeningDefinition,
+  slabOpenings,
 } from '@decodeny/catalog';
 import {
   add,
@@ -237,7 +237,7 @@ export function PlanView({
     const below = levelBelow(project, levelId);
     return {
       underlay: below ? [...levelWallFootprints(below).values()].map((f) => f.polygon) : [],
-      voids: below ? levelFloorOpenings(below) : [],
+      voids: below ? slabOpenings(project.levels, levelId, 'floor') : [],
     };
   }, [levelId, project]);
   const svgRef = useRef<SVGSVGElement>(null);

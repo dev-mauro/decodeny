@@ -77,6 +77,8 @@ export const es = {
     controlsDoor: 'Abrir o cerrar puertas',
     keysDoorWalk: 'E / clic',
     keysDoorFly: 'F',
+    elevator: 'Ascensor',
+    elevatorGo: 'Ir a {{name}}',
     doorOpen: 'Abrir puerta',
     doorClose: 'Cerrar puerta',
     keysMove: 'W A S D',
@@ -244,7 +246,7 @@ export const es = {
       bath: 'Baño',
       lighting: 'Iluminación',
       decor: 'Decoración',
-      stairs: 'Escaleras',
+      stairs: 'Escaleras y ascensores',
     },
   },
   furniture: {

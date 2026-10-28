@@ -181,6 +181,7 @@ Project (inmutable) ──▶ <DecodenyViewer project levelId selection …/>
 - **Plano:** la planta de abajo se ve en tenue (`plan-underlay`) para alinear los muros.
 - **Interfaz** (`features/levels`): `LevelSwitcher` arriba de «Espacios» (también en móvil) elige la planta activa, agrega otra arriba y ajusta nombre y altura del piso; `PgUp`/`PgDn` suben y bajan.
 - **Escaleras** (ADR-0016): items de la categoría `stairs` (`catalog/items/stairs.ts`) que declaran `floorOpening`, `colliders` (rampas), `planOutline`, `planSymbol` y `fillsStorey`. El visor deriva la losa de cada planta (`scene/slabs.ts`: huecos del piso y del cielo, canto de la losa) y en el recorrido colisiona con todas las plantas (las de arriba se apoyan en su losa, `slabCollider`); `onLevelChange` informa la planta en la que quedan los pies.
+- **Vacío y ascensor** (`catalog/items/structure.ts`): el vacío solo abre la losa (con barandas alrededor). El ascensor declara la afordancia `travel` y un hueco que atraviesa `openingSpan` losas (`slabOpenings`); el visor deriva sus paradas (`projectElevators`), dibuja la plataforma y las rejas de las paradas donde no está (`ElevatorCars`) y, en el recorrido, un almacén propio (como el de las puertas) la mueve: la persona viaja parada sobre ella. `onNearbyElevator` informa el ascensor detenido en el que está la persona y `ViewerApi.travel(levelId)` lo manda a otra planta (la botonera de la app, también con las teclas 1–9).
 
 ## Presentación y puertas en el recorrido (adelanto de I14)
 

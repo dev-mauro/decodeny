@@ -11,12 +11,14 @@ import {
   type RapierCollider,
   type RapierRigidBody,
 } from '@react-three/rapier';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Euler, Quaternion } from 'three';
 import type { LevelSlab } from '../scene/slabs';
 import {
   chooseSpawn,
   closedDoorColliders,
+  elevatorGateColliders,
+  elevatorPlatformCollider,
   groundCollider,
   itemColliders,
   levelAtFeet,
@@ -25,6 +27,8 @@ import {
   type BoxCollider,
 } from './colliders';
 import { useClosedDoors } from './door-context';
+import { ElevatorStoreContext, useElevatorState } from './elevator-context';
+import { currentStop, elevatorUnder, isMoving, projectElevators, type Elevator } from './elevators';
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
 import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
@@ -48,6 +52,7 @@ type KinematicCharacterController = ReturnType<
 export default function PersonMode(props: NavigationModeProps) {
   // Todas las plantas colisionan: se sube y se baja por las escaleras.
   const lowest = props.levels[0]?.id;
+  const elevators = useMemo(() => projectElevators(props.levels), [props.levels]);
   return (
     <Physics gravity={[0, 0, 0]} timeStep={1 / 60}>
       {props.levels.map((level) => (
@@ -61,7 +66,10 @@ export default function PersonMode(props: NavigationModeProps) {
       {props.levels.map((level) => (
         <DoorColliders key={level.id} level={level} />
       ))}
-      <PersonController {...props} />
+      {elevators.map((elevator) => (
+        <ElevatorColliders key={elevator.id} elevator={elevator} />
+      ))}
+      <PersonController {...props} elevators={elevators} />
     </Physics>
   );
 }
@@ -125,18 +133,58 @@ function DoorColliders({ level }: { readonly level: Level }) {
   );
 }
 
+/** Plataforma de un ascensor (se mueve con el viaje) y rejas de las paradas donde no está. */
+function ElevatorColliders({ elevator }: { readonly elevator: Elevator }) {
+  const store = useContext(ElevatorStoreContext);
+  const state = useElevatorState(elevator.id);
+  const platform = useRef<RapierRigidBody>(null);
+  const [start] = useState(() => elevatorPlatformCollider(elevator, state.offset));
+  useBeforePhysicsStep(() => {
+    const at = elevatorPlatformCollider(elevator, store?.get(elevator.id).offset ?? 0).position;
+    platform.current?.setNextKinematicTranslation({ x: at[0], y: at[1], z: at[2] });
+  });
+  const moving = isMoving(state);
+  const gates = useMemo(
+    () => elevatorGateColliders(elevator, state),
+    // Las rejas cambian solo al salir o llegar a una parada, no en cada paso del viaje.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [elevator, moving, moving ? 0 : state.offset],
+  );
+  return (
+    <>
+      <RigidBody
+        ref={platform}
+        type="kinematicPosition"
+        colliders={false}
+        position={start.position}
+      >
+        <CuboidCollider args={start.halfExtents} rotation={[0, start.rotationY, 0]} />
+      </RigidBody>
+      {gates.length > 0 && (
+        <RigidBody key={gates.map((g) => g.position[1]).join(' ')} type="fixed" colliders={false}>
+          <Boxes boxes={gates} />
+        </RigidBody>
+      )}
+    </>
+  );
+}
+
 function PersonController({
   level,
   levels,
+  elevators,
   onLevelChange,
+  onNearbyElevator,
+  travelRef,
   selection,
   profile,
   onPointerLockChange,
   walkStart,
   headBob = false,
   virtualInput,
-}: NavigationModeProps) {
+}: NavigationModeProps & { readonly elevators: readonly Elevator[] }) {
   const camera = useThree((s) => s.camera);
+  const elevatorStore = useContext(ElevatorStoreContext);
   const { world } = useRapier();
   const look = usePointerLook(onPointerLockChange, undefined, virtualInput);
   const readIntent = useMovementIntent(virtualInput);
@@ -192,6 +240,20 @@ function PersonController({
       b.setNextKinematicTranslation({ x: spawnCenter[0], y: spawnCenter[1], z: spawnCenter[2] });
       return;
     }
+    // En un ascensor que viaja, la persona va parada sobre la plataforma.
+    const feet = { x: t.x * 1000, y: -t.z * 1000 };
+    const riding =
+      elevatorStore && elevatorUnder(elevators, elevatorStore, feet, (t.y - dims.centerY) * 1000);
+    if (riding && isMoving(elevatorStore.get(riding.id))) {
+      const floor = (riding.base + elevatorStore.get(riding.id).offset) / 1000;
+      motion.current.verticalSpeed = 0;
+      b.setNextKinematicTranslation({
+        x: t.x,
+        y: floor + dims.centerY + CONTROLLER_OFFSET,
+        z: t.z,
+      });
+      return;
+    }
     const intent = readIntent();
     const next = stepPerson(
       kcc,
@@ -205,6 +267,26 @@ function PersonController({
     );
     b.setNextKinematicTranslation(next);
   });
+
+  // Viajar: la interfaz elige una parada del ascensor en el que está la persona.
+  useEffect(() => {
+    if (!travelRef) return;
+    travelRef.current = (levelId) => {
+      const t = body.current?.translation();
+      if (!t || !elevatorStore) return false;
+      const feet = { x: t.x * 1000, y: -t.z * 1000 };
+      const elevator = elevatorUnder(elevators, elevatorStore, feet, (t.y - dims.centerY) * 1000);
+      const stop = elevator?.stops.find((s) => s.levelId === levelId);
+      if (!elevator || !stop) return false;
+      elevatorStore.travel(elevator.id, stop.offset);
+      return true;
+    };
+    return () => {
+      travelRef.current = null;
+    };
+  }, [dims.centerY, elevatorStore, elevators, travelRef]);
+  const reportedElevator = useRef('');
+  useEffect(() => () => onNearbyElevator?.(null), [onNearbyElevator]);
 
   // Planta informada; la activa puede cambiar también desde afuera (el selector).
   const reportedLevel = useRef(level.id);
@@ -231,6 +313,22 @@ function PersonController({
       reportedLevel.current = here.id;
       onLevelChange?.(here.id);
     }
+    // El ascensor en el que está, detenido en una parada: la interfaz ofrece los pisos.
+    if (!elevatorStore) return;
+    const feet = { x: t.x * 1000, y: -t.z * 1000 };
+    const elevator = elevatorUnder(elevators, elevatorStore, feet, (t.y - dims.centerY) * 1000);
+    const stop = elevator && currentStop(elevator, elevatorStore.get(elevator.id));
+    const report = elevator && stop ? `${elevator.id}:${stop.levelId}` : '';
+    if (report === reportedElevator.current) return;
+    reportedElevator.current = report;
+    onNearbyElevator?.(
+      elevator && stop
+        ? {
+            stops: elevator.stops.map(({ levelId, name }) => ({ levelId, name })),
+            current: stop.levelId,
+          }
+        : null,
+    );
   });
 
   return (

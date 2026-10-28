@@ -4,9 +4,15 @@ import { itemFootprint, pointInPolygon, type Item, type Level } from '@decodeny/
 /** Hasta esta altura (mm) un objeto de piso es "plano" (alfombras): no lleva mancha propia. */
 export const FLAT_ITEM_MM = 30;
 
-/** ¿Lleva sombra de contacto? Muebles de piso con cuerpo (no alfombras ni lo muy bajo). */
+/**
+ * ¿Lleva sombra de contacto? Muebles de piso con cuerpo (no alfombras ni lo muy bajo). Lo que
+ * atraviesa losas (escaleras, ascensores, vacíos) no: no es un mueble apoyado.
+ */
 export function castsContactShadow(item: Item): boolean {
-  return resolveItemDefinition(item.def).mount === 'floor' && itemEnvelope(item).height > 120;
+  const definition = resolveItemDefinition(item.def);
+  return (
+    definition.mount === 'floor' && !definition.floorOpening && itemEnvelope(item).height > 120
+  );
 }
 
 /**

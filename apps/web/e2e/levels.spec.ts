@@ -90,3 +90,38 @@ test('una escalera en U entre dos plantas: hueco arriba y aviso si no llega', as
   await expect(page.getByTestId('item-storey-warning')).toHaveCount(0);
   await expect(page.getByTestId('param-height')).toHaveValue('3,50');
 });
+
+test('en el recorrido, el ascensor sube y baja entre plantas', async ({ page }) => {
+  test.setTimeout(90_000);
+  const select = page.getByTestId('level-select');
+  await page.getByTestId('level-add').click();
+  await page.getByTestId('level-add-outline').click();
+  await page.keyboard.press('PageDown');
+  await expect(select.locator('option:checked')).toHaveText('Piso 1');
+
+  await page.getByRole('button', { name: /Living-comedor/ }).click();
+  await page.getByTestId('tab-catalog').click();
+  await page.getByTestId('catalog-search').fill('ascensor');
+  await page.getByTestId('catalog-structure.elevator@1').click();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('inspector-title')).toHaveText('Ascensor');
+
+  // El recorrido empieza dentro de la cabina.
+  await page.getByTestId('view-plan').click();
+  await page.getByTestId('walk-from-point').click();
+  const cabin = (await page.getByTestId('plan-item-Ascensor').boundingBox())!;
+  await page.mouse.click(cabin.x + cabin.width / 2, cabin.y + cabin.height / 2);
+  await expect(page.getByTestId('viewer')).toHaveAttribute('data-navigation-mode', 'person');
+  await page.bringToFront();
+  await expect(page.getByTestId('elevator-panel')).toBeVisible({ timeout: 30_000 });
+
+  // Sube, baja y vuelve a subir: cada vez queda detenido en la parada elegida.
+  for (const stop of [2, 1, 2]) {
+    await page.getByTestId(`elevator-stop-${stop}`).click();
+    await expect(page.getByTestId(`elevator-stop-${stop}`)).toBeDisabled({ timeout: 20_000 });
+  }
+  // Al llegar arriba, la planta activa pasó a ser la de arriba.
+  await page.getByTestId('mode-edit').click();
+  await page.getByTestId('tab-rooms').click();
+  await expect(select.locator('option:checked')).toHaveText('Piso 2');
+});

@@ -12,6 +12,8 @@ export interface ViewerApi {
   renderStats?(): RenderStats;
   /** Recorrido o vuelo: abre o cierra la puerta al alcance. Devuelve si había una. */
   toggleDoor?(): boolean;
+  /** Recorrido: viaja en el ascensor en el que está la persona a esa planta. Devuelve si pudo. */
+  travel?(levelId: string): boolean;
 }
 
 export interface RenderStats {
@@ -25,9 +27,11 @@ export interface RenderStats {
 export function ViewerApiBridge({
   apiRef,
   toggleDoorRef,
+  travelRef,
 }: {
   readonly apiRef: Ref<ViewerApi> | undefined;
   readonly toggleDoorRef?: RefObject<(() => boolean) | null>;
+  readonly travelRef?: RefObject<((levelId: string) => boolean) | null>;
 }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -50,6 +54,7 @@ export function ViewerApiBridge({
           .then(resolve, () => resolve(null));
       }),
     toggleDoor: () => toggleDoorRef?.current?.() ?? false,
+    travel: (levelId: string) => travelRef?.current?.(levelId) ?? false,
     renderStats: () => {
       gl.render(scene, camera);
       const { render, memory } = gl.info;

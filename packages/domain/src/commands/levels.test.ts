@@ -11,6 +11,7 @@ import {
   renameLevel,
   setLevelElevation,
   SLAB_THICKNESS,
+  storeyRise,
 } from './levels';
 
 describe('plantas', () => {
@@ -56,5 +57,16 @@ describe('plantas', () => {
   it('siempre queda al menos una planta', () => {
     const bench = benchWithRoom();
     expect(() => bench.run(removeLevel, { levelId: bench.levelId })).toThrow();
+  });
+
+  it('de piso a piso: hasta la planta de arriba o varias más arriba', () => {
+    const bench = benchWithRoom();
+    expect(storeyRise(bench.project, bench.levelId)).toBe(2600);
+    bench.run(addLevel, { name: 'Piso 2' });
+    bench.run(addLevel, { name: 'Piso 3', elevation: 5800 });
+    expect(storeyRise(bench.project, bench.levelId)).toBe(2600);
+    expect(storeyRise(bench.project, bench.levelId, 2)).toBe(5800);
+    // Si faltan plantas arriba, cuentan con la altura de la última.
+    expect(storeyRise(bench.project, bench.levelId, 3)).toBe(5800 + 2600);
   });
 });

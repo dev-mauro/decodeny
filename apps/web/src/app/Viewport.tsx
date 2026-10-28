@@ -14,6 +14,7 @@ import { loadSampleProject, loadTemplate } from '@/features/io/project-actions';
 import { PROJECT_TEMPLATES } from '@/features/samples/templates';
 import { NavigationModeSwitch } from '@/features/navigation/NavigationModeSwitch';
 import { DoorHint } from '@/features/navigation/DoorHint';
+import { ElevatorPanel } from '@/features/navigation/ElevatorPanel';
 import { switchLevel } from '@/features/levels/level-actions';
 import { PresentationBar } from '@/features/presentation/PresentationBar';
 import { WalkOverlay } from '@/features/navigation/WalkOverlay';
@@ -104,6 +105,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
   const sectionHeight = useUiStore((s) => s.sectionHeight);
   const sectionMode = useUiStore((s) => s.sectionMode);
   const setNearbyDoor = useUiStore((s) => s.setNearbyDoor);
+  const setNearbyElevator = useUiStore((s) => s.setNearbyElevator);
   const measuring = useUiStore((s) => s.measuring);
   const measurePoints = useUiStore((s) => s.measurePoints);
   const editingFinish = useUiStore((s) => s.finishEditors > 0);
@@ -224,6 +226,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
                 onPointerLockChange={setPointerLocked}
                 onNearbyDoor={setNearbyDoor}
                 onLevelChange={switchLevel}
+                onNearbyElevator={setNearbyElevator}
                 walkStart={walkStart}
                 headBob={headBob}
                 touchControls={touchControls}
@@ -239,6 +242,7 @@ export function Viewport({ cameraRef }: ViewportProps) {
 
       <WalkOverlay />
       <DoorHint viewerRef={viewerRef} />
+      <ElevatorPanel viewerRef={viewerRef} />
 
       <div className="absolute top-3 left-3 flex flex-wrap gap-2">
         <ViewSwitch />

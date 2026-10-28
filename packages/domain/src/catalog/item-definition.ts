@@ -20,11 +20,12 @@ export interface ItemEnvelope {
 export type ItemMount = 'floor' | 'wall' | 'ceiling' | 'surface';
 
 /**
- * Interacción posible con el item, declarada desde ya para sentarse/acostarse (backlog):
- * `at` es el punto de apoyo (asiento, colchón) en el marco local.
+ * Interacción posible con el item: sentarse o acostarse (backlog; `at` es el punto de apoyo,
+ * asiento o colchón, en el marco local) o viajar entre plantas (`travel`, un ascensor: `at` es
+ * el centro de la cabina).
  */
 export interface Affordance {
-  readonly kind: 'sit' | 'lie';
+  readonly kind: 'sit' | 'lie' | 'travel';
   readonly at: Vec3Mm;
 }
 
@@ -111,13 +112,15 @@ export interface ItemDefinition<P extends ParamSpecs = ParamSpecs> {
    * cielo de su planta y del piso de la planta de arriba.
    */
   readonly floorOpening?: (params: ParamValues<P>) => LocalPolygon;
+  /** Cuántas losas atraviesa ese hueco hacia arriba (un ascensor de 3 paradas, 2); por defecto 1. */
+  readonly openingSpan?: (params: ParamValues<P>) => number;
   /** Contorno en el plano (por defecto, el rectángulo de su envolvente). */
   readonly planOutline?: (params: ParamValues<P>) => LocalPolygon;
   /** Símbolo en el plano (peldaños, sentido de subida), en el marco local. */
   readonly planSymbol?: (params: ParamValues<P>) => readonly PlanStroke[];
   /**
-   * Su parámetro `height` es la altura de piso a piso: al ubicarlo toma la de su planta, y se
-   * avisa si no llega a la planta de arriba.
+   * Su parámetro `height` es la altura de piso a piso (hasta la planta a `openingSpan` plantas):
+   * al ubicarlo toma la de su planta, y se avisa si no llega.
    */
   readonly fillsStorey?: boolean;
 }
@@ -129,6 +132,7 @@ type DerivedFields =
   | 'emitters'
   | 'colliders'
   | 'floorOpening'
+  | 'openingSpan'
   | 'planOutline'
   | 'planSymbol';
 
@@ -137,6 +141,7 @@ export interface AnyItemDefinition extends Omit<ItemDefinition, DerivedFields> {
   readonly emitters?: (params: ResolvedParams) => readonly LightEmitter[];
   readonly colliders?: (params: ResolvedParams) => readonly CollisionBox[];
   readonly floorOpening?: (params: ResolvedParams) => LocalPolygon;
+  readonly openingSpan?: (params: ResolvedParams) => number;
   readonly planOutline?: (params: ResolvedParams) => LocalPolygon;
   readonly planSymbol?: (params: ResolvedParams) => readonly PlanStroke[];
   readonly envelope?: (params: ResolvedParams) => ItemEnvelope;

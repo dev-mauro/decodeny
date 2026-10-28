@@ -3,6 +3,7 @@ import type { ComponentType, RefObject } from 'react';
 import type { Box3 } from 'three';
 import type { ViewerCameraApi } from '../scene/EditCamera';
 import type { LevelSlab } from '../scene/slabs';
+import type { NearbyElevator } from './elevators';
 import type { ViewerSelection } from '../selection';
 import type { PersonProfile } from './person-profile';
 import type { VirtualInput } from './virtual-input';
@@ -20,6 +21,10 @@ export interface NavigationModeProps {
   readonly slabs: ReadonlyMap<string, LevelSlab>;
   /** El recorrido informa la planta en la que queda la persona al subir o bajar. */
   readonly onLevelChange?: ((levelId: string) => void) | undefined;
+  /** El ascensor en el que está la persona, detenido en una parada, o `null`. */
+  readonly onNearbyElevator?: ((elevator: NearbyElevator | null) => void) | undefined;
+  /** El modo deja aquí cómo viajar en ascensor a una planta (ver `ViewerApi.travel`). */
+  readonly travelRef?: RefObject<((levelId: string) => boolean) | null> | undefined;
   readonly bounds: Box3 | null;
   readonly selection: ViewerSelection | null;
   readonly profile: PersonProfile;

@@ -1,4 +1,4 @@
-import { levelFloorOpenings } from '@decodeny/catalog';
+import { slabOpenings } from '@decodeny/catalog';
 import {
   bounds,
   isCounterClockwise,
@@ -99,8 +99,8 @@ function slabRegions(level: Level, voids: readonly (readonly Vec2[])[]): PlanReg
 export function levelSlab(levels: readonly Level[], level: Level): LevelSlab {
   const index = levels.findIndex((l) => l.id === level.id);
   const below = index > 0 ? levels[index - 1] : undefined;
-  const floorVoids = below ? levelFloorOpenings(below) : NO_VOIDS;
-  const ceilingVoids = levelFloorOpenings(level);
+  const floorVoids = below ? slabOpenings(levels, level.id, 'floor') : NO_VOIDS;
+  const ceilingVoids = slabOpenings(levels, level.id, 'ceiling');
   if (!below) return { floorVoids, ceilingVoids, below: null };
   const top = below.elevation + Math.max(0, ...below.walls.map((w) => w.height));
   return {

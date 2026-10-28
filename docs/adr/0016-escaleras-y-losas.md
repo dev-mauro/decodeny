@@ -26,4 +26,4 @@ El caracol gira 300° y deja un sector de 60° de losa como descanso de llegada,
 
 - Un hueco puede quedar fuera de los recintos (una escalera mal ubicada): la resta lo recorta y no rompe la losa.
 - Una escalera que sobresale de la casa se ve afuera; el inspector ya avisa si atraviesa un muro.
-- El ascensor y el «vacío» se agregan con los mismos contratos (`floorOpening`, `colliders`), más una afordancia `travel` para el ascensor.
+- El ascensor y el «vacío» usan los mismos contratos (`floorOpening`, `colliders`). El ascensor suma la afordancia `travel` y `openingSpan` (cuántas losas atraviesa); su plataforma no es parte del documento: se mueve en el recorrido como las puertas.

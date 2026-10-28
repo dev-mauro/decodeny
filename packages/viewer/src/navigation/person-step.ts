@@ -35,8 +35,10 @@ export function stepPerson<TCollider>(
   yaw: number,
   profile: PersonProfile,
   dt: number,
+  /** Dirección que reemplaza a la de las teclas (sobre una escalera, su línea de paso). */
+  direction?: readonly [number, number],
 ): Vec3Like {
-  const [dx, dz] = horizontalDirection(intent, yaw);
+  const [dx, dz] = direction ?? horizontalDirection(intent, yaw);
   const speed = intent.run ? profile.runSpeed : profile.walkSpeed;
   state.verticalSpeed = Math.max(-MAX_FALL_SPEED, state.verticalSpeed - GRAVITY * dt);
   controller.computeColliderMovement(collider, {

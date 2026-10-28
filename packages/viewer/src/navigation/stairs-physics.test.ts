@@ -13,6 +13,7 @@ import { Euler, Quaternion } from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { planToWorld } from '../coords';
 import { levelSlab } from '../scene/slabs';
+import { guidedStep, stairGuides } from './stair-guide';
 import {
   groundCollider,
   itemColliders,
@@ -73,7 +74,10 @@ function walk(
   route: Route,
   seconds: number,
   elevation = 0,
+  /** Con la guía de las escaleras, como en el recorrido (`guidedStep`). */
+  guided = false,
 ) {
+  const guides = stairGuides(project.levels);
   const world = new RAPIER.World({ x: 0, y: 0, z: 0 });
   const fixed = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   for (const [i, level] of project.levels.entries()) {
@@ -113,10 +117,18 @@ function walk(
   const intent: MovementIntent = { ...NO_MOVEMENT, forward: 1 };
   const state: PersonMotionState = { verticalSpeed: 0 };
   const steps = Math.round(seconds / DT);
+  let guidedYaw = typeof route === 'number' ? route : 0;
   for (let i = 0; i < steps; i++) {
     const at = body.translation();
-    const yaw =
+    let yaw =
       typeof route === 'number' ? route : route({ x: at.x * 1000, y: -at.z * 1000 }, i * DT);
+    let direction: [number, number] | undefined;
+    if (guided) {
+      const g = guidedStep(guides, [at.x, at.y - dims.centerY, at.z], 1, guidedYaw, DT);
+      if (g) guidedYaw += g.yawDelta;
+      yaw = guidedYaw;
+      direction = g?.direction;
+    }
     const next = stepPerson(
       controller,
       collider,
@@ -126,6 +138,7 @@ function walk(
       yaw,
       DEFAULT_PERSON,
       DT,
+      direction,
     );
     body.setNextKinematicTranslation(next);
     world.step();
@@ -187,24 +200,27 @@ describe('escaleras en el recorrido', () => {
     expect(levelAtFeet(project.levels, r.feet * 1000)?.name).toBe('Piso 2');
   });
 
-  it('se sube por la escalera caracol siguiendo la línea de paso', () => {
+  it('en la caracol, adelante sigue sola la línea de paso hasta arriba', () => {
     const project = twoStoreys('stairs.spiral@1', { diameter: 1800 });
     const center = { x: 2000, y: 3000 };
     const walkRadius = spiralWalkRadius(1800);
-    const start = -150 * (Math.PI / 180);
+    // Un poco antes del primer peldaño, mirando hacia donde gira la escalera; luego, solo «adelante».
+    const start = -125 * (Math.PI / 180);
     const r = walk(
       project,
       { x: center.x + walkRadius * Math.cos(start), y: center.y + walkRadius * Math.sin(start) },
-      (at) => {
-        // Tangente antihoraria, corrigiendo hacia la línea de paso.
-        const dx = at.x - center.x;
-        const dy = at.y - center.y;
-        const radius = Math.hypot(dx, dy) || 1;
-        const pull = (4 * (walkRadius - radius)) / walkRadius;
-        return heading(-dy / radius + (pull * dx) / radius, dx / radius + (pull * dy) / radius);
-      },
-      8,
+      heading(-Math.sin(start), Math.cos(start)),
+      9,
+      0,
+      true,
     );
     expect(r.feet).toBeCloseTo(2.8, 1);
+  });
+
+  it('desde arriba, mirando hacia abajo, adelante baja por la línea de paso', () => {
+    const project = twoStoreys('stairs.straight@1', { width: 1000 });
+    // Arriba, al norte del hueco, mirando al sur.
+    const r = walk(project, { x: 2000, y: 5600 }, Math.PI, 9, 2800, true);
+    expect(r.feet).toBeCloseTo(0, 1);
   });
 });

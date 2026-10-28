@@ -114,6 +114,11 @@ export interface ItemDefinition<P extends ParamSpecs = ParamSpecs> {
   readonly floorOpening?: (params: ParamValues<P>) => LocalPolygon;
   /** Cuántas losas atraviesa ese hueco hacia arriba (un ascensor de 3 paradas, 2); por defecto 1. */
   readonly openingSpan?: (params: ParamValues<P>) => number;
+  /**
+   * Camino de subida por la línea de paso (marco local, de abajo hacia arriba): en el recorrido,
+   * sobre la escalera, adelante y atrás lo siguen (sin chocar con bordes ni barandas).
+   */
+  readonly walkPath?: (params: ParamValues<P>) => readonly Vec3Mm[];
   /** Contorno en el plano (por defecto, el rectángulo de su envolvente). */
   readonly planOutline?: (params: ParamValues<P>) => LocalPolygon;
   /** Símbolo en el plano (peldaños, sentido de subida), en el marco local. */
@@ -133,6 +138,7 @@ type DerivedFields =
   | 'colliders'
   | 'floorOpening'
   | 'openingSpan'
+  | 'walkPath'
   | 'planOutline'
   | 'planSymbol';
 
@@ -142,6 +148,7 @@ export interface AnyItemDefinition extends Omit<ItemDefinition, DerivedFields> {
   readonly colliders?: (params: ResolvedParams) => readonly CollisionBox[];
   readonly floorOpening?: (params: ResolvedParams) => LocalPolygon;
   readonly openingSpan?: (params: ResolvedParams) => number;
+  readonly walkPath?: (params: ResolvedParams) => readonly Vec3Mm[];
   readonly planOutline?: (params: ResolvedParams) => LocalPolygon;
   readonly planSymbol?: (params: ResolvedParams) => readonly PlanStroke[];
   readonly envelope?: (params: ResolvedParams) => ItemEnvelope;

@@ -143,15 +143,19 @@ function flightBlocks(f: Flight, s: StairSteps): Part[] {
 }
 
 /** Rampa que pasa por el centro de las huellas, de medio peldaño antes a medio después. */
-function flightRamp(f: Flight, s: StairSteps): CollisionBox {
+/** Extremos de la línea por el centro de las huellas, de medio peldaño antes a medio después. */
+function flightEnds(f: Flight, s: StairSteps): [Vec3Mm, Vec3Mm] {
   const a = along(f, -s.tread / 2);
   const b = along(f, (f.count + 0.5) * s.tread);
-  return ramp(
+  return [
     [a[0], (f.first - 1) * s.riser, a[1]],
     [b[0], (f.first + f.count) * s.riser, b[1]],
-    f.width,
-    RAMP_THICKNESS,
-  );
+  ];
+}
+
+function flightRamp(f: Flight, s: StairSteps): CollisionBox {
+  const [from, to] = flightEnds(f, s);
+  return ramp(from, to, f.width, RAMP_THICKNESS);
 }
 
 /** Pasamanos a ambos lados de un tramo: pilares en los extremos, barrotes y barra inclinada. */
@@ -296,6 +300,8 @@ function treadLines(f: Flight, s: StairSteps): PlanStroke[] {
 interface StairLayout {
   readonly parts: Part[];
   readonly colliders: CollisionBox[];
+  /** Camino de subida por la línea de paso, de abajo hacia arriba (ver `walkPath`). */
+  readonly path: Vec3Mm[];
   readonly opening: P2[];
   readonly outline: P2[];
   readonly symbol: PlanStroke[];
@@ -334,6 +340,7 @@ function straightLayout(p: RectStairParams): StairLayout {
   return {
     parts,
     colliders,
+    path: flightEnds(flight, s),
     opening: outline,
     outline,
     symbol: [
@@ -350,6 +357,7 @@ const stairDefinition = <P extends RectStairParams>(layout: (p: P) => StairLayou
   floorOpening: (p: P) => layout(p).opening,
   planOutline: (p: P) => layout(p).outline,
   planSymbol: (p: P) => layout(p).symbol,
+  walkPath: (p: P) => layout(p).path,
 });
 
 export const stairStraight = defineItem({
@@ -374,6 +382,7 @@ function mirrored(layout: StairLayout, turn: string): StairLayout {
   return {
     parts: layout.parts.map(mirrorPart),
     colliders: layout.colliders.map(mirrorBox),
+    path: layout.path.map(([x, y, z]) => [-x, y, z] as const),
     opening: mirrorPolygon(layout.opening) as P2[],
     outline: mirrorPolygon(layout.outline) as P2[],
     symbol: layout.symbol.map(mirrorStroke),
@@ -462,10 +471,16 @@ function lLayout(p: TurnStairParams): StairLayout {
       ...guards.map(([a, b]) => guardCollider(a, b, p.height)),
     );
   }
+  const landingY = k * s.riser;
   return mirrored(
     {
       parts,
       colliders,
+      path: [
+        ...flightEnds(first, s),
+        [left + W / 2, landingY, back + W / 2],
+        ...flightEnds(second, s),
+      ],
       opening: outline,
       outline,
       symbol: [
@@ -553,10 +568,17 @@ function uLayout(p: TurnStairParams): StairLayout {
       ...guards.map(([a, b]) => guardCollider(a, b, p.height)),
     );
   }
+  const landingY = k * s.riser;
   return mirrored(
     {
       parts,
       colliders,
+      path: [
+        ...flightEnds(first, s),
+        [left + W / 2, landingY, back + W / 2],
+        [right - W / 2, landingY, back + W / 2],
+        ...flightEnds(second, s),
+      ],
       opening: outline,
       outline,
       symbol: [
@@ -743,7 +765,10 @@ function spiralLayout(p: SpiralParams): StairLayout {
     symbol.push({ points: [polar(COLUMN_RADIUS, a), polar(R, a)] });
   }
   symbol.push(...arrow(arc(walk, start + step / 2, end + step / 2)));
-  const layout = { parts, colliders, opening, outline, symbol };
+  const path = Array.from({ length: s.count * SPIRAL_PLANKS + 1 }, (_, k) =>
+    walkPoint(k / SPIRAL_PLANKS),
+  );
+  const layout = { parts, colliders, path, opening, outline, symbol };
   return mirrored(layout, p.turn === 'cw' ? 'left' : 'right');
 }
 
@@ -779,4 +804,5 @@ export const stairSpiral = defineItem({
   floorOpening: (p) => spiralLayout(p).opening,
   planOutline: (p) => spiralLayout(p).outline,
   planSymbol: (p) => spiralLayout(p).symbol,
+  walkPath: (p) => spiralLayout(p).path,
 });

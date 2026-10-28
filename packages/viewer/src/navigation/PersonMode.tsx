@@ -33,6 +33,7 @@ import { currentStop, elevatorUnder, isMoving, projectElevators, type Elevator }
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
 import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
+import { guidedStep, stairGuides } from './stair-guide';
 import type { NavigationModeProps } from './types';
 import { usePointerLook } from './use-pointer-look';
 import { useMovementIntent } from './virtual-input';
@@ -188,6 +189,9 @@ function PersonController({
 }: NavigationModeProps & { readonly elevators: readonly Elevator[] }) {
   const camera = useThree((s) => s.camera);
   const elevatorStore = useContext(ElevatorStoreContext);
+  // Sobre una escalera, adelante y atrás siguen su línea de paso (ver `stair-guide`).
+  const guides = useMemo(() => stairGuides(levels), [levels]);
+  const turned = useRef(false);
   const { world } = useRapier();
   const look = usePointerLook(onPointerLockChange, undefined, virtualInput);
   const readIntent = useMovementIntent(virtualInput);
@@ -258,6 +262,17 @@ function PersonController({
       return;
     }
     const intent = readIntent();
+    const guided = guidedStep(
+      guides,
+      [t.x, t.y - dims.centerY, t.z],
+      intent.forward,
+      look.current.yaw,
+      stepWorld.timestep,
+    );
+    if (guided && guided.yawDelta !== 0) {
+      look.current.yaw += guided.yawDelta;
+      turned.current = true;
+    }
     const next = stepPerson(
       kcc,
       c,
@@ -267,6 +282,7 @@ function PersonController({
       look.current.yaw,
       profile,
       stepWorld.timestep,
+      guided?.direction,
     );
     b.setNextKinematicTranslation(next);
   });
@@ -310,6 +326,11 @@ function PersonController({
     }
     last.current = { x: t.x, z: t.z };
     camera.position.set(t.x, t.y + dims.eyeOffset + offset, t.z);
+    // La mirada que giró la escalera.
+    if (turned.current) {
+      turned.current = false;
+      camera.rotation.set(look.current.pitch, look.current.yaw, 0, 'YXZ');
+    }
     // La planta en la que está la persona: la más alta cuyo piso alcanzan los pies.
     const here = levelAtFeet(levels, (t.y - dims.centerY) * 1000);
     if (here && here.id !== reportedLevel.current) {

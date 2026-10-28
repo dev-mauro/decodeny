@@ -1,10 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForScene } from './helpers';
 
 /**
  * Maquetas compartidas (ADR-0012) contra los emuladores de Firebase: `pnpm e2e:cloud`.
  * Cada contexto es un navegador distinto (su propia base local y su propia identidad anónima).
  * Antes de usar una página se la trae al frente: en segundo plano, Chromium frena sus
- * temporizadores (y con ellos el guardado y la subida agrupados).
+ * temporizadores (y con ellos el guardado y la subida agrupados). Y antes de editar se espera la
+ * escena: en CI, montar la vista 3D (WebGL por software) ocupa la página varios segundos y
+ * atrasa el guardado.
  */
 test.skip(!process.env.E2E_CLOUD, 'Requiere los emuladores de Firebase (pnpm e2e:cloud).');
 
@@ -24,7 +27,7 @@ async function renameSynced(page: Page, name: string) {
   await expect(button, 'la revisión de la nube sube con el cambio').toHaveAttribute(
     'data-cloud-rev',
     String(rev + 1),
-    { timeout: 20_000 },
+    { timeout: 30_000 },
   );
   await expect(button).toHaveAttribute('data-cloud-status', 'saved');
 }
@@ -53,6 +56,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await ana.bringToFront();
   await ana.goto('/');
   await ana.getByTestId('load-sample').click();
+  await waitForScene(ana);
   await rename(ana, 'Depto de Ana');
   const link = await shareCurrent(ana);
   expect(new URL(ana.url()).searchParams.get('maqueta')).not.toBeNull();
@@ -67,6 +71,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await expect(beto.getByTestId('visit-badge')).toBeVisible({ timeout: 20_000 });
   await expect(beto.getByTestId('project-name')).toHaveValue('Depto de Ana v2');
   await expect(beto.getByTestId('rooms-list')).toContainText('Cocina');
+  await waitForScene(beto);
 
   // Al editar se crea su propia copia (y deja de apuntar al enlace de Ana).
   await rename(beto, 'Versión de Beto');
@@ -90,6 +95,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await ana.goto(link);
   await expect(ana.getByTestId('project-name')).toHaveValue('Depto de Ana v2');
   await expect(ana.getByTestId('visit-badge')).toBeHidden();
+  await waitForScene(ana);
   await renameSynced(ana, 'Depto de Ana final');
   await carla.bringToFront();
   await carla.reload();

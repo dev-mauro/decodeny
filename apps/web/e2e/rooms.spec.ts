@@ -24,8 +24,10 @@ test('se crea una sala y varias personas se unen con el código', async ({ brows
   const beto = await person(browser);
   const carla = await person(browser);
 
+  // El plano en vez de la vista 3D: tres páginas con WebGL por software saturan el runner de CI.
   await ana.goto('/');
   await ana.getByTestId('load-sample').click();
+  await ana.getByTestId('view-plan').click();
   await openCollab(ana, 'Ana');
   await ana.getByTestId('collab-room-host').click();
   const codeBox = ana.getByTestId('collab-room-code');
@@ -36,6 +38,7 @@ test('se crea una sala y varias personas se unen con el código', async ({ brows
 
   // Beto escribe el código como se lo dictaron (minúsculas, con guion).
   await beto.goto('/');
+  await beto.getByTestId('view-plan').click();
   await openCollab(beto, 'Beto');
   await beto
     .getByTestId('collab-room-input')
@@ -66,6 +69,8 @@ test('se crea una sala y varias personas se unen con el código', async ({ brows
 
   // Las ediciones viajan entre todos.
   await carla.keyboard.press('Escape');
+  await expect(carla.getByTestId('collab-dialog')).toBeHidden();
+  await carla.getByTestId('view-plan').click();
   await carla.getByTestId('project-name').fill('Casa de los tres');
   await carla.getByTestId('project-name').press('Enter');
   await beto.bringToFront();

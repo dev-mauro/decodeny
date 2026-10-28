@@ -3,6 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Maquetas compartidas (ADR-0012) contra los emuladores de Firebase: `pnpm e2e:cloud`.
  * Cada contexto es un navegador distinto (su propia base local y su propia identidad anónima).
+ * Antes de usar una página se la trae al frente: en segundo plano, Chromium frena sus
+ * temporizadores (y con ellos el guardado y la subida agrupados).
  */
 test.skip(!process.env.E2E_CLOUD, 'Requiere los emuladores de Firebase (pnpm e2e:cloud).');
 
@@ -48,6 +50,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   const beto = await betoContext.newPage();
 
   // Ana arma una maqueta y la comparte.
+  await ana.bringToFront();
   await ana.goto('/');
   await ana.getByTestId('load-sample').click();
   await rename(ana, 'Depto de Ana');
@@ -59,6 +62,7 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
   await renameSynced(ana, 'Depto de Ana v2');
 
   // Beto abre el enlace: la ve tal cual, como maqueta de otra persona.
+  await beto.bringToFront();
   await beto.goto(link);
   await expect(beto.getByTestId('visit-badge')).toBeVisible({ timeout: 20_000 });
   await expect(beto.getByTestId('project-name')).toHaveValue('Depto de Ana v2');
@@ -75,16 +79,19 @@ test('compartir, abrir el enlace en otro navegador y editar crea una copia', asy
 
   // El original no cambió: quien lo abre de nuevo ve lo de Ana.
   const carla = await (await browser.newContext()).newPage();
+  await carla.bringToFront();
   await carla.goto(link);
   await expect(carla.getByTestId('project-name')).toHaveValue('Depto de Ana v2', {
     timeout: 20_000,
   });
 
   // Ana, en su navegador, abre su propio enlace y sigue editando el original (sin copia).
+  await ana.bringToFront();
   await ana.goto(link);
   await expect(ana.getByTestId('project-name')).toHaveValue('Depto de Ana v2');
   await expect(ana.getByTestId('visit-badge')).toBeHidden();
   await renameSynced(ana, 'Depto de Ana final');
+  await carla.bringToFront();
   await carla.reload();
   await expect(carla.getByTestId('project-name')).toHaveValue('Depto de Ana final', {
     timeout: 20_000,

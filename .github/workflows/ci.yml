@@ -66,8 +66,11 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: pnpm --filter @decodeny/web exec playwright install --with-deps chromium
-      # La app de los E2E usa los emuladores (proyecto demo, sin red real): incluye la nube.
-      - run: pnpm e2e:cloud
+      # Primero todo sin nube (los emuladores de Firebase compiten por la CPU con el WebGL por
+      # software); después, los de la nube con los emuladores (proyecto demo, sin red real).
+      - run: pnpm e2e
+      - name: E2E de la nube (emuladores)
+        run: node scripts/cloud/with-emulators.mjs pnpm e2e cloud.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -107,34 +107,39 @@ test('informa archivos inválidos al importar', async ({ page }) => {
 test('restaura el proyecto guardado automáticamente al recargar', async ({ page }) => {
   await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('total-area')).toHaveText('50,58 m²');
-  // Espera a que el autoguardado (con debounce) quede escrito en IndexedDB.
-  await page.waitForFunction(
-    () =>
-      new Promise<boolean>((resolve) => {
-        const open = indexedDB.open('decodeny');
-        open.onerror = () => resolve(false);
-        open.onsuccess = () => {
-          const db = open.result;
-          // Cada sondeo cierra su conexión: dejarlas abiertas interfiere con la base de la app.
-          if (!db.objectStoreNames.contains('autosave')) {
-            db.close();
-            resolve(false);
-            return;
-          }
-          const get = db.transaction('autosave').objectStore('autosave').get('current');
-          get.onsuccess = () => {
-            db.close();
-            resolve(String(get.result ?? '').includes('Depto. ejemplo 2D1B'));
-          };
-          get.onerror = () => {
-            db.close();
-            resolve(false);
-          };
-        };
-      }),
-    undefined,
-    { timeout: 10_000 },
-  );
+  // Espera a que la maqueta (guardado con debounce) quede escrita en IndexedDB.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            new Promise<boolean>((resolve) => {
+              const open = indexedDB.open('decodeny');
+              open.onerror = () => resolve(false);
+              open.onsuccess = () => {
+                const db = open.result;
+                // Cada sondeo cierra su conexión: dejarlas abiertas interfiere con la base de la app.
+                if (!db.objectStoreNames.contains('maquetas')) {
+                  db.close();
+                  resolve(false);
+                  return;
+                }
+                const all = db.transaction('maquetas').objectStore('maquetas').getAll();
+                all.onsuccess = () => {
+                  db.close();
+                  const records = all.result as { name?: string }[];
+                  resolve(records.some((r) => r.name === 'Depto. ejemplo 2D1B'));
+                };
+                all.onerror = () => {
+                  db.close();
+                  resolve(false);
+                };
+              };
+            }),
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
   await page.reload();
   await expect(page.getByTestId('total-area')).toHaveText('50,58 m²');
 });

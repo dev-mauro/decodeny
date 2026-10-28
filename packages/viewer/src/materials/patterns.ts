@@ -344,3 +344,51 @@ export function colorizeField(field: PatternField, material: ResolvedMaterial): 
 export function paintMaterial(material: ResolvedMaterial, maxPx = 1024): PatternImage {
   return colorizeField(patternField(material, maxPx), material);
 }
+
+/** Cuánto se acerca cada nivel reducido a su píxel más oscuro (0: promedio, 1: mínimo). */
+const LINE_KEEP = 0.5;
+
+/**
+ * Niveles reducidos (mipmaps) de un patrón, hasta 1 × 1, que conservan las líneas finas: cada
+ * bloque de 2 × 2 promedia y luego se acerca a su píxel más oscuro. Con el promedio simple, una
+ * junta de 1–2 px se diluye en los primeros niveles y el piso se ve liso de lejos o en ángulo
+ * rasante; así las juntas se van aclarando de a poco con la distancia.
+ */
+export function lineKeepingMipmaps(image: PatternImage): PatternImage[] {
+  const levels: PatternImage[] = [image];
+  let prev = image;
+  while (prev.width > 1 || prev.height > 1) {
+    const width = Math.max(1, Math.floor(prev.width / 2));
+    const height = Math.max(1, Math.floor(prev.height / 2));
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let j = 0; j < height; j++) {
+      for (let i = 0; i < width; i++) {
+        const xs = [Math.min(prev.width - 1, i * 2), Math.min(prev.width - 1, i * 2 + 1)];
+        const ys = [Math.min(prev.height - 1, j * 2), Math.min(prev.height - 1, j * 2 + 1)];
+        let darkest = -1;
+        let darkestLum = Infinity;
+        const sum = [0, 0, 0];
+        for (const y of ys) {
+          for (const x of xs) {
+            const k = (y * prev.width + x) * 4;
+            const lum = prev.data[k]! + prev.data[k + 1]! + prev.data[k + 2]!;
+            for (let c = 0; c < 3; c++) sum[c]! += prev.data[k + c]!;
+            if (lum < darkestLum) {
+              darkestLum = lum;
+              darkest = k;
+            }
+          }
+        }
+        const o = (j * width + i) * 4;
+        for (let c = 0; c < 3; c++) {
+          const avg = sum[c]! / 4;
+          data[o + c] = avg - LINE_KEEP * (avg - prev.data[darkest + c]!);
+        }
+        data[o + 3] = 255;
+      }
+    }
+    prev = { width, height, data, sizeMm: image.sizeMm };
+    levels.push(prev);
+  }
+  return levels;
+}

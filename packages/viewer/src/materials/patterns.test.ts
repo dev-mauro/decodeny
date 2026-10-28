@@ -1,7 +1,14 @@
 import { materialCatalog, resolveMaterialDefinition } from '@decodeny/catalog';
 import { resolveMaterial } from '@decodeny/domain';
 import { describe, expect, it } from 'vitest';
-import { hexToRgb, paintMaterial, patternField, patternPainters, SEAM } from './patterns';
+import {
+  hexToRgb,
+  lineKeepingMipmaps,
+  paintMaterial,
+  patternField,
+  patternPainters,
+  SEAM,
+} from './patterns';
 
 describe('patrones de materiales', () => {
   it.each(materialCatalog.list().map((m) => [m.id, m] as const))(
@@ -66,5 +73,21 @@ describe('patrones de materiales', () => {
     const img = paintMaterial(resolveMaterial(def, { params: { joint: 20, grout: '#ff0000' } }));
     // La esquina (0, 0) cae en la junta.
     expect([img.data[0], img.data[1], img.data[2]]).toEqual([255, 0, 0]);
+  });
+});
+
+describe('mipmaps que conservan las juntas', () => {
+  it('llegan a 1 × 1 y una junta de 1 px sigue más oscura en los niveles reducidos', () => {
+    const width = 16;
+    const data = new Uint8ClampedArray(width * width * 4).fill(200);
+    // Una junta vertical oscura de 1 px en la columna 4.
+    for (let y = 0; y < width; y++) data.fill(40, (y * width + 4) * 4, (y * width + 4) * 4 + 3);
+    const levels = lineKeepingMipmaps({ width, height: width, data, sizeMm: [100, 100] });
+    expect(levels.map((l) => l.width)).toEqual([16, 8, 4, 2, 1]);
+    const at = (level: number, x: number) => levels[level]!.data[x * 4]!;
+    // Promediando, la junta quedaría en (40 + 200) / 2 = 120 en el nivel 1; aquí, más oscura.
+    expect(at(1, 2)).toBeLessThan(120);
+    expect(at(1, 2)).toBeLessThan(at(1, 5));
+    expect(at(2, 1)).toBeLessThan(at(2, 3));
   });
 });

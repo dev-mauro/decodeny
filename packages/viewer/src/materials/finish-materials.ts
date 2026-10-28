@@ -17,7 +17,7 @@ import {
   type Material,
 } from 'three';
 import type { InteractionState } from '../selection';
-import { paintMaterial } from './patterns';
+import { lineKeepingMipmaps, paintMaterial } from './patterns';
 import { SECTION_PLANES } from './section-planes';
 
 /**
@@ -54,8 +54,11 @@ function textureFor(m: ResolvedMaterial): DataTexture {
     texture.wrapT = RepeatWrapping;
     texture.magFilter = LinearFilter;
     texture.minFilter = LinearMipmapLinearFilter;
-    texture.generateMipmaps = true;
-    texture.anisotropy = 8;
+    // Niveles propios que no borran las juntas finas (ver `lineKeepingMipmaps`).
+    texture.mipmaps = lineKeepingMipmaps(image);
+    texture.generateMipmaps = false;
+    // Three lo limita al máximo de la GPU.
+    texture.anisotropy = 16;
     texture.repeat.set(1000 / (image.sizeMm[0] * m.scale), 1000 / (image.sizeMm[1] * m.scale));
     texture.rotation = (m.rotation * Math.PI) / 180;
     texture.needsUpdate = true;

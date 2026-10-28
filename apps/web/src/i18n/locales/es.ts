@@ -61,8 +61,6 @@ export const es = {
     wallLeft: 'Tramo hacia la izquierda',
     wallDown: 'Tramo hacia abajo',
     detectRooms: 'Detectar espacios en los contornos cerrados',
-    wallHint:
-      'Clic para empezar y en cada esquina · escribe el largo (3,5) y Enter · Esc termina · Alt: sin ajuste',
     roomsDetected_one: 'Se creó {{count}} espacio',
     roomsDetected_other: 'Se crearon {{count}} espacios',
     noRoomsDetected: 'No hay contornos de muros cerrados sin espacio',

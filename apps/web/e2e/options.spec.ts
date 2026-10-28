@@ -49,18 +49,32 @@ test('la cuadrícula se ve en el plano y se elige su ancho', async ({ page }) =>
   await expect(page.locator('#plan-grid')).toHaveAttribute('width', '250');
 });
 
-test('muros exactos con largo y dirección, sin teclado; guías al quedar parejo', async ({
-  page,
-}) => {
+test('muros exactos escribiendo el largo; guías al quedar parejo', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('empty-draw-walls').click();
-  await expect(page.getByTestId('wall-length')).toBeDisabled();
+  // Con teclado no hay panel: el largo se escribe y se confirma con Enter.
+  await expect(page.getByTestId('wall-draw-hint')).toBeHidden();
   const start = await toScreen(page, 0, 0);
   await page.mouse.click(start.x, start.y);
-  await expect(page.getByTestId('wall-length')).toBeEnabled();
-  for (const dir of ['right', 'up', 'left', 'down']) {
-    await page.getByTestId('wall-length').fill('3');
-    await page.getByTestId(`wall-dir-${dir}`).click();
+  const corners = [
+    [0, 0],
+    [3000, 0],
+    [3000, 3000],
+    [0, 3000],
+  ] as const;
+  const dirs = [
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+    [0, -1],
+  ] as const;
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = corners[i]!;
+    const [dx, dy] = dirs[i]!;
+    const toward = await toScreen(page, x + dx * 800, y + dy * 800);
+    await page.mouse.move(toward.x, toward.y);
+    await page.keyboard.type('3');
+    await page.keyboard.press('Enter');
   }
   await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
   // Lo dibujado es la cara interior: 3 × 3 m libres entre muro y muro.

@@ -65,8 +65,6 @@ export const en: Translation<Resources> = {
     wallLeft: 'Segment to the left',
     wallDown: 'Segment down',
     detectRooms: 'Detect rooms in closed outlines',
-    wallHint:
-      'Click to start and at each corner · type the length (3.5) and Enter · Esc ends · Alt: no snapping',
     roomsDetected_one: '{{count}} room created',
     roomsDetected_other: '{{count}} rooms created',
     noRoomsDetected: 'There are no closed wall outlines without a room',

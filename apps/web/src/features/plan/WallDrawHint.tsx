@@ -17,8 +17,10 @@ const DIRECTIONS = [
 ] as const;
 
 /**
- * Indicaciones al dibujar muros, con lo que hace falta sin teclado: escribir un largo y elegir
- * la dirección agrega un tramo exacto desde el último punto; «Terminar» sale de la herramienta.
+ * Pantallas táctiles: lo que hace falta para dibujar muros sin teclado (escribir un largo y
+ * elegir la dirección agrega un tramo exacto desde el último punto; «Terminar» sale de la
+ * herramienta). Con teclado no se muestra: el largo se escribe y se confirma con Enter, y Esc
+ * termina.
  */
 export function WallDrawHint({
   viewerRef,
@@ -34,7 +36,7 @@ export function WallDrawHint({
     (s) => s.view === 'plan' && s.planTool === 'wall' && s.placement === null,
   );
   const [length, setLength] = useState('');
-  if (!active) return null;
+  if (!active || !touch) return null;
 
   const add = (dir: { x: number; y: number }) => {
     const parsed = parseLength(length);
@@ -47,7 +49,7 @@ export function WallDrawHint({
 
   return (
     <ToolHint
-      text={t(touch ? 'viewport.wallHintTouch' : 'viewport.wallHint')}
+      text={t('viewport.wallHintTouch')}
       testId="wall-draw-hint"
       actions={[
         {

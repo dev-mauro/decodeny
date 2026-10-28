@@ -26,7 +26,9 @@ async function movePlan(page: Page, x: number, y: number) {
 test('dibuja muros en la planta, cierra un recinto, lo divide y une', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('empty-draw-walls').click();
-  await expect(page.getByTestId('wall-draw-hint')).toBeVisible();
+  await expect(page.getByTestId('plan-tool-wall')).toHaveAttribute('aria-checked', 'true');
+  // Con teclado no hay panel de indicaciones (solo en pantallas táctiles).
+  await expect(page.getByTestId('wall-draw-hint')).toBeHidden();
 
   // Primer punto con clic; los tramos, escribiendo el largo en la dirección del cursor.
   await clickPlan(page, 0, 0);
@@ -51,7 +53,7 @@ test('dibuja muros en la planta, cierra un recinto, lo divide y une', async ({ p
 
   // Seleccionar el tabique y borrarlo: vuelve a ser un solo recinto.
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('wall-draw-hint')).toBeHidden();
+  await expect(page.getByTestId('plan-tool-select')).toHaveAttribute('aria-checked', 'true');
   await clickPlan(page, 1500, 1500);
   await expect(page.getByTestId('wall-inspector')).toBeVisible();
   await page.getByTestId('delete-wall').click();
@@ -84,14 +86,16 @@ test('lo que se dibuja es el interior: 2 m × 1 m dejan 2 × 1 m libres entre mu
   await page.goto('/');
   await page.getByTestId('empty-draw-walls').click();
   await clickPlan(page, 0, 0);
-  for (const [length, dir] of [
-    ['2', 'right'],
-    ['1', 'up'],
-    ['2', 'left'],
-    ['1', 'down'],
+  // Escribiendo el largo y Enter, en la dirección del cursor.
+  for (const [length, x, y, dx, dy] of [
+    ['2', 0, 0, 1, 0],
+    ['1', 2000, 0, 0, 1],
+    ['2', 2000, 1000, -1, 0],
+    ['1', 0, 1000, 0, -1],
   ] as const) {
-    await page.getByTestId('wall-length').fill(length);
-    await page.getByTestId(`wall-dir-${dir}`).click();
+    await movePlan(page, x + dx * 500, y + dy * 500);
+    await page.keyboard.type(length);
+    await page.keyboard.press('Enter');
   }
   await expect(page.getByTestId('rooms-list')).toContainText('Espacio 1');
   // Antes quedaba (2 − 0,15) × (1 − 0,15) = 1,57 m².

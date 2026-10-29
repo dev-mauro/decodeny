@@ -201,6 +201,10 @@ describe('ascensores', () => {
     };
     // Dentro de la cabina, en el Piso 2: sobre la plataforma.
     expect(simulate({ x: 2000, y: 3100 }, 2800, 0).feet).toBeCloseTo(2.8, 1);
+    // Y sale caminando por la puerta abierta (al sur) al Piso 2.
+    const out = simulate({ x: 2000, y: 3100 }, 2800, Math.PI);
+    expect(out.feet).toBeCloseTo(2.8, 1);
+    expect(-out.z).toBeLessThan(2.0);
     // En el Piso 1, caminando hacia el ducto (al norte, desde el frente): la reja lo detiene.
     const blocked = simulate({ x: 2000, y: 1500 }, 0, 0);
     expect(blocked.feet).toBeCloseTo(0, 1);

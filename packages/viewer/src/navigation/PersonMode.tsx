@@ -41,7 +41,7 @@ import {
 import { createHeadBob, stepHeadBob } from './head-bob';
 import { capsuleDimensions } from './person-profile';
 import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
-import { guidedStep, stairGuides } from './stair-guide';
+import { guidedStep, newGuideState, stairGuides } from './stair-guide';
 import type { NavigationModeProps } from './types';
 import { usePointerLook } from './use-pointer-look';
 import { useMovementIntent } from './virtual-input';
@@ -149,11 +149,13 @@ function DoorColliders({ level }: { readonly level: Level }) {
 function ElevatorColliders({ elevator }: { readonly elevator: Elevator }) {
   const store = useContext(ElevatorStoreContext);
   const state = useElevatorState(elevator.id);
-  const platform = useRef<RapierRigidBody>(null);
+  // La plataforma es un colisionador fijo que se corre en cada paso: el controlador de la persona
+  // queda trabado contra un cuerpo cinemático (no camina sobre él).
+  const platform = useRef<RapierCollider>(null);
   const [start] = useState(() => elevatorPlatformCollider(elevator, state.offset));
   useBeforePhysicsStep(() => {
     const at = elevatorPlatformCollider(elevator, store?.get(elevator.id).offset ?? 0).position;
-    platform.current?.setNextKinematicTranslation({ x: at[0], y: at[1], z: at[2] });
+    platform.current?.setTranslationWrtParent({ x: at[0], y: at[1], z: at[2] });
   });
   // Las puertas como obstáculo cambian solo al cerrarse o abrirse del todo, no en cada paso.
   const closedKey = closedStops(elevator, state)
@@ -165,13 +167,13 @@ function ElevatorColliders({ elevator }: { readonly elevator: Elevator }) {
   }, [closedKey, elevator]);
   return (
     <>
-      <RigidBody
-        ref={platform}
-        type="kinematicPosition"
-        colliders={false}
-        position={start.position}
-      >
-        <CuboidCollider args={start.halfExtents} rotation={[0, start.rotationY, 0]} />
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider
+          ref={platform}
+          args={start.halfExtents}
+          position={start.position}
+          rotation={[0, start.rotationY, 0]}
+        />
       </RigidBody>
       {gates.length > 0 && (
         <RigidBody key={gates.map((g) => g.position[1]).join(' ')} type="fixed" colliders={false}>
@@ -204,6 +206,7 @@ function PersonController({
   // Sobre una escalera, adelante y atrás siguen su línea de paso (ver `stair-guide`).
   const guides = useMemo(() => stairGuides(levels), [levels]);
   const turned = useRef(false);
+  const guideState = useRef(newGuideState());
   const { world } = useRapier();
   const look = usePointerLook(onPointerLockChange, undefined, virtualInput);
   const readIntent = useMovementIntent(virtualInput);
@@ -279,7 +282,7 @@ function PersonController({
       [t.x, t.y - dims.centerY, t.z],
       intent.forward,
       look.current.yaw,
-      stepWorld.timestep,
+      guideState.current,
     );
     if (guided && guided.yawDelta !== 0) {
       look.current.yaw += guided.yawDelta;

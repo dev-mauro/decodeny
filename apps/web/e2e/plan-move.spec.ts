@@ -85,3 +85,15 @@ test('el trackpad desplaza el plano y arrastrar al borde lo corre', async ({ pag
   expect(await viewBox()).not.toBe(pinned);
   await page.mouse.up();
 });
+
+test('un espacio separado queda donde se dejó al mover otro', async ({ page }) => {
+  const one = await box(page, 'Uno');
+  await dragBy(page, { x: one.x + one.width / 2, y: one.y + one.height / 2 }, 0, 160);
+  const left = await box(page, 'Uno');
+  expect(left.y - one.y).toBeGreaterThan(100);
+  const two = await box(page, 'Dos');
+  await dragBy(page, { x: two.x + two.width / 2, y: two.y + two.height / 2 }, 0, -140);
+  expect((await box(page, 'Dos')).y - two.y).toBeLessThan(-90);
+  // El primero no volvió a su lugar.
+  expect(Math.abs((await box(page, 'Uno')).y - left.y)).toBeLessThan(2);
+});

@@ -471,8 +471,9 @@ export function PlanView({
     phase: 'move' | 'end' | 'cancel',
     e: { clientX: number; clientY: number; altKey: boolean },
     view: ViewState = current,
+    /** El arrastre: al soltar ya no está en `drag` (se limpia antes de avisar el final). */
+    d = drag.current,
   ) => {
-    const d = drag.current;
     if (!d) return;
     const p = planAt(view, e.clientX, e.clientY);
     const delta = sub(p, d.startPlan);
@@ -699,7 +700,7 @@ export function PlanView({
       });
       return;
     }
-    if (d.moved && d.kind !== 'pan') emit('end', e);
+    if (d.moved && d.kind !== 'pan') emit('end', e, current, d);
     // Clic sin arrastre sobre un mueble de una selección múltiple: queda seleccionado solo él.
     if (!d.moved && d.kind === 'item' && selectionGroup.length > 0) {
       onSelectionChange({ kind: 'item', id: d.id });

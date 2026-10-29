@@ -84,39 +84,55 @@ const PULL = 2;
 export interface GuidedStep {
   /** Dirección horizontal del movimiento (x–z), de largo ≤ 1. */
   readonly direction: [number, number];
-  /** Giro de la mirada para seguir la escalera (radianes). */
+  /** Cuánto giró el tramo desde el paso anterior (radianes): la mirada gira lo mismo. */
   readonly yawDelta: number;
 }
 
+/** Lo que la guía recuerda entre pasos mientras se avanza por una escalera. */
+export interface GuideState {
+  /** Sentido elegido al empezar a avanzar (1 sube, −1 baja), con la tecla que lo eligió. */
+  sense: { readonly forward: number; readonly sign: number } | null;
+  /** Rumbo del tramo en el paso anterior. */
+  heading: number | null;
+}
+
+export const newGuideState = (): GuideState => ({ sense: null, heading: null });
+
 /**
- * Sobre una escalera, adelante va por la línea de paso hacia donde se mira (subir o bajar) y
- * atrás al revés; los costados no cuentan. Devuelve `null` si no se está sobre una o no se
- * avanza ni retrocede.
+ * Sobre una escalera, adelante va por la línea de paso hacia donde se miraba al empezar (subir o
+ * bajar) y atrás al revés; los costados no cuentan. El sentido se mantiene mientras se sostiene
+ * la tecla (mirar a un costado no lo invierte) y la mirada solo gira lo que gira el tramo: se
+ * puede mirar libremente. Devuelve `null` si no se está sobre una o no se avanza ni retrocede.
  */
 export function guidedStep(
   guides: readonly StairGuide[],
   feet: Vec3Tuple,
   forward: number,
   yaw: number,
-  dt: number,
+  state: GuideState,
 ): GuidedStep | null {
-  if (forward === 0) return null;
-  const hit = guideAt(guides, feet);
-  if (!hit) return null;
-  const view: [number, number] = [-Math.sin(yaw), -Math.cos(yaw)];
-  const facingUp = view[0] * hit.up[0] + view[1] * hit.up[1] >= 0 ? 1 : -1;
-  const sign = Math.sign(forward) * facingUp;
-  const along: [number, number] = [hit.up[0] * sign, hit.up[1] * sign];
+  const hit = forward === 0 ? null : guideAt(guides, feet);
+  if (!hit) {
+    state.sense = null;
+    state.heading = null;
+    return null;
+  }
+  if (state.sense?.forward !== Math.sign(forward)) {
+    const view: [number, number] = [-Math.sin(yaw), -Math.cos(yaw)];
+    const facingUp = view[0] * hit.up[0] + view[1] * hit.up[1] >= 0 ? 1 : -1;
+    state.sense = { forward: Math.sign(forward), sign: Math.sign(forward) * facingUp };
+  }
+  const sign = state.sense.sign;
   // Volver a la línea de paso si la persona se corrió.
-  let x = along[0] + (hit.point[0] - feet[0]) * PULL;
-  let z = along[1] + (hit.point[2] - feet[2]) * PULL;
+  let x = hit.up[0] * sign + (hit.point[0] - feet[0]) * PULL;
+  let z = hit.up[1] * sign + (hit.point[2] - feet[2]) * PULL;
   const length = Math.hypot(x, z);
   if (length > 1) {
     x /= length;
     z /= length;
   }
-  // La mirada gira con la escalera: hacia donde va el tramo, conservando subir o bajar.
-  const target = headingOf(facingUp > 0 ? hit.up : [-hit.up[0], -hit.up[1]]);
-  const yawDelta = wrap(target - yaw) * Math.min(1, 4 * dt);
+  const heading = headingOf(hit.up);
+  const yawDelta = state.heading === null ? 0 : wrap(heading - state.heading);
+  state.heading = heading;
   return { direction: [x, z], yawDelta };
 }

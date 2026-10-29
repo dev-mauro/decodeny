@@ -13,7 +13,7 @@ import { Euler, Quaternion } from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { planToWorld } from '../coords';
 import { levelSlab } from '../scene/slabs';
-import { guidedStep, stairGuides } from './stair-guide';
+import { guidedStep, newGuideState, stairGuides } from './stair-guide';
 import {
   groundCollider,
   itemColliders,
@@ -118,13 +118,14 @@ function walk(
   const state: PersonMotionState = { verticalSpeed: 0 };
   const steps = Math.round(seconds / DT);
   let guidedYaw = typeof route === 'number' ? route : 0;
+  const guideState = newGuideState();
   for (let i = 0; i < steps; i++) {
     const at = body.translation();
     let yaw =
       typeof route === 'number' ? route : route({ x: at.x * 1000, y: -at.z * 1000 }, i * DT);
     let direction: [number, number] | undefined;
     if (guided) {
-      const g = guidedStep(guides, [at.x, at.y - dims.centerY, at.z], 1, guidedYaw, DT);
+      const g = guidedStep(guides, [at.x, at.y - dims.centerY, at.z], 1, guidedYaw, guideState);
       if (g) guidedYaw += g.yawDelta;
       yaw = guidedYaw;
       direction = g?.direction;

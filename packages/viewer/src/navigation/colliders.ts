@@ -41,6 +41,8 @@ export interface BoxCollider {
   readonly rotationY: number;
   /** Inclinación (rotación en x antes de la de Y): las rampas de las escaleras. */
   readonly pitch?: number;
+  /** Rampa por la línea de paso de una escalera (ver `CollisionBox.walkway`). */
+  readonly walkway?: boolean;
 }
 
 /** Tramo de muro (mm a lo largo del eje desde `start`) entre dos alturas. */
@@ -209,6 +211,7 @@ export function itemColliders(level: Level): BoxCollider[] {
           ],
           rotationY: rotation + (c.rotationY ?? 0),
           ...(c.pitch ? { pitch: c.pitch } : {}),
+          ...(c.walkway ? { walkway: true } : {}),
         }));
       }
       const env = itemEnvelope(item);

@@ -142,11 +142,15 @@ function flightBlocks(f: Flight, s: StairSteps): Part[] {
   return parts;
 }
 
-/** Rampa que pasa por el centro de las huellas, de medio peldaño antes a medio después. */
-/** Extremos de la línea por el centro de las huellas, de medio peldaño antes a medio después. */
+/**
+ * Extremos de la línea de las narices de los peldaños: desde el piso, una huella antes del primer
+ * peldaño, hasta el borde de llegada justo a la altura de arriba. Por ella va la rampa del
+ * recorrido, así empalma sin escalón con la losa o el descanso de llegada (por el centro de las
+ * huellas, quedaría medio peldaño por debajo del borde y la persona tropezaría al llegar).
+ */
 function flightEnds(f: Flight, s: StairSteps): [Vec3Mm, Vec3Mm] {
-  const a = along(f, -s.tread / 2);
-  const b = along(f, (f.count + 0.5) * s.tread);
+  const a = along(f, -s.tread);
+  const b = along(f, f.count * s.tread);
   return [
     [a[0], (f.first - 1) * s.riser, a[1]],
     [b[0], (f.first + f.count) * s.riser, b[1]],
@@ -155,7 +159,7 @@ function flightEnds(f: Flight, s: StairSteps): [Vec3Mm, Vec3Mm] {
 
 function flightRamp(f: Flight, s: StairSteps): CollisionBox {
   const [from, to] = flightEnds(f, s);
-  return ramp(from, to, f.width, RAMP_THICKNESS);
+  return { ...ramp(from, to, f.width, RAMP_THICKNESS), walkway: true };
 }
 
 /** Pasamanos a ambos lados de un tramo: pilares en los extremos, barrotes y barra inclinada. */
@@ -302,6 +306,8 @@ interface StairLayout {
   readonly colliders: CollisionBox[];
   /** Camino de subida por la línea de paso, de abajo hacia arriba (ver `walkPath`). */
   readonly path: Vec3Mm[];
+  /** Ancho por el que se camina alrededor de esa línea (ver `walkWidth`). */
+  readonly walkWidth: number;
   readonly opening: P2[];
   readonly outline: P2[];
   readonly symbol: PlanStroke[];
@@ -341,6 +347,7 @@ function straightLayout(p: RectStairParams): StairLayout {
     parts,
     colliders,
     path: flightEnds(flight, s),
+    walkWidth: p.width,
     opening: outline,
     outline,
     symbol: [
@@ -358,6 +365,7 @@ const stairDefinition = <P extends RectStairParams>(layout: (p: P) => StairLayou
   planOutline: (p: P) => layout(p).outline,
   planSymbol: (p: P) => layout(p).symbol,
   walkPath: (p: P) => layout(p).path,
+  walkWidth: (p: P) => layout(p).walkWidth,
 });
 
 export const stairStraight = defineItem({
@@ -383,6 +391,7 @@ function mirrored(layout: StairLayout, turn: string): StairLayout {
     parts: layout.parts.map(mirrorPart),
     colliders: layout.colliders.map(mirrorBox),
     path: layout.path.map(([x, y, z]) => [-x, y, z] as const),
+    walkWidth: layout.walkWidth,
     opening: mirrorPolygon(layout.opening) as P2[],
     outline: mirrorPolygon(layout.outline) as P2[],
     symbol: layout.symbol.map(mirrorStroke),
@@ -481,6 +490,7 @@ function lLayout(p: TurnStairParams): StairLayout {
         [left + W / 2, landingY, back + W / 2],
         ...flightEnds(second, s),
       ],
+      walkWidth: W,
       opening: outline,
       outline,
       symbol: [
@@ -579,6 +589,7 @@ function uLayout(p: TurnStairParams): StairLayout {
         [right - W / 2, landingY, back + W / 2],
         ...flightEnds(second, s),
       ],
+      walkWidth: W,
       opening: outline,
       outline,
       symbol: [
@@ -642,8 +653,11 @@ const SPIRAL_RAMP_THICKNESS = 60;
 const SPIRAL_PLANKS = 3;
 /** Ancho de la rampa del caracol, centrada en la línea de paso. */
 const SPIRAL_WALK_BAND = 260;
-/** Pilar como obstáculo (algo más grueso que el visible). */
-const SPIRAL_CORE = 100;
+/**
+ * Pilar como obstáculo, más grueso que el visible (un octógono de este radio interior): junto al
+ * pilar la huella es muy empinada; así, caminando libre, la persona no se sale de la rampa.
+ */
+const SPIRAL_CORE = 120;
 /** Distancia de la línea de paso a la baranda: lo que ocupa una persona, con holgura. */
 const SPIRAL_WALK_CLEARANCE = 360;
 
@@ -704,17 +718,22 @@ function spiralLayout(p: SpiralParams): StairLayout {
     return [x, i * s.riser, z];
   };
   const colliders: CollisionBox[] = [
-    { size: [SPIRAL_CORE * 2, p.height, SPIRAL_CORE * 2], at: [0, p.height / 2, 0] },
+    ...[0, Math.PI / 4].map((rotationY): CollisionBox => ({
+      size: [SPIRAL_CORE * 2, p.height, SPIRAL_CORE * 2],
+      at: [0, p.height / 2, 0],
+      rotationY,
+    })),
   ];
   for (let k = 0; k < s.count * SPIRAL_PLANKS; k++) {
-    colliders.push(
-      ramp(
+    colliders.push({
+      ...ramp(
         walkPoint(k / SPIRAL_PLANKS),
         walkPoint((k + 1) / SPIRAL_PLANKS),
         SPIRAL_WALK_BAND,
         SPIRAL_RAMP_THICKNESS,
       ),
-    );
+      walkway: true,
+    });
   }
   // Hueco: el círculo menos el sector de llegada (que queda como losa).
   const opening: P2[] = [[0, 0], ...arc(R, end + landingAngle, end + 2 * Math.PI)];
@@ -768,7 +787,9 @@ function spiralLayout(p: SpiralParams): StairLayout {
   const path = Array.from({ length: s.count * SPIRAL_PLANKS + 1 }, (_, k) =>
     walkPoint(k / SPIRAL_PLANKS),
   );
-  const layout = { parts, colliders, path, opening, outline, symbol };
+  // Se camina por todo el anillo entre el pilar y la baranda.
+  const walkWidth = 2 * Math.max(walk - SPIRAL_CORE, R - POST - walk);
+  const layout = { parts, colliders, path, walkWidth, opening, outline, symbol };
   return mirrored(layout, p.turn === 'cw' ? 'left' : 'right');
 }
 
@@ -805,4 +826,5 @@ export const stairSpiral = defineItem({
   planOutline: (p) => spiralLayout(p).outline,
   planSymbol: (p) => spiralLayout(p).symbol,
   walkPath: (p) => spiralLayout(p).path,
+  walkWidth: (p) => spiralLayout(p).walkWidth,
 });

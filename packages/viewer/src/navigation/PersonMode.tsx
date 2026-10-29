@@ -12,7 +12,7 @@ import {
   type RapierRigidBody,
 } from '@react-three/rapier';
 import { memo, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Euler, Quaternion } from 'three';
+import { Euler, Quaternion, Vector3, type Object3D } from 'three';
 import type { LevelSlab } from '../scene/slabs';
 import {
   chooseSpawn,
@@ -38,10 +38,17 @@ import {
   type Elevator,
   type ElevatorAction,
 } from './elevators';
+import { createEyeHeight, stepEyeHeight } from './eye-height';
 import { createHeadBob, stepHeadBob } from './head-bob';
+import { horizontalDirection } from './input';
 import { capsuleDimensions } from './person-profile';
-import { configurePersonController, stepPerson, type PersonMotionState } from './person-step';
-import { guidedStep, newGuideState, stairGuides } from './stair-guide';
+import {
+  configurePersonController,
+  stepPerson,
+  FLOOR_COLLISION_GROUPS,
+  type PersonMotionState,
+} from './person-step';
+import { assistStep, newGuideState, stairGuides } from './stair-guide';
 import type { NavigationModeProps } from './types';
 import { usePointerLook } from './use-pointer-look';
 import { useMovementIntent } from './virtual-input';
@@ -97,6 +104,7 @@ function Boxes({ boxes }: { readonly boxes: readonly BoxCollider[] }) {
       args={box.halfExtents}
       position={box.position}
       quaternion={boxQuaternion(box)}
+      {...(box.walkway ? { collisionGroups: FLOOR_COLLISION_GROUPS } : {})}
     />
   ));
 }
@@ -127,7 +135,12 @@ const LevelColliders = memo(function LevelColliders({
   return (
     <RigidBody type="fixed" colliders={false}>
       <Boxes boxes={boxes} />
-      {floor && <TrimeshCollider args={[floor.vertices, floor.indices]} />}
+      {floor && (
+        <TrimeshCollider
+          args={[floor.vertices, floor.indices]}
+          collisionGroups={FLOOR_COLLISION_GROUPS}
+        />
+      )}
       {closed && <TrimeshCollider args={[closed.vertices, closed.indices]} />}
     </RigidBody>
   );
@@ -203,7 +216,8 @@ function PersonController({
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
   const elevatorStore = useContext(ElevatorStoreContext);
-  // Sobre una escalera, adelante y atrás siguen su línea de paso (ver `stair-guide`).
+  // Sobre una escalera, la altura sale de su línea de paso y el paso se endereza suavemente con
+  // el tramo (ver `stair-guide`).
   const guides = useMemo(() => stairGuides(levels), [levels]);
   const turned = useRef(false);
   const guideState = useRef(newGuideState());
@@ -277,15 +291,15 @@ function PersonController({
       return;
     }
     const intent = readIntent();
-    const guided = guidedStep(
+    const assisted = assistStep(
       guides,
       [t.x, t.y - dims.centerY, t.z],
-      intent.forward,
-      look.current.yaw,
+      horizontalDirection(intent, look.current.yaw),
+      dims.radius + CONTROLLER_OFFSET,
       guideState.current,
     );
-    if (guided && guided.yawDelta !== 0) {
-      look.current.yaw += guided.yawDelta;
+    if (assisted && assisted.yawDelta !== 0) {
+      look.current.yaw += assisted.yawDelta;
       turned.current = true;
     }
     const next = stepPerson(
@@ -297,7 +311,9 @@ function PersonController({
       look.current.yaw,
       profile,
       stepWorld.timestep,
-      guided?.direction,
+      assisted?.direction,
+      assisted?.footing,
+      CONTROLLER_OFFSET,
     );
     b.setNextKinematicTranslation(next);
   });
@@ -362,16 +378,22 @@ function PersonController({
   // Balanceo de cabeza opcional, según la velocidad horizontal real (no la intención).
   const bob = useRef(createHeadBob());
   const last = useRef<{ x: number; z: number } | null>(null);
+  // La cámara sigue la posición interpolada entre pasos de la física (sin tirones aunque la
+  // pantalla refresque más rápido) y una altura suavizada (escalones y quiebres de las rampas).
+  const anchor = useRef<Object3D>(null);
+  const eye = useRef(createEyeHeight());
+  const [seen] = useState(() => new Vector3());
   useFrame((_, dt) => {
     const t = body.current?.translation();
     if (!t) return;
+    const at = anchor.current?.getWorldPosition(seen) ?? t;
     let offset = 0;
     if (headBob && dt > 0) {
-      const prev = last.current ?? t;
-      offset = stepHeadBob(bob.current, Math.hypot(t.x - prev.x, t.z - prev.z) / dt, dt);
+      const prev = last.current ?? at;
+      offset = stepHeadBob(bob.current, Math.hypot(at.x - prev.x, at.z - prev.z) / dt, dt);
     }
-    last.current = { x: t.x, z: t.z };
-    camera.position.set(t.x, t.y + dims.eyeOffset + offset, t.z);
+    last.current = { x: at.x, z: at.z };
+    camera.position.set(at.x, stepEyeHeight(eye.current, at.y, dt) + dims.eyeOffset + offset, at.z);
     // La mirada que giró la escalera.
     if (turned.current) {
       turned.current = false;
@@ -411,6 +433,7 @@ function PersonController({
   return (
     <RigidBody ref={body} type="kinematicPosition" colliders={false} position={spawnCenter}>
       <CapsuleCollider ref={collider} args={[dims.halfHeight, dims.radius]} />
+      <object3D ref={anchor} />
     </RigidBody>
   );
 }

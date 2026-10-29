@@ -56,6 +56,11 @@ export interface CollisionBox {
   readonly at: Vec3Mm;
   readonly rotationY?: number;
   readonly pitch?: number;
+  /**
+   * Rampa por la línea de paso (`walkPath`): en el recorrido sostiene a la persona solo fuera de
+   * ella; sobre la escalera, la altura sale de la línea (sin las uniones ni quiebres de la rampa).
+   */
+  readonly walkway?: boolean;
 }
 
 /** Polígono en el plano x–z del marco local (mm). */
@@ -115,10 +120,13 @@ export interface ItemDefinition<P extends ParamSpecs = ParamSpecs> {
   /** Cuántas losas atraviesa ese hueco hacia arriba (un ascensor de 3 paradas, 2); por defecto 1. */
   readonly openingSpan?: (params: ParamValues<P>) => number;
   /**
-   * Camino de subida por la línea de paso (marco local, de abajo hacia arriba): en el recorrido,
-   * sobre la escalera, adelante y atrás lo siguen (sin chocar con bordes ni barandas).
+   * Camino de subida por la línea de paso (marco local, de abajo hacia arriba). En el recorrido,
+   * sobre sus tramos inclinados la altura de los pies sale de esta línea (se sube parejo, sin
+   * escalones) y el paso se endereza suavemente con ella si se camina a lo largo.
    */
   readonly walkPath?: (params: ParamValues<P>) => readonly Vec3Mm[];
+  /** Ancho (mm) por el que se camina alrededor de `walkPath` (por defecto, 900). */
+  readonly walkWidth?: (params: ParamValues<P>) => number;
   /** Contorno en el plano (por defecto, el rectángulo de su envolvente). */
   readonly planOutline?: (params: ParamValues<P>) => LocalPolygon;
   /** Símbolo en el plano (peldaños, sentido de subida), en el marco local. */
@@ -139,6 +147,7 @@ type DerivedFields =
   | 'floorOpening'
   | 'openingSpan'
   | 'walkPath'
+  | 'walkWidth'
   | 'planOutline'
   | 'planSymbol';
 
@@ -149,6 +158,7 @@ export interface AnyItemDefinition extends Omit<ItemDefinition, DerivedFields> {
   readonly floorOpening?: (params: ResolvedParams) => LocalPolygon;
   readonly openingSpan?: (params: ResolvedParams) => number;
   readonly walkPath?: (params: ResolvedParams) => readonly Vec3Mm[];
+  readonly walkWidth?: (params: ResolvedParams) => number;
   readonly planOutline?: (params: ResolvedParams) => LocalPolygon;
   readonly planSymbol?: (params: ResolvedParams) => readonly PlanStroke[];
   readonly envelope?: (params: ResolvedParams) => ItemEnvelope;

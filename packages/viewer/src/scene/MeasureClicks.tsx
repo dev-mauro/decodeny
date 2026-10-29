@@ -5,6 +5,7 @@ import { Mesh, PerspectiveCamera, Raycaster, Vector2, type Object3D } from 'thre
 import { snapMeasurePoint, type MeasureSnapKind } from '../plan/measure-snap';
 import { CLICK_DRAG_TOLERANCE_PX } from './interaction';
 import type { MeasurePoint } from './measure';
+import { MeasureSegment } from './MeasureOverlay';
 
 /** Distancia (px en pantalla) a la que el punto se pega a una esquina o a un borde: poca. */
 const SNAP_PX = 10;
@@ -19,17 +20,23 @@ interface MeasureHover {
  * objetos detienen la propagación de sus clics, así que no se usan los eventos de R3F). Un
  * arrastre (orbitar) no marca punto. Como en la planta, el punto se pega a las esquinas y caras
  * interiores de los espacios y a los bordes de los muebles (`outlines`) solo de cerca; un punto
- * bajo el puntero muestra dónde quedaría. Alt mide libre.
+ * bajo el puntero muestra dónde quedaría y, tras el primer punto, una línea punteada lo sigue con
+ * la distancia (al marcar el segundo queda fija). Alt mide libre.
  */
 export function MeasureClicks({
   target,
   elevation,
   outlines,
+  from,
+  locale,
   onPoint,
 }: {
   readonly target: RefObject<Object3D | null>;
   readonly elevation: number;
   readonly outlines: readonly (readonly Vec2[])[];
+  /** Primer punto marcado: hasta el segundo, una línea punteada sigue al puntero con su largo. */
+  readonly from: MeasurePoint | null;
+  readonly locale: string;
   readonly onPoint: (point: MeasurePoint) => void;
 }) {
   const gl = useThree((s) => s.gl);
@@ -105,18 +112,23 @@ export function MeasureClicks({
 
   if (!hover) return null;
   return (
-    <mesh
-      name="measure"
-      position={[hover.point.x / 1000, hover.point.z / 1000, -hover.point.y / 1000]}
-      renderOrder={10}
-    >
-      <sphereGeometry args={[hover.kind === 'free' ? 0.025 : 0.04, 16, 12]} />
-      <meshBasicMaterial
-        color={hover.kind === 'corner' ? '#16a34a' : hover.kind === 'edge' ? '#d97706' : '#db2777'}
-        depthTest={false}
-        transparent
-        opacity={0.9}
-      />
-    </mesh>
+    <>
+      {from && <MeasureSegment a={from} b={hover.point} live locale={locale} />}
+      <mesh
+        name="measure"
+        position={[hover.point.x / 1000, hover.point.z / 1000, -hover.point.y / 1000]}
+        renderOrder={10}
+      >
+        <sphereGeometry args={[hover.kind === 'free' ? 0.025 : 0.04, 16, 12]} />
+        <meshBasicMaterial
+          color={
+            hover.kind === 'corner' ? '#16a34a' : hover.kind === 'edge' ? '#d97706' : '#db2777'
+          }
+          depthTest={false}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+    </>
   );
 }

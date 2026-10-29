@@ -347,6 +347,8 @@ export function LevelView({
           target={groupRef}
           elevation={level.elevation}
           outlines={measureTargets}
+          from={measurePoints?.length === 1 ? measurePoints[0]! : null}
+          locale={locale}
           onPoint={onMeasurePoint}
         />
       )}

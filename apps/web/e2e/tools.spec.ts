@@ -23,7 +23,11 @@ test('mide la distancia entre dos puntos de la vista', async ({ page }) => {
   await expect(page.getByTestId('measure-panel')).toContainText('Haz clic en dos puntos');
   const box = (await page.getByTestId('viewer').boundingBox())!;
   await page.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.55);
+  // Hasta el segundo punto, una línea punteada sigue al puntero con la distancia.
+  await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.58, { steps: 4 });
+  await expect(page.getByTestId('measure-live-label')).toHaveText(/\d+,\d{2} m/);
   await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.6);
+  await expect(page.getByTestId('measure-live-label')).toHaveCount(0);
   await expect(page.getByTestId('measure-distance')).toHaveText(/\d+,\d{2} m/);
   await expect(page.getByTestId('measure-label')).toBeVisible();
   // Medir no selecciona nada; Esc termina.
